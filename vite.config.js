@@ -25,6 +25,7 @@ export default defineConfig({
         index: path.resolve(__dirname, 'src/index.html'),
         grid: path.resolve(__dirname, 'src/grid.html'),
         scan: path.resolve(__dirname, 'src/scan.html'),
+        chat: path.resolve(__dirname, 'src/chat.html'),
       }
     },
   },

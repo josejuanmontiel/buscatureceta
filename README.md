@@ -10,6 +10,8 @@ A raiz de este [este](https://www.youtube.com/watch?v=j5dUzDTQ3mc) video de la f
 
 Me dio por intentar hacer algo que fuera util, a quien pudiera necesitarlo.
 
+Puedes verlo [aqui](https://buscatureceta.accreativos.com)
+
 ## Idea
 Usando el movil, poder escanear codigos de barras y previo a haber decidido que ingredientes (aditivos) no quieres que tengan los alimentos que vas a comprar, ir haciendo una lista (mientras te vas moviendo por el supermercado) que te permita (añadiendo el precio de cada cosa) decidir que te puedes permitir, pues conforme vas metiendo productos en el carro, tienes disponible (si los introduces) el total del carro pudiendo decidir si te puedes permitir ese alimento "menos malo" o no.
 
@@ -46,6 +48,9 @@ En esta [segunda](https://github.com/josejuanmontiel/buscatureceta/releases/tag/
 ### Relese v0.3
 En la [proxima](https://github.com/josejuanmontiel/buscatureceta/releases/tag/v0.3.0) release:
 
+    -2. Renombrado por temas de "licencias" a BuscaTuReceta (aprovechando mi antiguo proyecto)
+    -1. Migracion del sistema de construccion de vite a nx.
+    0. Prueba de concepto para comparticion de datos distribuida. 
     1. Como la base de datos ya tiene fechas de ultima modificacion de los elementos, se plantea una carga diferencial a partir de otro fichero previamente preparado.
     2. Aun queda pendiente un spinner que indique que se esta realizando la carga (aunque ya hay logs en consola).
     3. Se observa la necesidad de insercio de datos nutricionales (a parte de los ingredientes como tal) para poder hacer filtro sobre cantidades de azucares y grasas. Por lo que aprovechando la carga diferencial se añadira la opcion de importar nuevos campos, con esta informacion.
