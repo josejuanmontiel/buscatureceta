@@ -15,6 +15,15 @@
             port: 443,
             path: "/",
             proxied: true,
+            config: {
+                iceServers: [
+                    {
+                        urls: "turn:global.relay.metered.ca:80", // Replace with your TURN server URL
+                        username: "fdae8eb2080d90479c02149c", // Replace with your TURN username
+                        credential: "M4xeXxJgtU47kqAH", // Replace with your TURN credential
+                    }
+                ]
+            },
             // Set highest debug level (log everything!).
             debug: 3,
             // Set a logging function:
