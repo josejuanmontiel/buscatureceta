@@ -1,4 +1,4 @@
-# OpenFoodFacts
+# Buscatureceta
 
 ## Motivo
 A raiz de este [este](https://www.youtube.com/watch?v=j5dUzDTQ3mc) video de la fundacion [UAPO](https://www.fundacionuapo.org) y a cosas que ya tenia en la cabeza de hace tiempo:
@@ -29,13 +29,13 @@ Usaremos los datos de OpenFoodFacts que se pueden descargar desde [aqui](https:/
 Estos datos los almacenaremos en la IndexedDB del navegador usando su API estandar, teniendo como clave el codigo de barras. Y para escanear los codigos de barras usaremos la libreria [html5-qrcode](https://github.com/mebjas/html5-qrcode)
 
 ### Release v0.1
-La release inicial tenia todo lo descrito [aqui](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.1.0) que basicamente era:
+La release inicial tenia todo lo descrito [aqui](https://github.com/josejuanmontiel/buscatureceta/releases/tag/v0.1.0) que basicamente era:
     1. Boton de descarga, descompresion y almacenaje en la base de datos.
     2. Un boton de escaneo de codigo de barras.
     3. Mostrar imagen, link y alguna cosa mas obtenida de la base de datos.
 
 ### Relese v0.2
-En esta [segunda](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.2.0) release se incluye:
+En esta [segunda](https://github.com/josejuanmontiel/buscatureceta/releases/tag/v0.2.0) release se incluye:
 
     1. Breve explicacion de que no hay servidor en la primera pagina.
     2. Boton de carga indicando el fichero que se quiere cargar en la primera pagina (descompresion). Lo que permite algo de flexibilidad inicial en la carga de datos.
@@ -44,7 +44,7 @@ En esta [segunda](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/
     5. Incluir la libreria (y ejemplo inicial con datos fijos) para mostar los elementos que se van escanenado con [tabulator](https://tabulator.info/examples/6.3#fittodata).
 
 ### Relese v0.3
-En la [proxima](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.3.0) release:
+En la [proxima](https://github.com/josejuanmontiel/buscatureceta/releases/tag/v0.3.0) release:
 
     1. Como la base de datos ya tiene fechas de ultima modificacion de los elementos, se plantea una carga diferencial a partir de otro fichero previamente preparado.
     2. Aun queda pendiente un spinner que indique que se esta realizando la carga (aunque ya hay logs en consola).
