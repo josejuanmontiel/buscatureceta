@@ -16,16 +16,16 @@ export default defineConfig({
     port: 8080,
     hot: true,
   },
-  plugins: [
-    viteStaticCopy({
-      targets: [
-        {
-          src: '../_headers',
-          dest: '../dist'
-        }
-      ]
-    })
-  ],
+  // plugins: [
+  //   viteStaticCopy({
+  //     targets: [
+  //       {
+  //         src: '../_headers',
+  //         dest: '../dist'
+  //       }
+  //     ]
+  //   })
+  // ],
   build: {
     outDir: '../dist',
     emptyOutDir: true,
