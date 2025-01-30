@@ -2,6 +2,8 @@
 import { defineConfig } from 'vite';
 import path from 'path';
 
+import { viteStaticCopy } from 'vite-plugin-static-copy'
+
 export default defineConfig({
 
   root: path.resolve(__dirname, 'src'),
@@ -14,6 +16,16 @@ export default defineConfig({
     port: 8080,
     hot: true,
   },
+  plugins: [
+    viteStaticCopy({
+      targets: [
+        {
+          src: '../_headers',
+          dest: '../dist'
+        }
+      ]
+    })
+  ],
   build: {
     outDir: '../dist',
     emptyOutDir: true,
