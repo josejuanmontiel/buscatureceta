@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Despensa - NutriAgenda</title>
+  
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    .pantry-card {
+      background: #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <nav class="nav nav-masthead justify-content-center float-md-end">
+          <a class="nav-link fw-bold py-1 px-0" href="index.html">Inicio</a>
+          <a class="nav-link fw-bold py-1 px-0" href="grid.html">Buscar</a>
+          <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="pantry.html">Despensa</a>
+          <a class="nav-link fw-bold py-1 px-0" href="recipes.html">Recetas</a>
+          <a class="nav-link fw-bold py-1 px-0" href="diary.html">Agenda</a>
+          <a class="nav-link fw-bold py-1 px-0" href="dashboard.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Mi Despensa</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStockModal">
+          + Añadir Stock
+        </button>
+      </div>
+
+      <!-- Buscador -->
+      <div class="input-group mb-4">
+        <input type="text" id="pantry-search" class="form-control" placeholder="Buscar en mi despensa...">
+      </div>
+
+      <!-- Lista de inventario -->
+      <div class="row" id="pantry-list">
+        <!-- Inyectado vía JS -->
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Modal para Añadir Stock (Sustituto de escáner en este MVP) -->
+  <div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Añadir Stock</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="add-stock-form">
+            <div class="mb-3">
+              <label class="form-label">Producto</label>
+              <div class="input-group mb-2">
+                <input type="text" id="stock-product-search" class="form-control" placeholder="Buscar producto...">
+                <button class="btn btn-outline-secondary" type="button" id="btn-search-stock-product">Buscar</button>
+              </div>
+              <div id="stock-product-results" class="list-group mb-2" style="max-height: 150px; overflow-y: auto;"></div>
+              <input type="hidden" id="stock-product-selected">
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-8">
+                <label class="form-label">Cantidad</label>
+                <input type="number" class="form-control" id="stock-amount" value="500" min="1">
+              </div>
+              <div class="col-4">
+                <label class="form-label">Unidad</label>
+                <select class="form-select" id="stock-unit">
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="unidad">ud</option>
+                </select>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-stock">Añadir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Consumir Stock Manualmente -->
+  <div class="modal fade" id="consumeStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Retirar de Despensa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="consume-stock-form">
+            <input type="hidden" id="consume-product-code">
+            <div class="mb-3">
+              <p><strong>Producto:</strong> <span id="consume-product-name"></span></p>
+              <p><strong>Stock actual:</strong> <span id="consume-product-stock"></span></p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Motivo</label>
+              <select class="form-select" id="consume-reason">
+                <option value="consumed_family">Se lo ha comido alguien de la familia</option>
+                <option value="trashed">Se ha tirado a la basura</option>
+                <option value="expired">Ha caducado</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Cantidad a retirar</label>
+              <input type="number" class="form-control" id="consume-amount" value="100" min="1">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btn-confirm-consume">Retirar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/pantry.js"></script>
+</body>
+</html>

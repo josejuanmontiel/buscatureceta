@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recetas - NutriAgenda</title>
+  
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    /* Estilos extra para la vista de recetas */
+    .recipe-card { cursor: pointer; transition: transform 0.2s; }
+    .recipe-card:hover { transform: scale(1.02); }
+    .nutrition-summary { font-size: 0.9em; color: #666; }
+    .ingredient-list { max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <nav class="nav nav-masthead justify-content-center float-md-end">
+          <a class="nav-link fw-bold py-1 px-0" href="index.html">Inicio</a>
+          <a class="nav-link fw-bold py-1 px-0" href="grid.html">Buscar</a>
+          <a class="nav-link fw-bold py-1 px-0" href="pantry.html">Despensa</a>
+          <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="recipes.html">Recetas</a>
+          <a class="nav-link fw-bold py-1 px-0" href="diary.html">Agenda</a>
+          <a class="nav-link fw-bold py-1 px-0" href="dashboard.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Mis Recetas</h1>
+        <button class="btn btn-primary" id="btn-new-recipe" data-bs-toggle="modal" data-bs-target="#recipeModal">
+          Nueva Receta
+        </button>
+      </div>
+
+      <!-- Buscador -->
+      <div class="input-group mb-4">
+        <input type="text" id="recipe-search" class="form-control" placeholder="Buscar receta...">
+      </div>
+
+      <!-- Lista de recetas -->
+      <div class="row" id="recipes-list">
+        <!-- Las recetas se inyectan aquí vía JS -->
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Modal para Crear/Editar Receta -->
+  <div class="modal fade" id="recipeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="recipeModalTitle">Nueva Receta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="recipe-form">
+            <input type="hidden" id="recipe-id">
+            
+            <div class="row mb-3">
+              <div class="col-md-8">
+                <label for="recipe-name" class="form-label">Nombre de la receta</label>
+                <input type="text" class="form-control" id="recipe-name" required>
+              </div>
+              <div class="col-md-4">
+                <label for="recipe-servings" class="form-label">Raciones</label>
+                <input type="number" class="form-control" id="recipe-servings" value="1" min="1" step="0.5" required>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Ingredientes</label>
+              
+              <!-- Buscador de productos para añadir ingrediente -->
+              <div class="input-group mb-2">
+                <input type="text" id="ingredient-search" class="form-control" placeholder="Código de barras o nombre...">
+                <button class="btn btn-outline-secondary" type="button" id="btn-search-product">Buscar</button>
+                <button class="btn btn-outline-secondary" type="button" id="btn-scan-product">Scan</button>
+              </div>
+              <div id="product-search-results" class="list-group mb-2" style="display:none; max-height: 150px; overflow-y: auto;"></div>
+
+              <!-- Lista de ingredientes añadidos -->
+              <ul class="list-group ingredient-list" id="ingredient-list">
+                <!-- Se inyectan vía JS -->
+              </ul>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Nutrición (por ración)</label>
+              <div id="nutrition-preview" class="p-2 border rounded">
+                Añade ingredientes para calcular la nutrición.
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-recipe">Guardar Receta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/recipes.js"></script>
+</body>
+</html>

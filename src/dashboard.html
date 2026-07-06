@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - NutriAgenda</title>
+  
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .dashboard-card {
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 15px;
+      height: 100%;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .macro-progress {
+      height: 10px;
+      margin-top: 5px;
+    }
+    .chart-container {
+      position: relative;
+      height: 250px;
+      width: 100%;
+    }
+    .variety-list {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .variety-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #444;
+    }
+    .variety-item:last-child { border-bottom: none; }
+    .variety-status-ok { color: #198754; }
+    .variety-status-warn { color: #ffc107; }
+  </style>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <nav class="nav nav-masthead justify-content-center float-md-end">
+          <a class="nav-link fw-bold py-1 px-0" href="index.html">Inicio</a>
+          <a class="nav-link fw-bold py-1 px-0" href="grid.html">Buscar</a>
+          <a class="nav-link fw-bold py-1 px-0" href="pantry.html">Despensa</a>
+          <a class="nav-link fw-bold py-1 px-0" href="recipes.html">Recetas</a>
+          <a class="nav-link fw-bold py-1 px-0" href="diary.html">Agenda</a>
+          <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="dashboard.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <h1 class="mb-4">Dashboard Nutricional</h1>
+
+      <div class="row g-4 mb-4">
+        <!-- Resumen del día (Kcal) -->
+        <div class="col-md-4">
+          <div class="dashboard-card text-center d-flex flex-column justify-content-center">
+            <h5 class="text-muted">Calorías Hoy</h5>
+            <div class="chart-container" style="height: 200px;">
+              <canvas id="kcalChart"></canvas>
+            </div>
+            <div class="mt-2" id="kcal-text">-- / -- kcal</div>
+          </div>
+        </div>
+
+        <!-- Macros del día -->
+        <div class="col-md-4">
+          <div class="dashboard-card">
+            <h5 class="text-muted mb-3">Macros (Hoy)</h5>
+            
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Proteínas</span><span id="macro-prot-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-info" id="macro-prot-bar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Carbohidratos</span><span id="macro-carb-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-warning" id="macro-carb-bar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Grasas</span><span id="macro-fat-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-danger" id="macro-fat-bar" style="width: 0%"></div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Fibra</span><span id="macro-fiber-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-success" id="macro-fiber-bar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variedad Semanal -->
+        <div class="col-md-4">
+          <div class="dashboard-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="text-muted mb-0">Variedad Semanal</h5>
+              <span class="badge bg-primary" id="variety-score">--%</span>
+            </div>
+            <div class="variety-list" id="variety-list">
+              <!-- Se inyecta por JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico de la semana -->
+      <div class="row">
+        <div class="col-12">
+          <div class="dashboard-card">
+            <h5 class="text-muted mb-3">Histórico de Calorías (Semana)</h5>
+            <div class="chart-container">
+              <canvas id="weekChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/dashboard.js"></script>
+</body>
+</html>

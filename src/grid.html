@@ -1,27 +1,89 @@
 <!doctype html>
-<html lang="en" class="h-100">
+<html lang="es" class="h-100" data-bs-theme="dark">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>OpenFoodFacts by accreativos</title>
-  <link rel="stylesheet" type="text/css" href="/css/tabulator_bootstrap5.min.css" />
-
-  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0"></script>
+  <title>Carrito - NutriAgenda</title>
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
 </head>
 
-<body class="d-flex h-100 text-center">
-  <div class="container py-4 px-3 mx-auto">
-    <button class="btn btn-primary" id="clear-db-btn">Borrar BD</button>
-    <h2>Consultar por Código</h2>
-    <input type="text" id="code-input" placeholder="Ingresa el código" />
-    <button id="query-btn">Consultar</button><button id="scan-btn">Scan</button>
-    <pre id="json"></pre>
-    <pre id="result"></pre>
-    <script src="./js/grid.js"></script>
-  
-    <div id="example-table"></div>
+<body class="d-flex flex-column h-100 text-center">
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <nav class="nav nav-masthead justify-content-center float-md-end">
+          <a class="nav-link fw-bold py-1 px-0" href="index.html">Inicio</a>
+          <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="grid.html">Carrito</a>
+          <a class="nav-link fw-bold py-1 px-0" href="pantry.html">Despensa</a>
+          <a class="nav-link fw-bold py-1 px-0" href="recipes.html">Recetas</a>
+          <a class="nav-link fw-bold py-1 px-0" href="diary.html">Agenda</a>
+          <a class="nav-link fw-bold py-1 px-0" href="dashboard.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <div class="container py-4 px-3 mx-auto">
+        <button class="btn btn-outline-danger btn-sm float-end" id="clear-db-btn">Borrar BD Local</button>
+    <!-- Cabecera Presupuesto -->
+    <div class="card bg-dark text-white mb-4 border-info">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">Total Carro</h4>
+        <h2 class="mb-0 text-info" id="cart-total">0.00 €</h2>
+      </div>
+    </div>
+
+    <!-- Escáner / Búsqueda -->
+    <div class="input-group mb-4 justify-content-center">
+      <input type="text" id="code-input" class="form-control" style="max-width: 300px;" placeholder="Código o Nombre" />
+      <button class="btn btn-primary" id="query-btn">Buscar</button>
+      <button class="btn btn-outline-light" id="scan-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
+    </div>
+    
+    <!-- Alertas y Sugerencias del Asistente (Oculto por defecto) -->
+    <div id="assistant-alert" class="alert alert-danger d-none text-start">
+      <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> ¡Atención!</h5>
+      <p id="assistant-warning-text"></p>
+      <hr>
+      <p class="mb-0"><strong>Alternativas saludables:</strong></p>
+      <div id="assistant-alternatives" class="list-group mt-2"></div>
+    </div>
+
+    <!-- Formulario para añadir al carrito (aparece al buscar un producto) -->
+    <div id="add-to-cart-panel" class="card bg-secondary text-white mb-4 d-none text-start">
+      <div class="card-body">
+        <h5 id="scanned-product-name" class="card-title"></h5>
+        <div class="row align-items-end mt-3">
+          <div class="col-4">
+            <label>Cantidad</label>
+            <input type="number" id="scanned-amount" class="form-control" value="1">
+          </div>
+          <div class="col-4">
+            <label>Precio (€)</label>
+            <input type="number" id="scanned-price" class="form-control" step="0.01">
+          </div>
+          <div class="col-4">
+            <button class="btn btn-success w-100" id="btn-add-cart">Al Carro</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista del carrito -->
+    <h4 class="text-start mb-3">Mi Compra</h4>
+    <div id="cart-list" class="list-group text-start mb-4">
+      <!-- Inyectado vía JS -->
+    </div>
+
+    <button class="btn btn-warning btn-lg w-100 mb-3" id="btn-checkout">Pasar por Caja (Llenar Despensa)</button>
+
+    <script type="module" src="./js/grid.js"></script>
+  </div>
+      </div>
+    </main>
   </div>
 
   <script type="module" src="./js/main.js"></script>

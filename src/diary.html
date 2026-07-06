@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agenda - NutriAgenda</title>
+  
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    .diary-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 768px) {
+      .diary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .diary-day {
+      background: #333;
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 200px;
+    }
+    .diary-day-header {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #555;
+    }
+    .meal-slot {
+      background: #444;
+      padding: 5px;
+      border-radius: 4px;
+      margin-bottom: 5px;
+      font-size: 0.85em;
+      cursor: pointer;
+    }
+    .meal-slot:hover {
+      background: #555;
+    }
+    .meal-type-label {
+      font-size: 0.75em;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+
+<body class="d-flex flex-column h-100">
+
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <nav class="nav nav-masthead justify-content-center float-md-end">
+          <a class="nav-link fw-bold py-1 px-0" href="index.html">Inicio</a>
+          <a class="nav-link fw-bold py-1 px-0" href="grid.html">Buscar</a>
+          <a class="nav-link fw-bold py-1 px-0" href="pantry.html">Despensa</a>
+          <a class="nav-link fw-bold py-1 px-0" href="recipes.html">Recetas</a>
+          <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="diary.html">Agenda</a>
+          <a class="nav-link fw-bold py-1 px-0" href="dashboard.html">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Agenda de Comidas</h1>
+        <div>
+          <button class="btn btn-outline-light me-2" id="btn-prev-week">&lt; Semana Anterior</button>
+          <span id="current-week-label" class="fw-bold me-2"></span>
+          <button class="btn btn-outline-light" id="btn-next-week">Semana Siguiente &gt;</button>
+        </div>
+      </div>
+
+      <!-- Grid semanal -->
+      <div class="diary-grid" id="diary-grid">
+        <!-- Los días se inyectan vía JS -->
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Modal para Registrar Comida -->
+  <div class="modal fade" id="mealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="mealModalTitle">Registrar Comida</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="meal-form">
+            <input type="hidden" id="meal-date">
+            
+            <div class="mb-3">
+              <label for="meal-type" class="form-label">Tipo de comida</label>
+              <select class="form-select" id="meal-type">
+                <option value="breakfast">Desayuno</option>
+                <option value="lunch" selected>Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">¿Qué has comido?</label>
+              
+              <!-- Tabs para Receta o Producto -->
+              <ul class="nav nav-tabs mb-2" id="mealTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="tab-recipe" data-bs-toggle="tab" data-bs-target="#pane-recipe" type="button">Receta guardada</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-product" data-bs-toggle="tab" data-bs-target="#pane-product" type="button">Producto escaneado</button>
+                </li>
+              </ul>
+
+              <div class="tab-content" id="mealTabContent">
+                <!-- Panel Receta -->
+                <div class="tab-pane fade show active" id="pane-recipe">
+                  <select class="form-select mb-2" id="meal-recipe-select">
+                    <option value="">-- Selecciona receta --</option>
+                  </select>
+                  <label class="form-label mt-2">Raciones consumidas</label>
+                  <input type="number" class="form-control" id="meal-recipe-servings" value="1" min="0.25" step="0.25">
+                </div>
+                
+                <!-- Panel Producto -->
+                <div class="tab-pane fade" id="pane-product">
+                  <div class="input-group mb-2">
+                    <input type="text" id="meal-product-search" class="form-control" placeholder="Buscar por nombre o escanear">
+                    <button class="btn btn-outline-secondary" type="button" id="btn-search-meal-product">Buscar</button>
+                  </div>
+                  <div id="meal-product-results" class="list-group mb-2" style="max-height: 100px; overflow-y: auto;"></div>
+                  <input type="hidden" id="meal-product-selected">
+                  
+                  <label class="form-label mt-2">Gramos consumidos</label>
+                  <input type="number" class="form-control" id="meal-product-grams" value="100" min="1">
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Hambre antes de comer (opcional)</label>
+              <input type="range" class="form-range" id="meal-hunger" min="1" max="10" value="5">
+              <div class="d-flex justify-content-between"><small>Poca</small><small>Mucha</small></div>
+            </div>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="meal-deduct-pantry" checked>
+              <label class="form-check-label" for="meal-deduct-pantry">
+                Descontar automáticamente de mi Despensa
+              </label>
+            </div>
+            
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-meal">Guardar Ingesta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/diary.js"></script>
+</body>
+</html>

@@ -37,43 +37,23 @@ function parseCSV(data) {
 }
 
 
-// Función para inicializar IndexedDB
-// Repetida en grid.js
-function initDatabase() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open("miBaseDeDatos", 1);
-        
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            const objectStore = db.createObjectStore("datosCSV", { keyPath: "id" });
-        };
+import { db, migrateFromLegacyDB } from './db/schema.js';
 
-        request.onsuccess = (event) => {
-            resolve(event.target.result);
-        };
+// Llamar a migración al inicio
+migrateFromLegacyDB().catch(console.error);
 
-        request.onerror = (event) => {
-            reject("Error al abrir la base de datos: " + event.target.errorCode);
-        };
-    });
-}
-
-// Función para guardar los datos en IndexedDB
-function saveToDatabase(db, data) {
-    const transaction = db.transaction("datosCSV", "readwrite");
-    const objectStore = transaction.objectStore("datosCSV");
-
-    data.forEach((item, index) => {
-        objectStore.put({ id: item['code'], ...item });
-    });
-
-    transaction.oncomplete = () => {
-        console.log("Datos guardados exitosamente en IndexedDB");
-    };
-
-    transaction.onerror = (event) => {
-        console.error("Error al guardar los datos: ", event.target.error);
-    };
+// Función para guardar los datos en Dexie
+async function saveToDatabase(data) {
+    try {
+        const adapted = data.map(item => ({
+            ...item,
+            code: item.code || item.id
+        }));
+        await db.products.bulkPut(adapted);
+        console.log("Datos guardados exitosamente en IndexedDB (Dexie)");
+    } catch (error) {
+        console.error("Error al guardar los datos: ", error);
+    }
 }
 
 // Función para descargar y cargar el CSV
@@ -100,9 +80,8 @@ async function downloadAndLoadCSV() {
         // Convertir el contenido del CSV a un array de objetos
         const csvData = parseCSV(decompressed);
         
-        // Inicializar IndexedDB y guardar los datos
-        const db = await initDatabase();
-        saveToDatabase(db, csvData);
+        // Guardar los datos usando Dexie
+        await saveToDatabase(csvData);
 
         console.log("Guardada")
 
