@@ -51,4 +51,19 @@ En la [proxima](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0
     3. Se observa la necesidad de insercio de datos nutricionales (a parte de los ingredientes como tal) para poder hacer filtro sobre cantidades de azucares y grasas. Por lo que aprovechando la carga diferencial se añadira la opcion de importar nuevos campos, con esta informacion.
     4. Empezar a usar los nuevos datos con [Dexie](https://dexie.org/docs/Tutorial/Hello-World)
     5. Añadir a la tabla los elementos que se van escaneando, permitir añadir precio manualmente y mostrar totales, y permitir borrar lineas o moverlas a otras tablas (despensa, receta...).
+
+## Flujo End-to-End (E2E) Automatizado
+
+A continuación se muestra el ciclo de vida completo del "Smart Cart" validado automáticamente con Playwright (reproducido a velocidad x0.1 para apreciar los detalles). El flujo cubre todo el proceso desde que el usuario escanea un producto hasta que su información nutricional se refleja en el dashboard de consumo diario:
+
+<video controls autoplay loop muted src="./flow_slow.webm" width="100%"></video>
+
+**Explicación del flujo:**
+1. **Configuración Inicial**: Se carga una base de datos local prefiltrada con productos reales de OpenFoodFacts y se configura el asistente para alertar sobre ingredientes no deseados (ej. `E250`).
+2. **Escaneo y Alerta**: Al escanear un producto con `E250` (Costilla Adobada), el asistente muestra una alerta visual y sugiere una alternativa más saludable de la misma categoría (Salchichas de Pollo).
+3. **Compra e Ingesta de Presupuesto**: El usuario elige la alternativa sana y otros productos (Pan de Molde y Leche Entera), controla su presupuesto, ajusta las cantidades, y los añade al carrito.
+4. **Despensa Automática (Checkout)**: Al finalizar la compra, los artículos del carrito se transfieren automáticamente al stock de la despensa.
+5. **Generación de Recetas**: Se crea una receta (Bocadillo de Salchicha) usando ingredientes previamente guardados en la despensa, calculando la nutrición global sumando los macros y las kilocalorías de cada componente.
+6. **Agenda Semanal (Diario)**: Se registra la ingesta de la receta elaborada hoy y el consumo de la Leche (suelta) programada para el día siguiente. Al consumir los productos, el sistema **descuenta automáticamente** la cantidad correspondiente del stock en la despensa.
+7. **Dashboard Nutricional**: Finalmente, todos los datos consumidos a lo largo de la semana se presentan visualmente en gráficas (calorías, macros y variedad alimentaria), logrando el rastreo completo **Del Supermercado al Plato**.
     

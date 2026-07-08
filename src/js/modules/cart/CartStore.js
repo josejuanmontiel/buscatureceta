@@ -60,10 +60,8 @@ export async function getCart() {
   products.forEach(p => { productMap[p.code] = p.product_name; });
 
   const enrichedItems = items.map(item => {
-    // Calculamos el coste total de este item si el precio es por la "unidad/paquete" entero.
-    // Si asumiéramos que el precio es por Kg/100g, habría que hacer matemáticas.
-    // Asumiremos que el "price" guardado es el precio por la cantidad ("amount") escaneada.
-    total += item.price; 
+    // Calculamos el coste total de este item si el precio es unitario
+    total += (item.price * item.amount);
     return {
       ...item,
       productName: productMap[item.productCode] || 'Producto Desconocido'
