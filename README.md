@@ -36,7 +36,7 @@ La release inicial tenia todo lo descrito [aqui](https://github.com/josejuanmont
     2. Un boton de escaneo de codigo de barras.
     3. Mostrar imagen, link y alguna cosa mas obtenida de la base de datos.
 
-### Relese v0.2
+### Release v0.2
 En esta [segunda](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.2.0) release se incluye:
 
     1. Breve explicacion de que no hay servidor en la primera pagina.
@@ -45,14 +45,14 @@ En esta [segunda](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/
     4. Tras la carga o eleccion de empezar a comprar (con datos almacenados) vamos a la segunda pagina.
     5. Incluir la libreria (y ejemplo inicial con datos fijos) para mostar los elementos que se van escanenado con [tabulator](https://tabulator.info/examples/6.3#fittodata).
 
-### Relese v0.3
-En la [proxima](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.3.0) release:
+### Release v0.3 (Smart Cart & NutriAgenda)
+Esta versión marca la evolución de la app hacia un ecosistema completo de planificación y seguimiento:
 
-    1. Como la base de datos ya tiene fechas de ultima modificacion de los elementos, se plantea una carga diferencial a partir de otro fichero previamente preparado.
-    2. Aun queda pendiente un spinner que indique que se esta realizando la carga (aunque ya hay logs en consola).
-    3. Se observa la necesidad de insercio de datos nutricionales (a parte de los ingredientes como tal) para poder hacer filtro sobre cantidades de azucares y grasas. Por lo que aprovechando la carga diferencial se añadira la opcion de importar nuevos campos, con esta informacion.
-    4. Empezar a usar los nuevos datos con [Dexie](https://dexie.org/docs/Tutorial/Hello-World)
-    5. Añadir a la tabla los elementos que se van escaneando, permitir añadir precio manualmente y mostrar totales, y permitir borrar lineas o moverlas a otras tablas (despensa, receta...).
+    1. Extracción de datos nutricionales completos (Kcal, Macros, etc.) usando la base de datos local y [Dexie](https://dexie.org/) para un almacenamiento estructurado y rápido.
+    2. Carrito de la compra inteligente: control de presupuesto en tiempo real, alertas automáticas de aditivos indeseados (ej. E250) y recomendaciones de alternativas más sanas de la misma categoría.
+    3. Gestión integral de despensa: al hacer checkout en el carrito, los productos se mueven automáticamente al stock de tu cocina.
+    4. Creador de recetas: permite agrupar productos de la despensa y calcular de forma automática el total de calorías y macros por ración de la receta.
+    5. Agenda y Dashboard: registro de ingestas directamente desde recetas o productos sueltos, descontando el stock automáticamente de la despensa, con gráficos interactivos de progreso y variedad.
 
 ## Flujo End-to-End (E2E) Automatizado
 
