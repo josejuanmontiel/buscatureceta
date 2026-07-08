@@ -1,5 +1,7 @@
 # OpenFoodFacts
 
+**🌍 Aplicación en vivo:** [https://josejuanmontiel.github.io/OpenFoodFacts/](https://josejuanmontiel.github.io/OpenFoodFacts/) *(Se despliega automáticamente con cada push a la rama principal)*
+
 ## Motivo
 A raiz de este [este](https://www.youtube.com/watch?v=j5dUzDTQ3mc) video de la fundacion [UAPO](https://www.fundacionuapo.org) y a cosas que ya tenia en la cabeza de hace tiempo:
 - Creacion de listas de la compra en base a recetas.
@@ -57,6 +59,8 @@ En la [proxima](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0
 A continuación se muestra el ciclo de vida completo del "Smart Cart" validado automáticamente con Playwright (reproducido a velocidad x0.1 para apreciar los detalles). El flujo cubre todo el proceso desde que el usuario escanea un producto hasta que su información nutricional se refleja en el dashboard de consumo diario:
 
 <video controls autoplay loop muted src="./flow_slow.webm" width="100%"></video>
+
+> *Nota: Si tu visor de Markdown (o GitHub) no reproduce automáticamente el vídeo de arriba, puedes **[verlo o descargarlo directamente haciendo clic aquí](./flow_slow.webm)**.*
 
 **Explicación del flujo:**
 1. **Configuración Inicial**: Se carga una base de datos local prefiltrada con productos reales de OpenFoodFacts y se configura el asistente para alertar sobre ingredientes no deseados (ej. `E250`).
