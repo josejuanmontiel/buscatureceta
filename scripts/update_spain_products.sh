@@ -15,7 +15,7 @@ set -euo pipefail
 
 # ── Configuración ─────────────────────────────────────────────────────────────
 readonly OFF_URL="https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/en.openfoodfacts.org.products.csv.gz"
-readonly OUTPUT_FILE="$(dirname "$0")/../src/public/spain_products.csv.gz"
+readonly OUTPUT_FILE="$(dirname "$0")/../src/public/spain_products.tsv.zz"
 readonly TMP_FILE="$(mktemp /tmp/off_spain_XXXXXX.csv.gz)"
 
 
@@ -28,7 +28,7 @@ warn() { echo -e "${YELLOW}[!!]${NC}  $*"; }
 err()  { echo -e "${RED}[ERR]${NC} $*" >&2; exit 1; }
 
 # ── Dependencias ───────────────────────────────────────────────────────────────
-for cmd in curl gzip awk; do
+for cmd in curl gzip awk node; do
   command -v "$cmd" &>/dev/null || err "Falta la herramienta: $cmd"
 done
 
@@ -58,18 +58,36 @@ log "Filtrando productos de España... (esto puede tardar 1-5 minutos)"
 FILTER_RESULT=$(
   zcat "$TMP_FILE" \
     | awk -F'\t' '
+        BEGIN {
+          split("code url product_name brands ingredients_text image_url image_ingredients_url image_nutrition_url nutriscore_grade nova_group categories_tags energy-kcal_100g proteins_100g carbohydrates_100g fat_100g fiber_100g sugars_100g salt_100g", wanted, " ")
+        }
         NR == 1 {
           for (i = 1; i <= NF; i++) {
             if ($i == "countries_tags") col = i
+            for (w in wanted) {
+               if ($i == wanted[w]) keep[i] = 1
+            }
           }
           if (!col) { print "ERROR: columna countries_tags no encontrada" > "/dev/stderr"; exit 1 }
-          print
+          
+          # Print header
+          out = ""
+          for (i = 1; i <= NF; i++) {
+            if (i in keep) out = out (out=="" ? "" : "\t") $i
+          }
+          print out
           next
         }
-        $col ~ /en:spain/ { print }
+        $col ~ /en:spain/ {
+          out = ""
+          for (i = 1; i <= NF; i++) {
+            if (i in keep) out = out (out=="" ? "" : "\t") $i
+          }
+          print out
+        }
         NR % 100000 == 0 { printf "\r  [awk] Líneas procesadas: %d ...", NR > "/dev/stderr" }
       ' \
-    | gzip > "$OUTPUT_FILE"
+    | node -e "process.stdin.pipe(require('zlib').createDeflate()).pipe(process.stdout)" > "$OUTPUT_FILE"
   echo $?
 )
 

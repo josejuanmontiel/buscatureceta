@@ -57,8 +57,8 @@ async function downloadAndLoadCSV() {
         btn.textContent = "Descargando BD...";
 
         var database = document.getElementById("database").value;
-        if (database == null || database == "" || database.endsWith(".zz")) {
-            database = '/spain_products.csv.gz';
+        if (database == null || database == "") {
+            database = '/spain_products.tsv.zz';
         }
 
         const response = await fetch(database);
@@ -74,7 +74,9 @@ async function downloadAndLoadCSV() {
         
         if (firstDone) throw new Error("El archivo está vacío");
 
+        // Comprobamos los magic numbers de gzip (1F 8B) o deflate/zlib (78 9C / 78 DA / 78 01)
         const isGzip = firstChunk[0] === 0x1f && firstChunk[1] === 0x8b;
+        const isDeflate = firstChunk[0] === 0x78 && (firstChunk[1] === 0x9c || firstChunk[1] === 0xda || firstChunk[1] === 0x01);
 
         // Reconstruimos el stream con el primer trozo que ya hemos leído
         let stream = new ReadableStream({
@@ -94,9 +96,11 @@ async function downloadAndLoadCSV() {
             }
         });
 
-        // Solo descomprimimos si realmente vienen los bytes crudos del gzip
+        // Solo descomprimimos si realmente vienen los bytes crudos
         if (isGzip) {
             stream = stream.pipeThrough(new DecompressionStream('gzip'));
+        } else if (isDeflate) {
+            stream = stream.pipeThrough(new DecompressionStream('deflate'));
         }
         
         stream = stream.pipeThrough(new TextDecoderStream());
