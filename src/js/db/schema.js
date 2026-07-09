@@ -108,6 +108,29 @@ db.version(4).stores({
   priceHistory: '++id, productCode, date'
 });
 
+// ── v5: Subida de imágenes a OFF ──────────────────────────────────────────────
+db.version(5).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  
+  /**
+   * pendingUploads — Cola de imágenes a subir a la API oficial
+   * 
+   * Campos indexados:
+   *   ++id
+   *   barcode    Código de barras del producto
+   *   type       'front', 'ingredients', 'nutrition'
+   *   status     'pending', 'uploading', 'failed', 'done'
+   */
+  pendingUploads: '++id, barcode, status'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

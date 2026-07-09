@@ -14,26 +14,19 @@ document.getElementById("ya-se").addEventListener("click", goToGrid);
 
 // Función para parsear el CSV
 function parseCSV(data) {
-    // Separar líneas
-    const lines = data.split("\n").filter(line => line.trim() !== ""); // Ignorar líneas vacías
-    const result = [];
-
-    // Obtener los encabezados de la primera línea y quitar espacios
-    const headers = lines[0].split(",").map(header => header.trim());
-
-    for (let i = 1; i < lines.length; i++) {
-        const obj = {};
-        const currentLine = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Expresión regular para comas en comillas
-
-        headers.forEach((header, index) => {
-            // Asignar valores, asegurando que estén limpios de espacios
-            obj[header] = currentLine[index] ? currentLine[index].trim().replace(/^"|"$/g, '') : null;
+    // Si la primera línea tiene tabuladores, es TSV (como viene de OpenFoodFacts)
+    const delimiter = data.indexOf('\t') !== -1 ? '\t' : ',';
+    
+    if (typeof Papa !== 'undefined') {
+        const parsed = Papa.parse(data, {
+            header: true,
+            delimiter: delimiter,
+            skipEmptyLines: true
         });
-
-        result.push(obj);
+        return parsed.data;
     }
 
-    return result;
+    throw new Error("Librería PapaParse no encontrada");
 }
 
 
@@ -56,39 +49,137 @@ async function saveToDatabase(data) {
     }
 }
 
-// Función para descargar y cargar el CSV
+// Función para descargar y cargar el CSV usando Streams para evitar falta de memoria
 async function downloadAndLoadCSV() {
+    const btn = document.getElementById("download-btn");
     try {
+        btn.disabled = true;
+        btn.textContent = "Descargando BD...";
+
         var database = document.getElementById("database").value;
-        if (database == null || database == "") {
-            database = '/spain_products.csv.zz';
+        if (database == null || database == "" || database.endsWith(".zz")) {
+            database = '/spain_products.csv.gz';
         }
 
-        const response = await fetch(database); // Cambia esto por la URL del archivo GZ
-        const blob = await response.blob();
+        const response = await fetch(database);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
-        console.log("Descargada")
+        btn.textContent = "Procesando... (0 guardados)";
 
-        // Leer el archivo como un ArrayBuffer
-        const arrayBuffer = await blob.arrayBuffer();
+        // Vite y algunos servidores añaden 'Content-Encoding: gzip', lo que hace que el
+        // navegador descomprima automáticamente. Si usamos DecompressionStream sobre
+        // algo ya descomprimido, fallará al instante. Comprobamos los magic numbers (1F 8B).
+        const originalReader = response.body.getReader();
+        const { value: firstChunk, done: firstDone } = await originalReader.read();
         
-        // Descomprimir el archivo GZ usando Pako
-        const decompressed = pako.inflate(new Uint8Array(arrayBuffer), { to: 'string' });
+        if (firstDone) throw new Error("El archivo está vacío");
 
-        console.log("Descomprimida")
+        const isGzip = firstChunk[0] === 0x1f && firstChunk[1] === 0x8b;
 
-        // Convertir el contenido del CSV a un array de objetos
-        const csvData = parseCSV(decompressed);
+        // Reconstruimos el stream con el primer trozo que ya hemos leído
+        let stream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(firstChunk);
+            },
+            async pull(controller) {
+                const { value, done } = await originalReader.read();
+                if (done) {
+                    controller.close();
+                } else {
+                    controller.enqueue(value);
+                }
+            },
+            cancel() {
+                originalReader.cancel();
+            }
+        });
+
+        // Solo descomprimimos si realmente vienen los bytes crudos del gzip
+        if (isGzip) {
+            stream = stream.pipeThrough(new DecompressionStream('gzip'));
+        }
         
-        // Guardar los datos usando Dexie
-        await saveToDatabase(csvData);
+        stream = stream.pipeThrough(new TextDecoderStream());
+        const reader = stream.getReader();
 
-        console.log("Guardada")
+        let buffer = '';
+        let headers = null;
+        let chunk = [];
+        const CHUNK_SIZE = 5000;
+        let totalSaved = 0;
 
-        goToGrid();
+        while (true) {
+            const { value, done } = await reader.read();
+            if (value) {
+                buffer += value;
+                const lines = buffer.split('\n');
+                // La última línea podría estar incompleta, la dejamos en el buffer
+                buffer = lines.pop();
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const cols = line.split('\t');
+
+                    if (!headers) {
+                        headers = cols.map(h => h.trim());
+                        continue;
+                    }
+
+                    const obj = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        if (cols[j]) {
+                            obj[headers[j]] = cols[j].replace(/^"|"$/g, '');
+                        }
+                    }
+                    
+                    obj.code = obj.code || obj.id;
+                    if (obj.code) {
+                        chunk.push(obj);
+                    }
+
+                    if (chunk.length >= CHUNK_SIZE) {
+                        await db.products.bulkPut(chunk);
+                        totalSaved += chunk.length;
+                        chunk = [];
+                        btn.textContent = `Procesando... (${totalSaved} guardados)`;
+                    }
+                }
+            }
+
+            if (done) break;
+        }
+
+        // Guardar el último trozo si queda algo
+        if (buffer.trim()) {
+            const cols = buffer.trim().split('\t');
+            const obj = {};
+            for (let j = 0; j < headers.length; j++) {
+                if (cols[j]) obj[headers[j]] = cols[j].replace(/^"|"$/g, '');
+            }
+            obj.code = obj.code || obj.id;
+            if (obj.code) chunk.push(obj);
+        }
+
+        if (chunk.length > 0) {
+            await db.products.bulkPut(chunk);
+            totalSaved += chunk.length;
+        }
+
+        console.log(`Guardados ${totalSaved} productos exitosamente.`);
+        btn.textContent = "¡Carga Completada!";
+        setTimeout(() => {
+            goToGrid();
+        }, 1000);
+
     } catch (error) {
         console.error("Error en la descarga o carga del CSV: ", error);
-        goToGrid();
+        btn.textContent = "Error al cargar";
+        btn.classList.add("btn-danger");
+        btn.classList.remove("btn-primary");
+    } finally {
+        btn.disabled = false;
     }
 }
 

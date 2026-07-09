@@ -8,10 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "update-db": "node scripts/update_spain_products.js",
+    "update-db:sh": "bash scripts/update_spain_products.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@vitejs/plugin-basic-ssl": "^1.1.0",
+    "csv-parse": "^7.0.1",
     "sass": "^1.80.3",
     "vite": "^5.4.8"
   },

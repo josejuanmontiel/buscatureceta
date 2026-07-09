@@ -1,8 +1,11 @@
 import { db, migrateFromLegacyDB } from './db/schema.js';
 import * as CartStore from './modules/cart/CartStore.js';
 import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
+import { saveImageToPendingUploads, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
 
 let currentScannedProduct = null;
+let capturedImageBlob = null;
+let unknownBarcode = null;
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
@@ -25,6 +28,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         await db.open();
         console.log("Base de datos borrada con éxito.");
     });
+
+    // Botones del panel de captura de foto
+    document.getElementById('btn-capture-photo').addEventListener('click', startCapture);
+    document.getElementById('btn-retake-photo').addEventListener('click', startCapture);
+    document.getElementById('btn-save-photo').addEventListener('click', handleSaveUnknownProduct);
+    document.getElementById('btn-cancel-capture').addEventListener('click', hideUnknownPanel);
+
+    // Sincronizar cola de imágenes pendientes con OFF
+    document.getElementById('btn-sync-off').addEventListener('click', handleSync);
+
+    // Mostrar badge inicial
+    await updateSyncBadge();
+
+    // ── Modal de Credenciales OFF ─────────────────────────────────────────────
+    initCredentialsModal();
 
     // Leer parámetro URL si venimos del scanner
     const urlParams = new URLSearchParams(window.location.search);
@@ -50,7 +68,10 @@ async function handleSearch() {
     const result = await ShoppingAssistant.analyzeProductForCart(query);
     
     if (result.status === 'not_found') {
-        alert("Producto no encontrado en la base de datos local.");
+        // Producto no encontrado: mostrar panel de captura
+        unknownBarcode = query;
+        capturedImageBlob = null;
+        showUnknownProductPanel(query);
         return;
     }
 
@@ -155,4 +176,245 @@ async function handleCheckout() {
         alert('¡Compra guardada en Despensa!');
         window.location.href = 'pantry.html';
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Panel de producto desconocido y captura de foto
+// ─────────────────────────────────────────────────────────────────────────────
+
+function showUnknownProductPanel(barcode) {
+    document.getElementById('unknown-barcode-label').textContent = barcode;
+    document.getElementById('unknown-product-panel').classList.remove('d-none');
+    document.getElementById('add-to-cart-panel').classList.add('d-none');
+    document.getElementById('assistant-alert').classList.add('d-none');
+    document.getElementById('photo-preview-container').classList.add('d-none');
+    document.getElementById('btn-save-photo').classList.add('d-none');
+    document.getElementById('btn-retake-photo').classList.add('d-none');
+}
+
+function hideUnknownPanel() {
+    document.getElementById('unknown-product-panel').classList.add('d-none');
+    capturedImageBlob = null;
+    unknownBarcode = null;
+    stopCamera();
+}
+
+let stream = null;
+
+async function startCapture() {
+    const videoEl = document.getElementById('capture-video');
+    const cameraContainer = document.getElementById('camera-container');
+
+    try {
+        stopCamera();
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        videoEl.srcObject = stream;
+        cameraContainer.classList.remove('d-none');
+        document.getElementById('btn-capture-photo').textContent = '📸 Hacer foto';
+        document.getElementById('btn-capture-photo').onclick = takeSnapshot;
+    } catch (err) {
+        alert('No se pudo acceder a la cámara: ' + err.message);
+    }
+}
+
+function takeSnapshot() {
+    const videoEl = document.getElementById('capture-video');
+    const canvas = document.createElement('canvas');
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    canvas.getContext('2d').drawImage(videoEl, 0, 0);
+
+    stopCamera();
+    document.getElementById('camera-container').classList.add('d-none');
+
+    canvas.toBlob((blob) => {
+        capturedImageBlob = blob;
+        const preview = document.getElementById('photo-preview');
+        preview.src = URL.createObjectURL(blob);
+        document.getElementById('photo-preview-container').classList.remove('d-none');
+        document.getElementById('btn-save-photo').classList.remove('d-none');
+        document.getElementById('btn-retake-photo').classList.remove('d-none');
+        document.getElementById('btn-capture-photo').textContent = '📷 Abrir cámara';
+        document.getElementById('btn-capture-photo').onclick = startCapture;
+    }, 'image/jpeg', 0.9);
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+    }
+}
+
+async function handleSaveUnknownProduct() {
+    if (!capturedImageBlob || !unknownBarcode) return;
+
+    const nameInput = document.getElementById('unknown-product-name').value.trim();
+    const imageType = document.getElementById('unknown-image-type').value;
+
+    try {
+        await saveImageToPendingUploads(unknownBarcode, capturedImageBlob, imageType, nameInput);
+        await updateSyncBadge();
+        alert(`¡Imagen guardada! El producto se ha creado localmente y la foto está en cola para subir a OpenFoodFacts.`);
+        hideUnknownPanel();
+        // El producto ya está en local, permitir que el usuario lo busque
+        document.getElementById('code-input').value = unknownBarcode;
+        handleSearch();
+    } catch (err) {
+        alert('Error al guardar: ' + err.message);
+    }
+}
+
+async function handleSync() {
+    const btn = document.getElementById('btn-sync-off');
+    btn.disabled = true;
+    btn.textContent = 'Sincronizando...';
+
+    try {
+        const { ok, failed } = await syncPendingUploads((processed, total) => {
+            btn.textContent = `Sincronizando ${processed}/${total}...`;
+        });
+        alert(`Sincronización completada: ${ok} éxitos, ${failed} errores.`);
+    } catch (err) {
+        alert('Error en la sincronización: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        await updateSyncBadge();
+    }
+}
+
+async function updateSyncBadge() {
+    const count = await countPendingUploads();
+    const badge = document.getElementById('sync-badge');
+    if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('d-none');
+    } else {
+        badge.classList.add('d-none');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gestión de credenciales de OpenFoodFacts
+// ─────────────────────────────────────────────────────────────────────────────
+
+function initCredentialsModal() {
+    const btnOpen   = document.getElementById('btn-open-credentials');
+    const btnSave   = document.getElementById('btn-save-credentials');
+    const btnClear  = document.getElementById('btn-clear-credentials');
+    const btnVerify = document.getElementById('btn-verify-credentials');
+    const btnToggle = document.getElementById('btn-toggle-password');
+    const modalEl   = document.getElementById('modal-credentials');
+
+    // Abrir modal → rellenar campos y estado actual
+    btnOpen.addEventListener('click', () => {
+        populateCredentialsForm();
+        // Bootstrap 5 Modal
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    });
+
+    // Toggle contraseña visible
+    btnToggle.addEventListener('click', () => {
+        const pwd = document.getElementById('cred-password');
+        pwd.type = pwd.type === 'password' ? 'text' : 'password';
+        btnToggle.textContent = pwd.type === 'password' ? '👁' : '🙈';
+    });
+
+    // Guardar credenciales
+    btnSave.addEventListener('click', () => {
+        const user = document.getElementById('cred-username').value.trim();
+        const pass = document.getElementById('cred-password').value;
+
+        if (!user || !pass) {
+            showCredStatus('warning', '⚠️ Debes introducir usuario y contraseña.');
+            return;
+        }
+        localStorage.setItem('off_user', user);
+        localStorage.setItem('off_password', pass);
+        showCredStatus('success', `✅ Credenciales guardadas para el usuario <strong>${user}</strong>.`);
+    });
+
+    // Borrar credenciales
+    btnClear.addEventListener('click', () => {
+        if (!confirm('¿Seguro que quieres borrar las credenciales de OpenFoodFacts?')) return;
+        localStorage.removeItem('off_user');
+        localStorage.removeItem('off_password');
+        document.getElementById('cred-username').value = '';
+        document.getElementById('cred-password').value = '';
+        showCredStatus('secondary', '🗑 Credenciales eliminadas. Se usará el entorno de test (off/off).');
+    });
+
+    // Verificar credenciales contra la API de test
+    btnVerify.addEventListener('click', async () => {
+        const user = document.getElementById('cred-username').value.trim();
+        const pass = document.getElementById('cred-password').value;
+
+        if (!user || !pass) {
+            showVerifyResult('warning', '⚠️ Introduce usuario y contraseña antes de verificar.');
+            return;
+        }
+
+        btnVerify.disabled = true;
+        btnVerify.textContent = 'Verificando...';
+        showVerifyResult('secondary', '⏳ Comprobando credenciales contra OpenFoodFacts...');
+
+        try {
+            // La API de OFF no tiene endpoint de login explícito; usamos
+            // el endpoint de preferencias del usuario que requiere auth.
+            const resp = await fetch(
+                `https://world.openfoodfacts.net/api/v2/preferences`,
+                {
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(user + ':' + pass),
+                        'Accept': 'application/json',
+                    }
+                }
+            );
+
+            if (resp.ok || resp.status === 200) {
+                showVerifyResult('success', `✅ Credenciales correctas para <strong>${user}</strong> en el entorno de test.`);
+            } else if (resp.status === 401) {
+                showVerifyResult('danger', '❌ Credenciales incorrectas. Comprueba usuario y contraseña.');
+            } else {
+                showVerifyResult('warning', `⚠️ Respuesta inesperada (HTTP ${resp.status}). Las credenciales podrían ser válidas igualmente.`);
+            }
+        } catch (err) {
+            showVerifyResult('danger', `❌ Error de conexión: ${err.message}`);
+        } finally {
+            btnVerify.disabled = false;
+            btnVerify.textContent = '🔍 Verificar credenciales';
+        }
+    });
+}
+
+function populateCredentialsForm() {
+    const user = localStorage.getItem('off_user');
+    const pass = localStorage.getItem('off_password');
+
+    document.getElementById('cred-username').value = user || '';
+    document.getElementById('cred-password').value = pass || '';
+
+    if (user && user !== 'off') {
+        showCredStatus('success', `✅ Cuenta configurada: <strong>${user}</strong>`);
+    } else {
+        showCredStatus('warning',
+            '⚠️ Sin cuenta configurada. Usando credenciales de <strong>test</strong> (off/off). ' +
+            'Las fotos se subirán al entorno de pruebas, no a la BD real.'
+        );
+    }
+    document.getElementById('cred-verify-result').classList.add('d-none');
+}
+
+function showCredStatus(type, html) {
+    const el = document.getElementById('cred-status');
+    el.className = `alert alert-${type} py-2 mb-3 small`;
+    el.innerHTML = html;
+}
+
+function showVerifyResult(type, html) {
+    const el = document.getElementById('cred-verify-result');
+    el.className = `alert alert-${type} py-2 small`;
+    el.innerHTML = html;
+    el.classList.remove('d-none');
 }

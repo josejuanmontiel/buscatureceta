@@ -1,4 +1,4 @@
-# OpenFoodFacts
+# OpenFoodFacts & NutriAgenda
 
 **🌍 Aplicación en vivo:** [https://josejuanmontiel.github.io/OpenFoodFacts/](https://josejuanmontiel.github.io/OpenFoodFacts/) *(Se despliega automáticamente con cada push a la rama principal)*
 
@@ -8,66 +8,81 @@ A raiz de este [este](https://www.youtube.com/watch?v=j5dUzDTQ3mc) video de la f
 - Lectura de tickets de la compra para extraer los precios (y mas cosas)
 - Llevar control de las cosas que tienes en la despensa.
 - Comparticion de de informacion entre pares (sin un servidor entre medias)
-- Y otras muchas cosas mas...
 
 Me dio por intentar hacer algo que fuera util, a quien pudiera necesitarlo.
 
-## Idea
-Usando el movil, poder escanear codigos de barras y previo a haber decidido que ingredientes (aditivos) no quieres que tengan los alimentos que vas a comprar, ir haciendo una lista (mientras te vas moviendo por el supermercado) que te permita (añadiendo el precio de cada cosa) decidir que te puedes permitir, pues conforme vas metiendo productos en el carro, tienes disponible (si los introduces) el total del carro pudiendo decidir si te puedes permitir ese alimento "menos malo" o no.
+## Idea y Evolución
+La idea original era usar el móvil para escanear códigos de barras en el supermercado y, con una base de datos pública de aditivos, avisarte de lo que compras y llevar un presupuesto en tiempo real. 
 
-La idea es usar una base de datos [publica](https://es.openfoodfacts.org/data) y herramientas opensource disponibles, montar una pagina web, que tras la carga de la bases de datos en el navegador (del movil) pueda funcionar totalmente offline (sin internet) con lo cual no hay un servidor al otro lado, y toda la informacion permanece en tu telefono.
+Poco a poco, el proyecto ha evolucionado de un "Scanner" a una **NutriAgenda** completa. La ventaja única de este proyecto es que **el punto de entrada es la compra**, lo que permite trazar todo el ciclo sin teclear manualmente cada ingrediente:
+`Compra (escáner) → Despensa → Receta → Plato cocinado → Ingesta → Análisis`
 
-## Como
+Todo esto funcionando de forma **100% local (offline-first)** usando el almacenamiento del navegador, lo que garantiza una privacidad radical sin depender de servidores externos.
 
-### Vite
-Como es un proyecto web, voy a usar [vite](https://es.vitejs.dev/guide/) como herramienta de construccion
+## Arquitectura y Stack Tecnológico
+- **Vite** para la construcción del frontal.
+- **IndexedDB (Dexie 5)** para el almacenamiento local y asíncrono (productos, despensa, recetas, agenda y cola de subidas).
+- **Tabulator** para la renderización eficiente de tablas y cuadrículas de datos.
+- **Web Streams (DecompressionStream + TextDecoderStream)** para procesar volcados de datos de 1GB en tiempo real sin colapsar la memoria del navegador.
+- **html5-qrcode** para la lectura de códigos de barras.
+- **Playwright** para la validación E2E.
 
-    npm create vite@latest
+---
 
-### Data
-Usaremos los datos de OpenFoodFacts que se pueden descargar desde [aqui](https://mirabelle.openfoodfacts.org/products.csv?sql=select+code%2C+url%2C+product_name%2C+image_url%2C+image_ingredients_url%2C+image_nutrition_url%0D%0Afrom+%5Ball%5D%0D%0Awhere+countries_en+like+%22%25spain%25%22&_size=max) y una vez descargado, lo comprimiremos con [pigz](https://zlib.net/pigz/) para que la descarga (y el almacenamiento) sea mas optimo, para lo que deberemos usar una libreria javascript para realizar la descompresion esta sera [pako](https://github.com/nodeca/pako)
+## Histórico de Versiones
 
-### Barcode
-Estos datos los almacenaremos en la IndexedDB del navegador usando su API estandar, teniendo como clave el codigo de barras. Y para escanear los codigos de barras usaremos la libreria [html5-qrcode](https://github.com/mebjas/html5-qrcode)
-
-### Release v0.1
-La release inicial tenia todo lo descrito [aqui](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.1.0) que basicamente era:
-    1. Boton de descarga, descompresion y almacenaje en la base de datos.
-    2. Un boton de escaneo de codigo de barras.
-    3. Mostrar imagen, link y alguna cosa mas obtenida de la base de datos.
-
-### Release v0.2
-En esta [segunda](https://github.com/josejuanmontiel/OpenFoodFacts/releases/tag/v0.2.0) release se incluye:
-
-    1. Breve explicacion de que no hay servidor en la primera pagina.
-    2. Boton de carga indicando el fichero que se quiere cargar en la primera pagina (descompresion). Lo que permite algo de flexibilidad inicial en la carga de datos.
-    3. Empezar a gestionar varios ficheros (en la distribucion de la web), pues necesitaria una segunda ventana.
-    4. Tras la carga o eleccion de empezar a comprar (con datos almacenados) vamos a la segunda pagina.
-    5. Incluir la libreria (y ejemplo inicial con datos fijos) para mostar los elementos que se van escanenado con [tabulator](https://tabulator.info/examples/6.3#fittodata).
+### Release v0.1 & v0.2 (El Origen)
+- Descarga, descompresión y almacenaje en la base de datos de productos.
+- Escaneo de código de barras.
+- Uso de `tabulator` para mostrar los elementos escaneados.
 
 ### Release v0.3 (Smart Cart & NutriAgenda)
-Esta versión marca la evolución de la app hacia un ecosistema completo de planificación y seguimiento:
+- **Extracción Nutricional:** Datos completos (Kcal, Macros, etc.) usando Dexie.
+- **Carrito Inteligente:** Control de presupuesto, alertas automáticas de aditivos indeseados (ej. E250) y alternativas más sanas.
+- **Gestión de Despensa:** Checkout automático del carrito al stock de la cocina.
+- **Creador de Recetas:** Agrupación de productos y cálculo automático de macros por ración.
+- **Agenda y Dashboard:** Registro de ingestas con descuento automático de stock y gráficos de progreso.
 
-    1. Extracción de datos nutricionales completos (Kcal, Macros, etc.) usando la base de datos local y [Dexie](https://dexie.org/) para un almacenamiento estructurado y rápido.
-    2. Carrito de la compra inteligente: control de presupuesto en tiempo real, alertas automáticas de aditivos indeseados (ej. E250) y recomendaciones de alternativas más sanas de la misma categoría.
-    3. Gestión integral de despensa: al hacer checkout en el carrito, los productos se mueven automáticamente al stock de tu cocina.
-    4. Creador de recetas: permite agrupar productos de la despensa y calcular de forma automática el total de calorías y macros por ración de la receta.
-    5. Agenda y Dashboard: registro de ingestas directamente desde recetas o productos sueltos, descontando el stock automáticamente de la despensa, con gráficos interactivos de progreso y variedad.
+### Release v0.4 (OFF Native Integration & Sync) *(Actual)*
+- **Script Nativo de Actualización:** Filtrado ultra-rápido en Bash puro para extraer los productos de España del volcado global de OpenFoodFacts (reduciendo el tamaño drásticamente).
+- **Motor de Carga Anti-Colapso:** Uso de Web Streams nativos en el navegador para descomprimir (gzip) y parsear (TSV) un archivo de más de 1GB al vuelo, inyectándolo en bloques en IndexedDB sin agotar la memoria.
+- **Cola Offline-First:** Si se escanea un producto desconocido, se puede tomar una foto con la cámara del móvil. Se encola localmente y, cuando hay conexión, se sincroniza usando la API V3 de OpenFoodFacts.
+- **Visor BD Tabulator:** Interfaz completa para consultar los cientos de miles de registros de la base local en tiempo real.
+
+---
+
+## 🗺️ Roadmap de Evolución y Próximos Pasos (Post v0.4)
+
+Tras haber consolidado el flujo principal de *Compra → Despensa → Ingesta* (v0.3) y haber dotado al sistema de una integración oficial, robusta y optimizada con OpenFoodFacts (v0.4), los siguientes pasos se centran en el valor analítico y la facilidad de uso.
+
+### Fase 4 — Analytics e Insights (Próximo objetivo principal)
+> El diferenciador real. En lugar de solo contar calorías, analizar la *diversidad* y los patrones.
+- [ ] **Rueda de variedad alimentaria:** Gráfico que se ilumina según los grupos de alimentos (categorías OFF) que has comido esta semana.
+- [ ] **Detección de brechas alimentarias:** Identificación inteligente: "Llevas 3 semanas sin comer legumbres" o "Tu ingesta de fibra cae en días de trabajo".
+- [ ] **Sugerencias proactivas:** Cruzar la despensa actual con las recetas para sugerir qué cocinar basándose en lo que te falta nutricionalmente.
+- [ ] **Correlación contexto-ingesta:** Registrar humor/hambre para detectar patrones emocionales (opcional para no saturar al usuario).
+
+### Fase 5 — Integraciones Avanzadas y Ecosistema
+- [ ] **Integración OCR de tickets:** Usar Tesseract.js (offline) para escanear tickets de compra y registrar compras masivas automáticamente sin leer código por código.
+- [ ] **Compartición P2P:** Aprovechar WebRTC/PeerJS (experiencia de "pingo") para compartir la despensa o la lista de la compra entre miembros de la misma familia sin pasar por un servidor centralizado.
+- [ ] **Adaptadores externos de Recetas:** Conectores (solo lectura) para importar recetas estructuradas desde APIs como Mealie o Tandoor si el usuario tiene su propio servidor casero.
+- [ ] **Export/Import de Privacidad:** Mecanismo robusto para descargar toda tu vida nutricional en un archivo JSON y llevártela a otro dispositivo.
+
+---
 
 ## Flujo End-to-End (E2E) Automatizado
 
-A continuación se muestra el ciclo de vida completo del "Smart Cart" validado automáticamente con Playwright (reproducido a velocidad x0.1 para apreciar los detalles). El flujo cubre todo el proceso desde que el usuario escanea un producto hasta que su información nutricional se refleja en el dashboard de consumo diario:
+A continuación se muestra el ciclo de vida completo del "Smart Cart" validado automáticamente con Playwright (reproducido a velocidad x0.1 para apreciar los detalles). 
 
 <video controls autoplay loop muted src="./flow_slow.webm" width="100%"></video>
 
-> *Nota: Si tu visor de Markdown (o GitHub) no reproduce automáticamente el vídeo de arriba, puedes **[verlo o descargarlo directamente haciendo clic aquí](./flow_slow.webm)**.*
+> *Nota: Si tu visor de Markdown no reproduce automáticamente el vídeo, puedes **[verlo o descargarlo directamente haciendo clic aquí](./flow_slow.webm)**.*
 
 **Explicación del flujo:**
-1. **Configuración Inicial**: Se carga una base de datos local prefiltrada con productos reales de OpenFoodFacts y se configura el asistente para alertar sobre ingredientes no deseados (ej. `E250`).
-2. **Escaneo y Alerta**: Al escanear un producto con `E250` (Costilla Adobada), el asistente muestra una alerta visual y sugiere una alternativa más saludable de la misma categoría (Salchichas de Pollo).
-3. **Compra e Ingesta de Presupuesto**: El usuario elige la alternativa sana y otros productos (Pan de Molde y Leche Entera), controla su presupuesto, ajusta las cantidades, y los añade al carrito.
-4. **Despensa Automática (Checkout)**: Al finalizar la compra, los artículos del carrito se transfieren automáticamente al stock de la despensa.
-5. **Generación de Recetas**: Se crea una receta (Bocadillo de Salchicha) usando ingredientes previamente guardados en la despensa, calculando la nutrición global sumando los macros y las kilocalorías de cada componente.
-6. **Agenda Semanal (Diario)**: Se registra la ingesta de la receta elaborada hoy y el consumo de la Leche (suelta) programada para el día siguiente. Al consumir los productos, el sistema **descuenta automáticamente** la cantidad correspondiente del stock en la despensa.
-7. **Dashboard Nutricional**: Finalmente, todos los datos consumidos a lo largo de la semana se presentan visualmente en gráficas (calorías, macros y variedad alimentaria), logrando el rastreo completo **Del Supermercado al Plato**.
-    
+1. **Configuración Inicial**: Se carga una base local y se configuran alertas (ej. `E250`).
+2. **Escaneo y Alerta**: Escaneo de Costilla Adobada → alerta visual → sugerencia de Salchichas de Pollo.
+3. **Compra e Ingesta de Presupuesto**: Elección de productos y control de presupuesto.
+4. **Despensa Automática**: Al hacer Checkout, los artículos pasan al stock.
+5. **Generación de Recetas**: Se crea "Bocadillo de Salchicha" sumando macros automáticamente.
+6. **Agenda Semanal (Diario)**: Al registrar la ingesta, se descuentan las cantidades de la despensa.
+7. **Dashboard Nutricional**: Todos los datos se presentan visualmente (calorías, macros, etc.).
