@@ -53,7 +53,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     page.on('dialog', dialog => dialog.accept());
 
     await page.fill('#filters', 'E250');
-    await page.fill('#database', '/test_products.csv.zz');
+    await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
 
     await page.waitForURL('**/grid.html');
@@ -150,10 +150,10 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.goto('/recipes.html');
     await expect(page).toHaveTitle(/Recetas - NutriAgenda/i);
 
-    // Abrir el modal de nueva receta
+    // Navegar al nuevo editor de recetas
     await page.click('#btn-new-recipe');
-    await expect(page.locator('#recipeModal')).toBeVisible();
-    await expect(page.locator('#recipeModalTitle')).toContainText('Nueva Receta');
+    await page.waitForURL('**/recipe-editor.html*');
+    await expect(page.locator('#editor-page-title')).toContainText('Nueva Receta');
   });
 
   await test.step('✍️ Fill in recipe name and servings', async () => {
@@ -162,13 +162,13 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   });
 
   await test.step('🔍 Add ingredient: Salchichas de Pollo Campofrío (01084922)', async () => {
-    // Buscar por nombre en el modal
+    // Buscar por nombre en el editor
     await page.fill('#ingredient-search', 'Salchichas de Pollo');
-    await page.click('#btn-search-product');
+    await page.click('#btn-search-ingredient');
 
     // Seleccionar el resultado
-    await page.waitForSelector('#product-search-results button', { state: 'visible' });
-    await page.locator('#product-search-results button').first().click();
+    await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+    await page.locator('#ingredient-search-results button').first().click();
 
     // El ingrediente debe aparecer en la lista
     await expect(page.locator('#ingredient-list')).toContainText('Salchichas de Pollo');
@@ -176,10 +176,10 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
 
   await test.step('🔍 Add ingredient: Pan de Molde Blanco Bimbo (01472165)', async () => {
     await page.fill('#ingredient-search', 'Pan de Molde');
-    await page.click('#btn-search-product');
+    await page.click('#btn-search-ingredient');
 
-    await page.waitForSelector('#product-search-results button', { state: 'visible' });
-    await page.locator('#product-search-results button').first().click();
+    await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+    await page.locator('#ingredient-search-results button').first().click();
 
     await expect(page.locator('#ingredient-list')).toContainText('Pan de Molde Blanco Bimbo');
 
@@ -192,8 +192,11 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   await test.step('💾 Save recipe and verify it appears in the list', async () => {
     await page.click('#btn-save-recipe');
 
-    // El modal debe cerrarse
-    await expect(page.locator('#recipeModal')).not.toBeVisible();
+    // Esperamos que se guarde (la URL cambia para añadir el ?id=...)
+    await page.waitForURL('**/recipe-editor.html?id=*');
+
+    // Volvemos a la lista de recetas
+    await page.goto('/recipes.html');
 
     // La receta debe aparecer en la lista de recetas
     await expect(page.locator('#recipes-list')).toContainText('Bocadillo de Salchicha');

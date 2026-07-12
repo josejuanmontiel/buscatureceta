@@ -31,13 +31,21 @@ body {
  */
 
 .nav-masthead .nav-link {
-  color: rgba(255, 255, 255, .5);
+  color: rgba(255, 255, 255, .85);
   border-bottom: .25rem solid transparent;
 }
 
 .nav-masthead .nav-link:hover,
 .nav-masthead .nav-link:focus {
-  border-bottom-color: rgba(255, 255, 255, .25);
+  border-bottom-color: rgba(255, 255, 255, .5);
+}
+
+/* Fix Tabulator contrast when inheriting dark mode */
+.tabulator,
+.tabulator .tabulator-header .tabulator-col,
+.tabulator .tabulator-row .tabulator-cell {
+  color: #212529 !important;
+  text-shadow: none !important;
 }
 
 .nav-masthead .nav-link + .nav-link {
@@ -49,3 +57,12 @@ body {
   border-bottom-color: #fff;
 }
 
+header > div::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+app-menu {
+  display: block;
+}

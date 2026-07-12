@@ -15,14 +15,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadRecipes(e.target.value);
   });
 
-  document.getElementById('btn-new-recipe').addEventListener('click', openNewRecipeModal);
-  document.getElementById('btn-save-recipe').addEventListener('click', saveRecipe);
-  document.getElementById('btn-search-product').addEventListener('click', searchProduct);
-  document.getElementById('ingredient-search').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      searchProduct();
-    }
+  document.getElementById('btn-new-recipe').addEventListener('click', () => {
+    window.location.href = 'recipe-editor.html';
   });
 });
 
@@ -37,19 +31,23 @@ async function loadRecipes(query = '') {
 
   container.innerHTML = recipes.map(recipe => `
     <div class="col-md-6 col-lg-4 mb-4">
-      <div class="card bg-secondary text-white recipe-card h-100" onclick="window.editRecipe(${recipe.id})">
-        <div class="card-body">
+      <div class="card bg-secondary text-white recipe-card h-100">
+        <div class="card-body" onclick="window.location.href='recipe-editor.html?id=${recipe.id}'" style="cursor:pointer;">
           <h5 class="card-title">${recipe.name}</h5>
-          <h6 class="card-subtitle mb-2 text-light">${recipe.servings} raciones</h6>
+          <h6 class="card-subtitle mb-2 text-light">${recipe.servings} raciones · v${recipe.version || 1}</h6>
           <p class="card-text nutrition-summary">
-            ${recipe.nutritionPerServing ? 
-              `${recipe.nutritionPerServing.kcal} kcal | P: ${recipe.nutritionPerServing.proteins_g}g | C: ${recipe.nutritionPerServing.carbs_g}g | G: ${recipe.nutritionPerServing.fat_g}g` : 
+            ${recipe.nutritionPerServing ?
+              `${recipe.nutritionPerServing.kcal} kcal | P: ${recipe.nutritionPerServing.proteins_g}g | C: ${recipe.nutritionPerServing.carbs_g}g | G: ${recipe.nutritionPerServing.fat_g}g` :
               'Nutrición no calculada'}
           </p>
           <div class="mt-2">
             ${recipe.ingredients.slice(0, 3).map(i => `<span class="badge bg-dark me-1">${i.productName}</span>`).join('')}
             ${recipe.ingredients.length > 3 ? `<span class="badge bg-dark">...</span>` : ''}
           </div>
+        </div>
+        <div class="card-footer d-flex gap-2 bg-dark border-secondary">
+          <a href="recipe-editor.html?id=${recipe.id}" class="btn btn-sm btn-outline-light flex-grow-1">✏️ Editar</a>
+          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window._deleteRecipe(${recipe.id})">🗑</button>
         </div>
       </div>
     </div>
@@ -214,3 +212,10 @@ async function saveRecipe() {
   recipeModal.hide();
   await loadRecipes();
 }
+
+// Eliminar receta desde la lista (con confirmación)
+window._deleteRecipe = async function(id) {
+  if (!confirm('¿Eliminar esta receta y todo su historial? Esta acción no se puede deshacer.')) return;
+  await RecipeStore.deleteRecipe(id);
+  await loadRecipes();
+};

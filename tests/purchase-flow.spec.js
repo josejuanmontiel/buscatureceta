@@ -8,8 +8,8 @@ test.describe('Purchase Flow E2E', () => {
     // Configurar el filtro a "E250"
     await page.fill('#filters', 'E250');
     
-    // Poner el dataset de prueba pequeño
-    await page.fill('#database', '/test_products.csv.zz');
+    // Poner el dataset de prueba
+    await page.fill('#database', '/test_products.tsv.zz');
     
     // Iniciar carga de BD
     // Escuchamos dialogs por si salta un alert() (como 'Base de datos borrada con éxito')

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor de Receta - NutriAgenda</title>
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    .editor-grid { display:grid; grid-template-columns:1fr 340px; gap:1.25rem; align-items:start; }
+    @media(max-width:900px){ .editor-grid{ grid-template-columns:1fr; } }
+    .section-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:1.25rem; margin-bottom:1rem; }
+    .section-title { font-size:0.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#7c8ca0; margin-bottom:.85rem; }
+    .ingredient-row { display:flex; align-items:center; gap:.5rem; padding:.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .ingredient-name { flex:1; font-size:.88rem; }
+    .btn-remove-ing { background:none; border:none; color:#dc3545; font-size:1rem; cursor:pointer; padding:0 3px; }
+    .recipe-photo-box { width:100%; aspect-ratio:4/3; border-radius:12px; border:2px dashed rgba(255,255,255,.15); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; position:relative; background:rgba(255,255,255,.02); transition:border-color .2s; }
+    .recipe-photo-box:hover { border-color:#6ea8fe; }
+    .recipe-photo-box img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+    .recipe-photo-box .photo-overlay { position:absolute; inset:0; background:rgba(0,0,0,.45); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
+    .recipe-photo-box:hover .photo-overlay { opacity:1; }
+    .tag-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.3); color:#6ea8fe; border-radius:20px; padding:2px 10px; font-size:.78rem; cursor:pointer; }
+    .nutrition-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; }
+    .nutrition-pill { background:rgba(255,255,255,.05); border-radius:10px; padding:.5rem; text-align:center; }
+    .nutrition-pill .val { font-size:1.05rem; font-weight:700; }
+    .nutrition-pill .lbl { font-size:.68rem; color:#7c8ca0; }
+    .version-timeline { max-height:280px; overflow-y:auto; }
+    .version-item { display:flex; align-items:flex-start; gap:.65rem; padding:.55rem 4px; border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; border-radius:6px; transition:background .15s; }
+    .version-item:hover { background:rgba(255,255,255,.04); }
+    .version-dot { width:9px; height:9px; border-radius:50%; background:#6ea8fe; margin-top:4px; flex-shrink:0; }
+    .version-dot.current { background:#75b798; }
+    .version-label { font-size:.83rem; font-weight:500; }
+    .version-meta { font-size:.72rem; color:#7c8ca0; }
+    .editor-header { position:sticky; top:0; z-index:10; background:rgba(33,37,41,.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(255,255,255,.08); padding:.65rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
+    .editor-header h1 { font-size:1.05rem; font-weight:600; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:45vw; }
+    .version-badge { font-size:.72rem; background:rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.3); color:#6ea8fe; border-radius:20px; padding:2px 9px; }
+    .toast-container { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; }
+    .my-toast { background:#198754; color:#fff; border-radius:12px; padding:.65rem 1.1rem; font-size:.88rem; font-weight:500; box-shadow:0 4px 20px rgba(0,0,0,.4); opacity:0; transform:translateY(10px); transition:opacity .3s,transform .3s; }
+    .my-toast.show { opacity:1; transform:translateY(0); }
+    .my-toast.error { background:#dc3545; }
+    #recipe-instructions { min-height:130px; resize:vertical; line-height:1.6; }
+  </style>
+</head>
+<body class="d-flex flex-column" style="min-height:100vh;">
+
+  <div class="editor-header">
+    <div class="d-flex align-items-center gap-2">
+      <a href="recipes.html" class="btn btn-sm btn-outline-secondary me-1">←</a>
+      <h1 id="editor-page-title">Nueva Receta</h1>
+      <span class="version-badge" id="version-badge" style="display:none;"></span>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-danger" id="btn-delete-recipe" style="display:none;" title="Eliminar receta">🗑</button>
+      <button class="btn btn-sm btn-success px-3" id="btn-save-recipe">💾 Guardar</button>
+    </div>
+  </div>
+
+  <main class="container-fluid px-3 px-md-4 pb-5">
+    <div class="editor-grid">
+
+      <!-- Columna principal -->
+      <div>
+        <div class="section-card">
+          <div class="section-title">📋 Información básica</div>
+          <input type="hidden" id="recipe-id">
+          <div class="row g-3">
+            <div class="col-8">
+              <label class="form-label small">Nombre</label>
+              <input type="text" class="form-control" id="recipe-name" placeholder="Nombre de la receta" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label small">Raciones</label>
+              <input type="number" class="form-control" id="recipe-servings" value="2" min="1" step="0.5">
+            </div>
+            <div class="col-12">
+              <label class="form-label small">Descripción breve</label>
+              <input type="text" class="form-control" id="recipe-description" placeholder="Ej: Receta tradicional de la abuela">
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">🥕 Ingredientes</div>
+          <div class="input-group mb-2">
+            <input type="text" id="ingredient-search" class="form-control" placeholder="Nombre o código de barras...">
+            <button class="btn btn-outline-secondary" type="button" id="btn-search-ingredient">Buscar</button>
+          </div>
+          <div id="ingredient-search-results" class="list-group mb-3" style="display:none;max-height:150px;overflow-y:auto;"></div>
+          <div id="ingredient-list"><div class="text-muted small">Aún no hay ingredientes.</div></div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">👨‍🍳 Instrucciones / Pasos</div>
+          <textarea class="form-control" id="recipe-instructions" placeholder="1. Precalentar horno a 180°C&#10;2. Mezclar ingredientes secos&#10;..."></textarea>
+          <div class="form-text mt-1 small">Texto libre. Puedes usar numeración manual.</div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">📝 Notas personales</div>
+          <textarea class="form-control" id="recipe-notes" rows="3" placeholder="Variaciones probadas, sustituciones, fuente de la receta..."></textarea>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">🏷️ Etiquetas</div>
+          <div id="tags-container" class="d-flex flex-wrap gap-2 mb-2"></div>
+          <div class="input-group input-group-sm" style="max-width:260px;">
+            <input type="text" id="tag-input" class="form-control" placeholder="Nueva etiqueta...">
+            <button class="btn btn-outline-secondary" type="button" id="btn-add-tag">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div>
+        <div class="section-card">
+          <div class="section-title">📷 Foto de la receta</div>
+          <div class="recipe-photo-box" id="recipe-photo-box">
+            <div id="photo-placeholder" style="color:#7c8ca0;text-align:center;">
+              <div style="font-size:2.2rem;">🍽️</div>
+              <div class="small mt-1">Toca para añadir foto</div>
+            </div>
+            <div class="photo-overlay"><span style="font-size:1.4rem;">📷</span><small class="mt-1">Cambiar foto</small></div>
+          </div>
+          <input type="file" id="recipe-photo-input" accept="image/*" capture="environment" style="display:none;">
+          <div id="camera-section" style="display:none;" class="mt-2">
+            <video id="recipe-video" autoplay playsinline class="w-100 rounded" style="max-height:200px;"></video>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-sm btn-primary flex-grow-1" id="btn-take-photo">📸 Capturar</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btn-cancel-camera">Cancelar</button>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="btn-open-camera">📷 Cámara</button>
+            <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="btn-open-gallery">🖼️ Galería</button>
+            <button class="btn btn-sm btn-outline-danger" id="btn-remove-photo" style="display:none;" title="Quitar foto">✕</button>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">📊 Nutrición por ración</div>
+          <div class="nutrition-grid" id="nutrition-preview">
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">kcal</div></div>
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">Prot.</div></div>
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">Carb.</div></div>
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">Grasa</div></div>
+          </div>
+        </div>
+
+        <div class="section-card" id="versions-card" style="display:none;">
+          <div class="section-title d-flex justify-content-between">
+            <span>🕒 Historial de versiones</span>
+            <span class="badge bg-secondary" id="versions-count">0</span>
+          </div>
+          <div class="version-timeline" id="version-timeline">
+            <div class="text-muted small">Sin versiones anteriores.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal restaurar versión -->
+  <div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Restaurar versión</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p id="restore-modal-text"></p>
+          <p class="text-muted small">La versión actual quedará guardada en el historial.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm" id="btn-confirm-restore">Restaurar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container">
+    <div class="my-toast" id="app-toast"></div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/recipe-editor.js"></script>
+</body>
+</html>

@@ -131,6 +131,46 @@ db.version(5).stores({
   pendingUploads: '++id, barcode, status'
 });
 
+// ── v6: Historial de versiones de recetas + Pool de fotos de comidas ──────────
+db.version(6).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+
+  /**
+   * recipeVersions — Snapshots históricas de recetas
+   *
+   * Cada vez que el usuario guarda cambios en una receta, el estado
+   * anterior se archiva aquí. Permite ver el historial y revertir.
+   *
+   * Campos indexados:
+   *   ++id
+   *   recipeId   id de la receta padre
+   *   savedAt    timestamp ISO (para ordenar cronológicamente)
+   */
+  recipeVersions: '++id, recipeId, savedAt',
+
+  /**
+   * mealPhotos — Pool fotográfico de lo que se come
+   *
+   * Fotos tomadas en el diario para revisar/anotar manualmente o
+   * enviar a una IA para identificar el plato.
+   *
+   * Campos indexados:
+   *   ++id
+   *   date       "YYYY-MM-DD" del día de la ingesta
+   *   mealType   "breakfast" | "lunch" | "snack" | "dinner" | null
+   *   status     "pending_review" | "logged" | "discarded"
+   */
+  mealPhotos: '++id, date, mealType, status',
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

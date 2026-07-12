@@ -5,7 +5,7 @@ async function loadTestDB(page) {
   await page.goto('/index.html');
   page.on('dialog', dialog => dialog.accept());
   await page.fill('#filters', 'E250');
-  await page.fill('#database', '/test_products.csv.zz');
+  await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
   await page.waitForURL('**/grid.html');
 }
@@ -126,5 +126,26 @@ test.describe('Diary (Agenda) Flow', () => {
 
     // El grid debería mostrar la entrada en el día correspondiente
     await expect(page.locator('.diary-grid')).toContainText('Salchichas de Pollo');
+  });
+  test('should open the photo capture modal from a diary day', async ({ page }) => {
+    await loadTestDB(page);
+    await page.goto('/diary.html');
+
+    // El botón 📷 es el segundo botón dentro de la columna del día
+    // El HTML es: <button class="btn btn-sm btn-outline-secondary" onclick="..." title="Foto de lo que comí">📷</button>
+    const photoBtn = page.locator('.diary-day button').filter({ hasText: '📷' }).first();
+    await photoBtn.click();
+
+    // El modal de foto debe abrirse
+    const photoModal = page.locator('#diaryPhotoModal');
+    await expect(photoModal).toBeVisible();
+    await expect(photoModal.locator('.modal-title')).toContainText('Foto de lo que comí');
+
+    // Verificar que los botones de cámara o galería están presentes
+    await expect(page.locator('#btn-diary-gallery')).toBeVisible();
+    
+    // Cerrar el modal
+    await page.locator('#diaryPhotoModal .btn-close').click();
+    await expect(photoModal).not.toBeVisible();
   });
 });

@@ -29,6 +29,13 @@ export default defineConfig({
         index: path.resolve(__dirname, 'src/index.html'),
         grid: path.resolve(__dirname, 'src/grid.html'),
         scan: path.resolve(__dirname, 'src/scan.html'),
+        recipes: path.resolve(__dirname, 'src/recipes.html'),
+        'recipe-editor': path.resolve(__dirname, 'src/recipe-editor.html'),
+        diary: path.resolve(__dirname, 'src/diary.html'),
+        'meal-photos': path.resolve(__dirname, 'src/meal-photos.html'),
+        pantry: path.resolve(__dirname, 'src/pantry.html'),
+        dashboard: path.resolve(__dirname, 'src/dashboard.html'),
+        'db-viewer': path.resolve(__dirname, 'src/db-viewer.html'),
       }
     },
   },

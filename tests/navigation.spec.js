@@ -31,7 +31,18 @@ test.describe('Navigation Tests', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
+  test('should load recipe-editor.html', async ({ page }) => {
+    await page.goto('/recipe-editor.html');
+    await expect(page.locator('body')).toBeVisible();
+  });
+
+  test('should load meal-photos.html', async ({ page }) => {
+    await page.goto('/meal-photos.html');
+    await expect(page.locator('body')).toBeVisible();
+  });
+
   test('should load scan.html', async ({ page }) => {
+
     await page.goto('/scan.html');
     await expect(page.locator('body')).toBeVisible();
   });
