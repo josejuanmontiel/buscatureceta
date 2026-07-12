@@ -43,7 +43,12 @@ Todo esto funcionando de forma **100% local (offline-first)** usando el almacena
 - **Creador de Recetas:** Agrupación de productos y cálculo automático de macros por ración.
 - **Agenda y Dashboard:** Registro de ingestas con descuento automático de stock y gráficos de progreso.
 
-### Release v0.4 (OFF Native Integration & Sync) *(Actual)*
+### Release v0.4.1 (Editor Avanzado & Pool Fotográfico) *(Actual)*
+- **Editor de Recetas a Página Completa:** Nueva experiencia de usuario para componer recetas, con histórico de versiones guardado automáticamente.
+- **Pool Fotográfico (Diario):** Posibilidad de tomar fotos de las comidas, almacenarlas localmente y llevar un registro visual en la agenda, listo para análisis por IA externo.
+- **Entorno de Pruebas Extendido:** Pruebas E2E completas adaptadas a las nuevas funcionalidades, y soporte HTTPS local para características nativas (cámara/portapapeles).
+
+### Release v0.4 (OFF Native Integration & Sync)
 - **Script Nativo de Actualización:** Filtrado ultra-rápido en Bash puro para extraer los productos de España del volcado global de OpenFoodFacts (reduciendo el tamaño drásticamente).
 - **Motor de Carga Anti-Colapso:** Uso de Web Streams nativos en el navegador para descomprimir (gzip) y parsear (TSV) un archivo de más de 1GB al vuelo, inyectándolo en bloques en IndexedDB sin agotar la memoria.
 - **Cola Offline-First:** Si se escanea un producto desconocido, se puede tomar una foto con la cámara del móvil. Se encola localmente y, cuando hay conexión, se sincroniza usando la API V3 de OpenFoodFacts.
