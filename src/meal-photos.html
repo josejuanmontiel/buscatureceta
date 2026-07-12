@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fotos de Comidas - NutriAgenda</title>
+  <meta name="description" content="Pool de fotos de lo que comes cada día. Revisa, anota y envía a IA para identificar platos.">
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    /* ── Grid de fotos ─── */
+    .photos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; }
+    @media(max-width:480px){ .photos-grid{ grid-template-columns:repeat(2,1fr); gap:.65rem; } }
+
+    .photo-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; overflow:hidden; transition:transform .2s,border-color .2s; }
+    .photo-card:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.2); }
+    .photo-thumb { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#222; }
+    .photo-thumb-placeholder { width:100%; aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; background:#1a1a2e; font-size:2.5rem; }
+    .photo-card-body { padding:.65rem; }
+    .photo-date { font-size:.72rem; color:#7c8ca0; }
+    .photo-meal { font-size:.78rem; font-weight:600; color:#adb5bd; }
+    .photo-notes { font-size:.75rem; color:#aaa; margin-top:.25rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .photo-actions { display:flex; gap:.4rem; margin-top:.5rem; }
+    .photo-actions .btn { font-size:.72rem; padding:.2rem .5rem; flex:1; }
+
+    /* ── Status badges ─── */
+    .status-pending  { background:rgba(255,193,7,.15); color:#ffc107; border:1px solid rgba(255,193,7,.3); }
+    .status-logged   { background:rgba(25,135,84,.15); color:#75b798; border:1px solid rgba(25,135,84,.3); }
+    .status-label { display:inline-block; font-size:.65rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; border-radius:20px; padding:1px 8px; }
+
+    /* ── Filtros ─── */
+    .filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-bottom:1.25rem; }
+    .filter-btn { border-radius:20px; font-size:.8rem; padding:.3rem .9rem; }
+    .filter-btn.active { background:#6ea8fe; border-color:#6ea8fe; color:#000; }
+
+    /* ── Cámara inline ─── */
+    #quick-camera-section { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:1rem; margin-bottom:1.25rem; display:none; }
+    #quick-video { width:100%; border-radius:10px; max-height:260px; display:block; }
+
+    /* ── Modal anotación ─── */
+    .modal-photo-preview { width:100%; border-radius:10px; max-height:200px; object-fit:cover; margin-bottom:1rem; }
+
+    /* ── Toast ─── */
+    .toast-container { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; }
+    .my-toast { background:#198754; color:#fff; border-radius:12px; padding:.65rem 1.1rem; font-size:.88rem; font-weight:500; box-shadow:0 4px 20px rgba(0,0,0,.4); opacity:0; transform:translateY(10px); transition:opacity .3s,transform .3s; }
+    .my-toast.show { opacity:1; transform:translateY(0); }
+    .my-toast.error { background:#dc3545; }
+
+    /* ── Empty state ─── */
+    .empty-state { text-align:center; padding:4rem 1rem; color:#7c8ca0; }
+    .empty-state .icon { font-size:3.5rem; margin-bottom:1rem; }
+  </style>
+</head>
+<body class="d-flex flex-column" style="min-height:100vh;">
+
+  <div class="cover-container d-flex w-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <app-menu current-page="meal-photos.html"></app-menu>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h1 class="mb-0">📷 Fotos de lo que como</h1>
+        <button class="btn btn-primary btn-sm" id="btn-quick-capture">📷 Añadir foto ahora</button>
+      </div>
+
+      <!-- Cámara rápida inline -->
+      <div id="quick-camera-section">
+        <video id="quick-video" autoplay playsinline></video>
+        <div class="row g-2 mt-2">
+          <div class="col-6">
+            <select class="form-select form-select-sm" id="quick-meal-type">
+              <option value="">-- Tipo de comida --</option>
+              <option value="breakfast">Desayuno</option>
+              <option value="lunch">Comida</option>
+              <option value="snack">Merienda</option>
+              <option value="dinner">Cena</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <input type="date" class="form-control form-control-sm" id="quick-date">
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-primary flex-grow-1" id="btn-snap">📸 Capturar foto</button>
+          <button class="btn btn-outline-secondary" id="btn-cancel-quick-camera">Cancelar</button>
+        </div>
+        <div class="mt-2 text-center text-muted small">O bien:</div>
+        <div class="mt-1 text-center">
+          <input type="file" id="quick-file-input" accept="image/*" style="display:none;">
+          <button class="btn btn-outline-secondary btn-sm" id="btn-quick-gallery">🖼️ Elegir de galería</button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filter-bar">
+        <button class="btn btn-outline-secondary filter-btn active" data-filter="all" id="filter-all">Todas</button>
+        <button class="btn btn-outline-warning filter-btn" data-filter="pending_review" id="filter-pending">⏳ Pendientes</button>
+        <button class="btn btn-outline-success filter-btn" data-filter="logged" id="filter-logged">✅ Anotadas</button>
+        <span class="ms-auto text-muted small" id="photo-count"></span>
+      </div>
+
+      <!-- Grid de fotos -->
+      <div class="photos-grid" id="photos-grid">
+        <div class="empty-state col-span-all">
+          <div class="icon">🍽️</div>
+          <h4>Sin fotos todavía</h4>
+          <p class="small">Pulsa "Añadir foto ahora" o ve a la Agenda y usa el botón 📷 en cualquier día.</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal: Anotar foto -->
+  <div class="modal fade" id="annotateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">✏️ Anotar foto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <img id="annotate-preview" class="modal-photo-preview" src="" alt="Foto a anotar">
+
+          <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-outline-info btn-sm flex-grow-1" id="btn-copy-clipboard" title="Copiar imagen al portapapeles para pegar en IA">
+              📋 Copiar para IA
+            </button>
+          </div>
+          <div id="clipboard-status" class="small text-center mb-2" style="display:none;"></div>
+
+          <div class="mb-3">
+            <label class="form-label small">¿Qué comiste? (anotación manual)</label>
+            <textarea class="form-control" id="annotate-notes" rows="3" placeholder="Ej: Paella de verduras, ensalada mixta con atún..."></textarea>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small">Tipo de comida</label>
+              <select class="form-select form-select-sm" id="annotate-meal-type">
+                <option value="">-- Sin especificar --</option>
+                <option value="breakfast">Desayuno</option>
+                <option value="lunch">Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Fecha</label>
+              <input type="date" class="form-control form-control-sm" id="annotate-date">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-danger btn-sm me-auto" id="btn-discard-photo">🗑 Descartar</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-save-annotation">✅ Guardar anotación</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container">
+    <div class="my-toast" id="app-toast"></div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/meal-photos.js"></script>
+</body>
+</html>

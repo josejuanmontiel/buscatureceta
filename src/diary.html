@@ -56,14 +56,7 @@
     <header class="mb-4">
       <div>
         <h3 class="float-md-start mb-0">NutriAgenda</h3>
-        <nav class="nav nav-masthead justify-content-center float-md-end">
-          <a class="nav-link fw-bold py-1 px-0" href="index.html">Inicio</a>
-          <a class="nav-link fw-bold py-1 px-0" href="grid.html">Buscar</a>
-          <a class="nav-link fw-bold py-1 px-0" href="pantry.html">Despensa</a>
-          <a class="nav-link fw-bold py-1 px-0" href="recipes.html">Recetas</a>
-          <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="diary.html">Agenda</a>
-          <a class="nav-link fw-bold py-1 px-0" href="dashboard.html">Dashboard</a>
-        </nav>
+        <app-menu current-page="diary.html"></app-menu>
       </div>
     </header>
 
@@ -163,6 +156,55 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-primary" id="btn-save-meal">Guardar Ingesta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal captura de foto rápida desde la agenda -->
+  <div class="modal fade" id="diaryPhotoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">📷 Foto de lo que comí</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="diary-photo-date">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small">Tipo de comida</label>
+              <select class="form-select form-select-sm" id="diary-photo-meal-type">
+                <option value="">-- Sin especificar --</option>
+                <option value="breakfast">Desayuno</option>
+                <option value="lunch">Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="diary-camera-section">
+            <video id="diary-video" autoplay playsinline class="w-100 rounded mb-2" style="max-height:220px;"></video>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary flex-grow-1" id="btn-diary-snap">📸 Capturar</button>
+              <button class="btn btn-outline-secondary" id="btn-diary-stop-camera">✕ Cancelar cámara</button>
+            </div>
+          </div>
+
+          <div id="diary-photo-preview-section" style="display:none;">
+            <img id="diary-photo-preview" class="w-100 rounded mb-2" style="max-height:220px;object-fit:cover;" alt="Vista previa">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-diary-retake">🔄 Repetir</button>
+          </div>
+
+          <div class="mt-2 text-center">
+            <input type="file" id="diary-file-input" accept="image/*" style="display:none;">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-diary-gallery">🖼️ Elegir de galería</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-diary-save-photo" disabled>💾 Guardar foto</button>
         </div>
       </div>
     </div>

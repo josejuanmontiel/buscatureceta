@@ -4,23 +4,29 @@ import * as DiaryStore from './modules/diary/DiaryStore.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
+import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
 
 let mealModal;
-let currentDate = new Date(); // Fecha de referencia (hoy) para la semana actual
-let currentSelectedDate = null; // Fecha del día donde se hizo clic para registrar
+let diaryPhotoModal;
+let currentDate = new Date();
+let currentSelectedDate = null;
+let diaryPhotoCapturedBlob = null;
+let diaryCameraStream = null;
 
 const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 document.addEventListener('DOMContentLoaded', async () => {
   mealModal = new Modal(document.getElementById('mealModal'));
-  
+  diaryPhotoModal = new Modal(document.getElementById('diaryPhotoModal'));
+
   await renderWeek(currentDate);
+  await updateDiaryPhotoBadge();
 
   document.getElementById('btn-prev-week').addEventListener('click', () => {
     currentDate.setDate(currentDate.getDate() - 7);
     renderWeek(currentDate);
   });
-  
+
   document.getElementById('btn-next-week').addEventListener('click', () => {
     currentDate.setDate(currentDate.getDate() + 7);
     renderWeek(currentDate);
@@ -28,6 +34,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btn-save-meal').addEventListener('click', saveMeal);
   document.getElementById('btn-search-meal-product').addEventListener('click', searchProduct);
+
+  // ── Foto desde agenda ─────────────────────────────────────────────
+  document.getElementById('btn-diary-snap').addEventListener('click', doDiarySnap);
+  document.getElementById('btn-diary-stop-camera').addEventListener('click', stopDiaryCamera);
+  document.getElementById('btn-diary-retake').addEventListener('click', retakeDiaryPhoto);
+  document.getElementById('btn-diary-gallery').addEventListener('click', () => {
+    document.getElementById('diary-file-input').click();
+  });
+  document.getElementById('diary-file-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    diaryPhotoCapturedBlob = file;
+    showDiaryPhotoPreview(file);
+    e.target.value = '';
+  });
+  document.getElementById('btn-diary-save-photo').addEventListener('click', saveDiaryPhoto);
+
+  // Limpiar cámara al cerrar modal
+  document.getElementById('diaryPhotoModal').addEventListener('hidden.bs.modal', stopDiaryCamera);
 });
 
 async function renderWeek(date) {
@@ -71,7 +96,10 @@ async function renderWeek(date) {
         ${renderMealSlot('Merienda', 'snack', byMeal.snack, day)}
         ${renderMealSlot('Cena', 'dinner', byMeal.dinner, day)}
       </div>
-      <button class="btn btn-sm btn-outline-success mt-2 w-100" onclick="window.openMealModal('${day}')">+ Añadir</button>
+      <div class="d-flex gap-1 mt-2">
+        <button class="btn btn-sm btn-outline-success flex-grow-1" onclick="window.openMealModal('${day}')">+ Añadir</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.openDiaryPhotoModal('${day}')" title="Foto de lo que comí">📷</button>
+      </div>
     `;
     container.appendChild(dayEl);
   }
@@ -218,4 +246,95 @@ async function saveMeal() {
 
   mealModal.hide();
   await renderWeek(currentDate);
+}
+
+// ─── Captura de foto rápida desde la agenda ────────────────────────────────────
+
+window.openDiaryPhotoModal = async function(dayKey) {
+  diaryPhotoCapturedBlob = null;
+  document.getElementById('diary-photo-date').value = dayKey;
+  document.getElementById('diary-photo-meal-type').value = '';
+  document.getElementById('diary-photo-preview-section').style.display = 'none';
+  document.getElementById('diary-camera-section').style.display = 'block';
+  document.getElementById('btn-diary-save-photo').disabled = true;
+
+  // Iniciar cámara automáticamente
+  try {
+    diaryCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    document.getElementById('diary-video').srcObject = diaryCameraStream;
+  } catch {
+    // Si no hay cámara, ocultar sección de video
+    document.getElementById('diary-camera-section').style.display = 'none';
+  }
+
+  diaryPhotoModal.show();
+};
+
+function doDiarySnap() {
+  const video = document.getElementById('diary-video');
+  if (!video.videoWidth) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    stopDiaryCamera();
+    diaryPhotoCapturedBlob = blob;
+    showDiaryPhotoPreview(blob);
+  }, 'image/jpeg', 0.88);
+}
+
+function stopDiaryCamera() {
+  if (diaryCameraStream) {
+    diaryCameraStream.getTracks().forEach(t => t.stop());
+    diaryCameraStream = null;
+  }
+  const video = document.getElementById('diary-video');
+  if (video) video.srcObject = null;
+  const section = document.getElementById('diary-camera-section');
+  if (section) section.style.display = 'none';
+}
+
+function retakeDiaryPhoto() {
+  diaryPhotoCapturedBlob = null;
+  document.getElementById('diary-photo-preview-section').style.display = 'none';
+  document.getElementById('btn-diary-save-photo').disabled = true;
+  // Reiniciar cámara
+  window.openDiaryPhotoModal(document.getElementById('diary-photo-date').value);
+}
+
+function showDiaryPhotoPreview(blob) {
+  const preview = document.getElementById('diary-photo-preview');
+  preview.src = URL.createObjectURL(blob);
+  document.getElementById('diary-photo-preview-section').style.display = 'block';
+  document.getElementById('diary-camera-section').style.display = 'none';
+  document.getElementById('btn-diary-save-photo').disabled = false;
+}
+
+async function saveDiaryPhoto() {
+  if (!diaryPhotoCapturedBlob) return;
+  const date = document.getElementById('diary-photo-date').value;
+  const mealType = document.getElementById('diary-photo-meal-type').value || null;
+
+  try {
+    await MealPhotoStore.addMealPhoto(date, mealType, diaryPhotoCapturedBlob);
+    diaryPhotoModal.hide();
+    await updateDiaryPhotoBadge();
+  } catch (err) {
+    console.error('Error guardando foto:', err);
+    alert('Error al guardar la foto: ' + err.message);
+  }
+}
+
+async function updateDiaryPhotoBadge() {
+  const count = await MealPhotoStore.countPendingPhotos();
+  const badge = document.getElementById('nav-photo-badge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline';
+  } else {
+    badge.style.display = 'none';
+  }
 }
