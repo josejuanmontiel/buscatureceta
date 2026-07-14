@@ -9,7 +9,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'https://localhost:8081',
+    baseURL: 'https://localhost:8080',
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     video: 'on',
@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run start',
-    url: 'https://localhost:8081',
+    url: 'https://localhost:8080',
     ignoreHTTPSErrors: true,
     reuseExistingServer: !process.env.CI,
   },

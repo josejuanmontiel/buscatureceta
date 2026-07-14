@@ -36,6 +36,7 @@ export default defineConfig({
         pantry: path.resolve(__dirname, 'src/pantry.html'),
         dashboard: path.resolve(__dirname, 'src/dashboard.html'),
         'db-viewer': path.resolve(__dirname, 'src/db-viewer.html'),
+        settings: path.resolve(__dirname, 'src/settings.html'),
       }
     },
   },

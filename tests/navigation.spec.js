@@ -42,8 +42,12 @@ test.describe('Navigation Tests', () => {
   });
 
   test('should load scan.html', async ({ page }) => {
-
     await page.goto('/scan.html');
+    await expect(page.locator('body')).toBeVisible();
+  });
+
+  test('should load settings.html', async ({ page }) => {
+    await page.goto('/settings.html');
     await expect(page.locator('body')).toBeVisible();
   });
 });
