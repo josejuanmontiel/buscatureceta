@@ -30,6 +30,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   await updatePendingBadge();
 
   bindEvents();
+
+  // Si venimos de la agenda para resolver una foto:
+  const params = new URLSearchParams(window.location.search);
+  const resolveId = params.get('resolvePhotoId');
+  if (resolveId) {
+    window._openAnnotate(parseInt(resolveId, 10));
+  }
 });
 
 // ─── Binding de eventos ────────────────────────────────────────────────────────
@@ -62,6 +69,9 @@ function bindEvents() {
 
   // Modal anotación — botones
   document.getElementById('btn-copy-clipboard').addEventListener('click', copyPhotoToClipboard);
+  document.getElementById('btn-copy-prompt').addEventListener('click', copyAIPrompt);
+  document.getElementById('btn-process-ai').addEventListener('click', processAIJson);
+  document.getElementById('btn-send-to-agenda').addEventListener('click', sendPhotoToAgendaEmpty);
   document.getElementById('btn-save-annotation').addEventListener('click', saveAnnotation);
   document.getElementById('btn-discard-photo').addEventListener('click', discardCurrentPhoto);
 }
@@ -194,6 +204,7 @@ window._openAnnotate = async function(id) {
   document.getElementById('annotate-notes').value = photo.notes || '';
   document.getElementById('annotate-meal-type').value = photo.mealType || '';
   document.getElementById('annotate-date').value = photo.date || new Date().toISOString().split('T')[0];
+  document.getElementById('ai-json-input').value = '';
   document.getElementById('clipboard-status').style.display = 'none';
 
   annotateModal.show();
@@ -228,6 +239,117 @@ async function copyPhotoToClipboard() {
     statusEl.textContent = '⚠️ Tu navegador no permite copiar imágenes. Se ha descargado la foto.';
     statusEl.style.color = '#ffc107';
     statusEl.style.display = 'block';
+  }
+}
+
+async function copyAIPrompt() {
+  const prompt = `Analiza esta comida. Devuelve ÚNICAMENTE un bloque JSON válido con este formato, estimando los valores:
+{
+  "name": "Nombre del plato o comida",
+  "kcal": 0,
+  "protein_g": 0,
+  "carbs_g": 0,
+  "fat_g": 0
+}`;
+  try {
+    await navigator.clipboard.writeText(prompt);
+    showToast('Prompt copiado al portapapeles ✓');
+  } catch (err) {
+    showToast('Error copiando el prompt', true);
+  }
+}
+
+async function sendPhotoToAgendaEmpty() {
+  if (!currentAnnotateId) return;
+  const mealType = document.getElementById('annotate-meal-type').value;
+  const date = document.getElementById('annotate-date').value;
+  if (!mealType) return alert('Selecciona un tipo de comida para poder enviarla a la agenda.');
+
+  const { addDiaryEntry } = await import('./modules/diary/DiaryStore.js');
+  
+  const item = {
+    type: 'photo',
+    photoId: currentAnnotateId,
+    name: document.getElementById('annotate-notes').value.trim() || 'Foto sin identificar',
+    servings: 1,
+    nutrition: { kcal: 0, proteins_g: 0, carbs_g: 0, fat_g: 0 }
+  };
+
+  try {
+    const entryId = await addDiaryEntry({
+      date,
+      mealType,
+      items: [item]
+    });
+    // Log the photo so it goes away from the review queue
+    await MealPhotoStore.logPhoto(currentAnnotateId, item.name, entryId);
+    
+    annotateModal.hide();
+    showToast('Foto enlazada a la agenda ✓');
+    await renderGallery();
+    await updatePendingBadge();
+  } catch (err) {
+    showToast('Error al enlazar: ' + err.message, true);
+  }
+}
+
+async function processAIJson() {
+  if (!currentAnnotateId) return;
+  const mealType = document.getElementById('annotate-meal-type').value;
+  const date = document.getElementById('annotate-date').value;
+  const jsonStr = document.getElementById('ai-json-input').value.trim();
+
+  if (!mealType) return alert('Selecciona un tipo de comida (Desayuno, Comida...).');
+  if (!jsonStr) return alert('Pega el JSON de la IA primero.');
+
+  let data;
+  try {
+    // A veces la IA devuelve markdown tipo ```json ... ```
+    const cleaned = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+    data = JSON.parse(cleaned);
+  } catch (err) {
+    return alert('El JSON no es válido. Asegúrate de copiar solo las llaves {} y su contenido.');
+  }
+
+  const { addDiaryEntry, db } = await import('./modules/diary/DiaryStore.js');
+
+  // Limpiar el ítem de la foto "vacía" si existe en este día y tipo de comida
+  const existingEntry = await db.diary.where({ date, mealType }).first();
+  if (existingEntry) {
+    existingEntry.items = existingEntry.items.filter(i => !(i.type === 'photo' && i.photoId === currentAnnotateId));
+    await db.diary.update(existingEntry.id, { items: existingEntry.items });
+  }
+  
+  const item = {
+    type: 'custom_macros',
+    photoId: currentAnnotateId, // Guardamos la referencia
+    name: data.name || 'Plato (IA)',
+    servings: 1,
+    nutrition: {
+      kcal: data.kcal || 0,
+      proteins_g: data.protein_g || 0,
+      carbs_g: data.carbs_g || 0,
+      fat_g: data.fat_g || 0,
+      fiber_g: data.fiber_g || 0,
+      sugars_g: data.sugars_g || 0,
+      salt_g: data.salt_g || 0
+    }
+  };
+
+  try {
+    const entryId = await addDiaryEntry({
+      date,
+      mealType,
+      items: [item]
+    });
+    await MealPhotoStore.logPhoto(currentAnnotateId, item.name, entryId);
+    
+    annotateModal.hide();
+    showToast('Alimento añadido a la agenda mágicamente ✨');
+    await renderGallery();
+    await updatePendingBadge();
+  } catch (err) {
+    showToast('Error al guardar en agenda: ' + err.message, true);
   }
 }
 

@@ -9,7 +9,8 @@ class AppMenu extends HTMLElement {
       { href: "diary.html", text: "Agenda" },
       { href: "meal-photos.html", text: "Fotos <span class=\"badge bg-warning text-dark ms-1\" id=\"nav-photo-badge\" style=\"display:none;\"></span>" },
       { href: "dashboard.html", text: "Dashboard" },
-      { href: "db-viewer.html", text: "Visor BD" }
+      { href: "db-viewer.html", text: "Visor BD" },
+      { href: "settings.html", text: "Ajustes" }
     ];
 
     let html = `<nav class="nav nav-masthead justify-content-center float-md-end">`;

@@ -32,9 +32,10 @@
           lastResult = decodedText;
           // Handle on success condition with the decoded message.
           console.log(`Scan result ${decodedText}`, decodedResult.result.text);
-
           const code = decodedResult.result.text;
-          window.location.href = "/grid.html?code="+code;
+          const urlParams = new URLSearchParams(window.location.search);
+          const returnPage = urlParams.get('return') || 'grid.html';
+          window.location.href = `/${returnPage}?code=${code}`;
         }
       }
 

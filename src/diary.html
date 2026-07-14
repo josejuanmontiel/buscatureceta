@@ -119,8 +119,21 @@
                   <select class="form-select mb-2" id="meal-recipe-select">
                     <option value="">-- Selecciona receta --</option>
                   </select>
-                  <label class="form-label mt-2">Raciones consumidas</label>
-                  <input type="number" class="form-control" id="meal-recipe-servings" value="1" min="0.25" step="0.25">
+                  <label class="form-label mt-2">Cantidad consumida</label>
+                  <div class="input-group mb-2">
+                    <input type="number" class="form-control" id="meal-recipe-amount" value="1" min="0.1" step="0.1">
+                    <select class="form-select" id="meal-recipe-unit" style="max-width: 120px;">
+                      <option value="servings">Raciones</option>
+                      <option value="grams">Gramos</option>
+                    </select>
+                  </div>
+                  
+                  <div id="meal-recipe-ingredients-container" style="display: none;" class="mt-3 p-2 bg-dark rounded border border-secondary">
+                    <label class="form-label small text-info mb-1">Ajuste manual de ingredientes</label>
+                    <div id="meal-recipe-ingredients" style="max-height: 150px; overflow-y: auto;">
+                      <!-- Injected via JS -->
+                    </div>
+                  </div>
                 </div>
                 
                 <!-- Panel Producto -->

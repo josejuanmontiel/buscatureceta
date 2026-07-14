@@ -61,8 +61,22 @@ async function handleSearch() {
     if (!/^\d+$/.test(query)) {
         const qLower = query.toLowerCase();
         const p = await db.products.filter(pr => pr.product_name && pr.product_name.toLowerCase().includes(qLower)).first();
-        if (p) query = p.code;
-        else return alert("No se encontró producto con ese nombre");
+        if (p) {
+            query = p.code;
+        } else {
+            if (confirm(`No se encontró "${query}" en la base de datos local.\n¿Quieres añadirlo como producto genérico sin código de barras al carrito?`)) {
+                const genericCode = 'GENERIC_' + Date.now();
+                await db.products.add({
+                    code: genericCode,
+                    product_name: query,
+                    ingredients_text: '',
+                    nutriscore_grade: 'unknown'
+                });
+                query = genericCode;
+            } else {
+                return;
+            }
+        }
     }
 
     const result = await ShoppingAssistant.analyzeProductForCart(query);

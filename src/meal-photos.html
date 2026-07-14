@@ -125,16 +125,25 @@
         <div class="modal-body">
           <img id="annotate-preview" class="modal-photo-preview" src="" alt="Foto a anotar">
 
-          <div class="d-flex gap-2 mb-3">
+          <div class="d-flex gap-2 mb-2">
             <button class="btn btn-outline-info btn-sm flex-grow-1" id="btn-copy-clipboard" title="Copiar imagen al portapapeles para pegar en IA">
-              📋 Copiar para IA
+              📋 Copiar Foto
+            </button>
+            <button class="btn btn-outline-info btn-sm flex-grow-1" id="btn-copy-prompt" title="Copiar instrucciones para la IA">
+              📝 Copiar Prompt
             </button>
           </div>
-          <div id="clipboard-status" class="small text-center mb-2" style="display:none;"></div>
+          <div id="clipboard-status" class="small text-center mb-3" style="display:none;"></div>
+
+          <div class="mb-3 p-2 border border-secondary rounded">
+            <label class="form-label small text-warning">🤖 Carga Mágica por IA</label>
+            <textarea class="form-control form-control-sm font-monospace bg-dark text-info border-secondary" id="ai-json-input" rows="2" placeholder='Pega el JSON de la IA aquí...'></textarea>
+            <button class="btn btn-sm btn-outline-warning w-100 mt-2" id="btn-process-ai">Crear en Agenda desde JSON</button>
+          </div>
 
           <div class="mb-3">
-            <label class="form-label small">¿Qué comiste? (anotación manual)</label>
-            <textarea class="form-control" id="annotate-notes" rows="3" placeholder="Ej: Paella de verduras, ensalada mixta con atún..."></textarea>
+            <label class="form-label small">Notas manuales</label>
+            <textarea class="form-control" id="annotate-notes" rows="2" placeholder="Ej: Paella de verduras..."></textarea>
           </div>
           <div class="row g-2">
             <div class="col-6">
@@ -153,10 +162,10 @@
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-danger btn-sm me-auto" id="btn-discard-photo">🗑 Descartar</button>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
-          <button type="button" class="btn btn-success btn-sm" id="btn-save-annotation">✅ Guardar anotación</button>
+        <div class="modal-footer flex-wrap">
+          <button type="button" class="btn btn-outline-danger btn-sm me-auto" id="btn-discard-photo">🗑</button>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="btn-send-to-agenda" title="Enviar a agenda sin datos para resolver luego">Mover a Agenda (vacía)</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-save-annotation">Guardar nota</button>
         </div>
       </div>
     </div>

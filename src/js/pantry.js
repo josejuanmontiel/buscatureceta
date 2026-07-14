@@ -8,11 +8,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   addStockModal = new Modal(document.getElementById('addStockModal'));
   consumeStockModal = new Modal(document.getElementById('consumeStockModal'));
   
-  await loadPantry();
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeFromUrl = urlParams.get('code');
+  if (codeFromUrl) {
+    document.getElementById("pantry-search").value = codeFromUrl;
+    await loadPantry(codeFromUrl);
+  } else {
+    await loadPantry();
+  }
 
   document.getElementById('pantry-search').addEventListener('input', (e) => {
     loadPantry(e.target.value);
   });
+
+  const scanPantryBtn = document.getElementById('scan-pantry-btn');
+  if (scanPantryBtn) {
+    scanPantryBtn.addEventListener('click', () => {
+      window.location.href = "/scan.html?return=pantry.html";
+    });
+  }
 
   document.getElementById('btn-search-stock-product').addEventListener('click', searchProduct);
   document.getElementById('btn-save-stock').addEventListener('click', saveStock);

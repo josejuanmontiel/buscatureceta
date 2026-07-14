@@ -48,7 +48,7 @@ const OFF_FIELD_MAP = {
  * @param {string} unit — "g" | "ml" | "unidad"
  * @returns {number} gramos equivalentes, o null si no calculable
  */
-function toGrams(amount, unit) {
+export function toGrams(amount, unit) {
   switch (unit) {
     case 'g':
     case 'ml':

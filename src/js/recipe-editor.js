@@ -195,6 +195,13 @@ async function searchIngredient() {
       .limit(20).toArray();
   }
 
+  const searchPantryOnly = document.getElementById('search-pantry-only')?.checked;
+  if (searchPantryOnly) {
+    const pantryItems = await db.pantry.toArray();
+    const pantryCodes = new Set(pantryItems.map(item => item.productCode));
+    results = results.filter(p => pantryCodes.has(p.code));
+  }
+
   const container = document.getElementById('ingredient-search-results');
   if (results.length === 0) {
     container.innerHTML = '<div class="list-group-item text-muted small">Sin resultados.</div>';
