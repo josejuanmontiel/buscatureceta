@@ -148,4 +148,91 @@ test.describe('Diary (Agenda) Flow', () => {
     await page.locator('#diaryPhotoModal .btn-close').click();
     await expect(photoModal).not.toBeVisible();
   });
+
+  test('should allow adding generic products from search by clicking the add generic button', async ({ page }) => {
+    await loadTestDB(page);
+    await page.goto('/diary.html');
+
+    const addBtn = page.locator('.diary-day button').first();
+    await addBtn.click();
+    await expect(page.locator('#mealModal')).toBeVisible();
+
+    await page.click('#tab-product');
+    await page.waitForTimeout(300);
+
+    // Search for a product that DOES NOT exist in the db
+    await page.fill('#meal-product-search', 'Plátano de Canarias Inventado');
+    await page.click('#btn-search-meal-product');
+
+    // The button to add it as generic should appear
+    const genericBtn = page.locator('#meal-product-results button').filter({ hasText: 'como genérico sin código' });
+    await expect(genericBtn).toBeVisible();
+
+    // Accept the confirm dialog
+    page.on('dialog', dialog => dialog.accept());
+    
+    // Click the button
+    await genericBtn.click();
+
+    // It should select it
+    const selectedInput = page.locator('#meal-product-selected');
+    await expect(selectedInput).not.toBeEmpty();
+    
+    const value = await selectedInput.inputValue();
+    expect(value).toContain('GENERIC_');
+  });
+
+  test('should display editable ingredients when logging a recipe with grams', async ({ page }) => {
+    await loadTestDB(page);
+    
+    // First create a recipe to test with
+    await page.goto('/recipe-editor.html');
+    await page.fill('#recipe-name', 'Ensalada');
+    await page.fill('#recipe-servings', '1');
+    await page.fill('#recipe-instructions', 'Mezclar.');
+    
+    // Add ingredient
+    await page.fill('#ing-search', 'Salchichas');
+    await page.click('#btn-search-ing');
+    await page.waitForSelector('#ing-search-results button', { state: 'visible' });
+    await page.locator('#ing-search-results button').first().click();
+    await page.fill('#ing-amount', '100');
+    await page.click('#btn-add-ing');
+    await page.click('#btn-save-recipe');
+    await page.waitForURL('**/recipe-editor.html?id=*');
+    
+    // Now go to diary to log it
+    await page.goto('/diary.html');
+    const addBtn = page.locator('.diary-day button').first();
+    await addBtn.click();
+    await expect(page.locator('#mealModal')).toBeVisible();
+
+    // Ensure we are on recipe tab
+    await page.click('#tab-recipe');
+    
+    // Select the newly created recipe (should be the last option, or just select it by text)
+    await page.locator('#meal-recipe-select').selectOption({ label: 'Ensalada (1 rac.)' });
+    
+    // Change unit to grams
+    await page.selectOption('#meal-recipe-unit', 'grams');
+    
+    // Input 50 grams
+    await page.fill('#meal-recipe-amount', '50');
+    
+    // The ingredients container should become visible
+    const ingContainer = page.locator('#meal-recipe-ingredients-container');
+    await expect(ingContainer).toBeVisible();
+    
+    // There should be one ingredient row
+    const ingRow = page.locator('.recipe-ing-row');
+    await expect(ingRow).toHaveCount(1);
+    
+    // The input for the ingredient should be editable and contain the scaled value (50g consumed of 100g recipe = 50g)
+    const ingInput = ingRow.locator('.ing-amount-input');
+    await expect(ingInput).toHaveValue('50');
+    
+    // Edit the value manually
+    await ingInput.fill('60');
+    await expect(ingInput).toHaveValue('60');
+  });
 });
