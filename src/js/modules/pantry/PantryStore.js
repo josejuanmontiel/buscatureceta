@@ -42,21 +42,32 @@ export async function addStock(productCode, amount, unit = 'g') {
  * @param {number} amount
  * @param {string} reason - 'consumed_me', 'consumed_family', 'expired', 'trashed'
  */
-export async function consumeStock(productCode, amount, reason) {
+export async function consumeStock(productCode, amount, reason, unitConsumed = 'g') {
   if (!productCode || amount <= 0) return;
 
   const item = await db.pantry.where({ productCode }).first();
   if (!item) return; // No hay stock
 
+  let deduction = amount;
+  if (item.unit !== unitConsumed) {
+    if (item.unit === 'unidad' && (unitConsumed === 'g' || unitConsumed === 'ml')) {
+      // Convert consumed grams to a fraction of a "unidad" (assume 1 unit = 1000g/ml)
+      deduction = amount / 1000;
+    } else if ((item.unit === 'g' || item.unit === 'ml') && unitConsumed === 'unidad') {
+      // Convert consumed units to grams
+      deduction = amount * 1000;
+    }
+  }
+
   const now = new Date().toISOString();
-  const newAmount = Math.max(0, item.amount - amount); // No permitir negativos
+  const newAmount = Math.max(0, item.amount - deduction); // No permitir negativos
 
   await db.pantry.update(item.id, { amount: newAmount });
 
   await db.pantryLog.add({
     pantryId: item.id,
     productCode,
-    delta: -amount,
+    delta: -deduction,
     reason,
     date: now
   });
@@ -78,7 +89,7 @@ export async function consumeRecipeIngredients(recipeId, servings, reason) {
     // Asume que la receta está definida para "recipe.servings" raciones.
     // Ej: la receta es para 4 raciones y lleva 200g. Si me como 1 ración, son 50g.
     const proportionalAmount = (ing.amount / (recipe.servings || 1)) * servings;
-    await consumeStock(ing.productCode, proportionalAmount, reason);
+    await consumeStock(ing.productCode, proportionalAmount, reason, ing.unit || 'g');
   }
 }
 

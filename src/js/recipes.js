@@ -47,7 +47,8 @@ async function loadRecipes(query = '') {
         </div>
         <div class="card-footer d-flex gap-2 bg-dark border-secondary">
           <a href="recipe-editor.html?id=${recipe.id}" class="btn btn-sm btn-outline-light flex-grow-1">✏️ Editar</a>
-          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window._deleteRecipe(${recipe.id})">🗑</button>
+          <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window._duplicateRecipe(${recipe.id})" title="Duplicar">📋</button>
+          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window._deleteRecipe(${recipe.id})" title="Eliminar">🗑</button>
         </div>
       </div>
     </div>
@@ -219,3 +220,16 @@ window._deleteRecipe = async function(id) {
   await RecipeStore.deleteRecipe(id);
   await loadRecipes();
 };
+
+// Duplicar receta
+window._duplicateRecipe = async function(id) {
+  const recipe = await RecipeStore.getRecipeById(id);
+  if (!recipe) return;
+
+  const { id: _id, createdAt, updatedAt, version, ...data } = recipe;
+  data.name = `${data.name} (Copia)`;
+  
+  await RecipeStore.createRecipe(data);
+  await loadRecipes();
+};
+

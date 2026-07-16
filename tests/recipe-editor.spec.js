@@ -63,39 +63,40 @@ test.describe('Recipe Editor Flow', () => {
 
     // 1. Add product to pantry
     await page.goto('/pantry.html');
-    await page.click('#tab-add');
-    await page.fill('#pantry-add-search', 'Salchichas de Pollo');
-    await page.click('#btn-search-pantry-add');
-    await page.waitForSelector('#pantry-add-results button', { state: 'visible' });
-    await page.locator('#pantry-add-results button').first().click();
-    await page.fill('#pantry-add-amount', '500');
-    await page.click('#btn-save-pantry');
-    await page.waitForTimeout(500);
+    await page.click('[data-bs-target="#addStockModal"]');
+    await expect(page.locator('#addStockModal')).toBeVisible();
+    await page.fill('#stock-product-search', 'Salchichas de Pollo');
+    await page.click('#btn-search-stock-product');
+    await page.waitForSelector('#stock-product-results button', { state: 'visible' });
+    await page.locator('#stock-product-results button').first().click();
+    await page.fill('#stock-amount', '500');
+    await page.click('#btn-save-stock');
+    await expect(page.locator('#addStockModal')).not.toBeVisible();
 
     // 2. Go to recipe editor
     await page.goto('/recipe-editor.html');
     
     // 3. Search without filter
-    await page.fill('#ing-search', 'Lentejas'); // Assume 'Lentejas' is in global DB but not in pantry
-    await page.click('#btn-search-ing');
-    await page.waitForSelector('#ing-search-results button', { state: 'visible' });
-    let results = await page.locator('#ing-search-results button').count();
+    await page.fill('#ingredient-search', 'Pan de Molde'); // Assume 'Pan de Molde' is in global DB but not in pantry
+    await page.click('#btn-search-ingredient');
+    await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+    let results = await page.locator('#ingredient-search-results button').count();
     expect(results).toBeGreaterThan(0);
 
     // 4. Search WITH filter
-    await page.check('#filter-pantry-only');
-    await page.fill('#ing-search', 'Lentejas');
-    await page.click('#btn-search-ing');
+    await page.check('#search-pantry-only');
+    await page.fill('#ingredient-search', 'Pan de Molde');
+    await page.click('#btn-search-ingredient');
     await page.waitForTimeout(500);
     // Should have no results
-    results = await page.locator('#ing-search-results button').count();
+    results = await page.locator('#ingredient-search-results button').count();
     expect(results).toBe(0);
 
     // 5. Search for the product that IS in pantry
-    await page.fill('#ing-search', 'Salchichas');
-    await page.click('#btn-search-ing');
-    await page.waitForSelector('#ing-search-results button', { state: 'visible' });
-    results = await page.locator('#ing-search-results button').count();
+    await page.fill('#ingredient-search', 'Salchichas');
+    await page.click('#btn-search-ingredient');
+    await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+    results = await page.locator('#ingredient-search-results button').count();
     expect(results).toBeGreaterThan(0);
   });
 

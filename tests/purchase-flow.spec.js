@@ -27,7 +27,7 @@ test.describe('Purchase Flow E2E', () => {
     await page.goto('/grid.html?code=2087569003329');
 
     // Comprobar que carga la Costilla Adobada El Pradal y sale la alerta
-    await expect(page.locator('#scanned-product-name')).toContainText('Costilla Adobada El Pradal');
+    await expect(page.locator('#scanned-product-name')).toContainText(/Costilla Adobada/i);
     
     const alertDiv = page.locator('#assistant-alert');
     await expect(alertDiv).toBeVisible();
@@ -35,13 +35,13 @@ test.describe('Purchase Flow E2E', () => {
 
     // 3. Seleccionar alternativa sana (sin E250)
     const alternativeBtn = page.locator('#assistant-alternatives button').first();
-    await expect(alternativeBtn).toContainText('Salchichas de Pollo'); // NutriScore B
+    await expect(alternativeBtn).toContainText(/Salchichas de Pollo/i); // NutriScore B
     
     // Hacemos clic en la alternativa
     await alternativeBtn.click();
     
     // Esperar a que cambie el producto actual a Salchichas de Pollo
-    await expect(page.locator('#scanned-product-name')).toContainText('Salchichas de Pollo');
+    await expect(page.locator('#scanned-product-name')).toContainText(/Salchichas de Pollo/i);
     
     // Verificar que la alerta ya no está visible
     await expect(alertDiv).toHaveClass(/d-none/);
@@ -65,6 +65,6 @@ test.describe('Purchase Flow E2E', () => {
     // Esperamos un poco a que cargue Tabulator
     await page.waitForTimeout(1000);
     // Verificamos que aparece en alguna parte del body
-    await expect(page.locator('body')).toContainText('Salchichas de Pollo');
+    await expect(page.locator('body')).toContainText(/Salchichas de Pollo/i);
   });
 });

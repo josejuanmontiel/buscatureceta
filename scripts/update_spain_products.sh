@@ -59,7 +59,7 @@ FILTER_RESULT=$(
   zcat "$TMP_FILE" \
     | awk -F'\t' '
         BEGIN {
-          split("code url product_name brands ingredients_text image_url image_ingredients_url image_nutrition_url nutriscore_grade nova_group categories_tags energy-kcal_100g proteins_100g carbohydrates_100g fat_100g fiber_100g sugars_100g salt_100g", wanted, " ")
+          split("code url product_name brands ingredients_text image_url image_ingredients_url image_nutrition_url nutriscore_grade nova_group categories_tags energy-kcal_100g proteins_100g carbohydrates_100g fat_100g fiber_100g sugars_100g salt_100g quantity product_quantity", wanted, " ")
         }
         NR == 1 {
           for (i = 1; i <= NF; i++) {

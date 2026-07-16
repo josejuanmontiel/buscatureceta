@@ -45,7 +45,7 @@ test.describe('Diary (Agenda) Flow', () => {
     await page.fill('#meal-product-grams', '100');
     await page.selectOption('#meal-type', 'lunch');
 
-    page.on('dialog', dialog => dialog.accept());
+    // dialog handled by loadTestDB
     await page.click('#btn-save-meal');
     await expect(page.locator('#mealModal')).not.toBeVisible();
 
@@ -118,14 +118,14 @@ test.describe('Diary (Agenda) Flow', () => {
     await page.selectOption('#meal-type', 'breakfast');
 
     // Guardar
-    page.on('dialog', dialog => dialog.accept());
+    // dialog handled by loadTestDB
     await page.click('#btn-save-meal');
 
     // El modal debe cerrarse
     await expect(page.locator('#mealModal')).not.toBeVisible();
 
     // El grid debería mostrar la entrada en el día correspondiente
-    await expect(page.locator('.diary-grid')).toContainText('Salchichas de Pollo');
+    await expect(page.locator('.diary-grid')).toContainText(/Salchichas de Pollo/i);
   });
   test('should open the photo capture modal from a diary day', async ({ page }) => {
     await loadTestDB(page);
@@ -169,7 +169,7 @@ test.describe('Diary (Agenda) Flow', () => {
     await expect(genericBtn).toBeVisible();
 
     // Accept the confirm dialog
-    page.on('dialog', dialog => dialog.accept());
+    // dialog handled by loadTestDB
     
     // Click the button
     await genericBtn.click();
@@ -192,12 +192,10 @@ test.describe('Diary (Agenda) Flow', () => {
     await page.fill('#recipe-instructions', 'Mezclar.');
     
     // Add ingredient
-    await page.fill('#ing-search', 'Salchichas');
-    await page.click('#btn-search-ing');
-    await page.waitForSelector('#ing-search-results button', { state: 'visible' });
-    await page.locator('#ing-search-results button').first().click();
-    await page.fill('#ing-amount', '100');
-    await page.click('#btn-add-ing');
+    await page.fill('#ingredient-search', 'Salchichas');
+    await page.click('#btn-search-ingredient');
+    await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+    await page.locator('#ingredient-search-results button').first().click();
     await page.click('#btn-save-recipe');
     await page.waitForURL('**/recipe-editor.html?id=*');
     

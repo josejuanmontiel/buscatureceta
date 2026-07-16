@@ -62,7 +62,8 @@
             <div class="mb-3">
               <label class="form-label">Producto</label>
               <div class="input-group mb-2">
-                <input type="text" id="stock-product-search" class="form-control" placeholder="Buscar producto...">
+                <input type="text" id="stock-product-search" class="form-control" placeholder="Buscar por nombre o código...">
+                <button class="btn btn-outline-secondary" type="button" id="btn-scan-stock" title="Escanear código"><i class="bi bi-upc-scan"></i></button>
                 <button class="btn btn-outline-secondary" type="button" id="btn-search-stock-product">Buscar</button>
               </div>
               <div id="stock-product-results" class="list-group mb-2" style="max-height: 150px; overflow-y: auto;"></div>
@@ -129,6 +130,34 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Detalles de Producto -->
+  <div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="detail-product-name">Detalle del Producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Código:</strong> <span id="detail-product-code"></span></p>
+          <p><strong>Stock en despensa:</strong> <span id="detail-product-stock"></span></p>
+          <div id="detail-nutriscore-nova" class="mb-3"></div>
+          
+          <h6>Información Nutricional (por 100g/ml)</h6>
+          <ul class="list-group list-group-flush mb-3" id="detail-nutrition-list">
+            <!-- Rellenado por JS -->
+          </ul>
+          
+          <h6>Historial de Movimientos</h6>
+          <div class="list-group" id="detail-movements-list" style="max-height: 200px; overflow-y: auto;">
+            <!-- Rellenado por JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/pantry.js"></script>

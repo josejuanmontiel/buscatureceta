@@ -22,6 +22,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderWeek(currentDate);
   await updateDiaryPhotoBadge();
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeParam = urlParams.get('code');
+  const actionParam = urlParams.get('action');
+  if (codeParam && actionParam === 'addMeal') {
+    const todayStr = new Date().toISOString().split('T')[0];
+    window.openMealModal(todayStr);
+    setTimeout(() => {
+      document.getElementById('tab-product').click();
+      document.getElementById('meal-product-search').value = codeParam;
+      document.getElementById('btn-search-meal-product').click();
+    }, 500);
+  }
+
   document.getElementById('btn-prev-week').addEventListener('click', () => {
     currentDate.setDate(currentDate.getDate() - 7);
     renderWeek(currentDate);
@@ -34,6 +47,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btn-save-meal').addEventListener('click', saveMeal);
   document.getElementById('btn-search-meal-product').addEventListener('click', searchProduct);
+  document.getElementById('btn-scan-meal')?.addEventListener('click', () => {
+    window.location.href = "/scan.html?return=diary.html&action=addMeal";
+  });
   
   // Eventos para recalcular ingredientes de la receta
   document.getElementById('meal-recipe-select').addEventListener('change', updateRecipeIngredientsPreview);
@@ -132,9 +148,9 @@ function renderMealSlot(label, mealType, items, dayKey) {
         }
 
         return `
-        <div class="meal-slot d-flex justify-content-between align-items-center" onclick="${action}">
-          <span class="text-truncate me-1 ${textClass}" title="${i.name}">${icon}${i.name}</span>
-          <span class="text-warning small">${kcalText}</span>
+        <div class="meal-slot d-flex justify-content-between align-items-start" onclick="${action}">
+          <span class="me-1 ${textClass}" style="min-width: 0; flex: 1; white-space: pre-line; word-break: break-word;" title="${i.name}">${icon}${i.name}</span>
+          <span class="text-warning small mt-1" style="white-space: nowrap;">${kcalText}</span>
         </div>
         `;
       }).join('')}
@@ -384,13 +400,13 @@ async function saveMeal() {
     if (item.type === 'recipe') {
       if (item.customIngredients && item.customIngredients.length > 0) {
         for (const ing of item.customIngredients) {
-          await PantryStore.consumeStock(ing.productCode, ing.amount, 'consumed_me');
+          await PantryStore.consumeStock(ing.productCode, ing.amount, 'consumed_me', ing.unit || 'g');
         }
       } else {
         await PantryStore.consumeRecipeIngredients(item.recipeId, item.servings, 'consumed_me');
       }
     } else if (item.type === 'product' && item.productCode) {
-      await PantryStore.consumeStock(item.productCode, item.servings * 100, 'consumed_me'); 
+      await PantryStore.consumeStock(item.productCode, item.servings * 100, 'consumed_me', 'g'); 
     }
   }
 

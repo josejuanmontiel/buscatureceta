@@ -3,7 +3,7 @@ const zlib = require('zlib');
 
 const headers = [
   'code', 'product_name', 'nutriscore_grade', 'additives_tags', 'ingredients_text',
-  'energy-kcal_100g', 'proteins_100g', 'carbohydrates_100g', 'fat_100g'
+  'energy-kcal_100g', 'proteins_100g', 'carbohydrates_100g', 'fat_100g', 'quantity', 'product_quantity'
 ];
 
 const products = [
@@ -16,7 +16,9 @@ const products = [
     'energy-kcal_100g': '250',
     proteins_100g: '15',
     carbohydrates_100g: '2',
-    fat_100g: '20'
+    fat_100g: '20',
+    quantity: '500 g',
+    product_quantity: '500'
   },
   {
     code: '01084922',
@@ -26,7 +28,9 @@ const products = [
     'energy-kcal_100g': '150',
     proteins_100g: '12',
     carbohydrates_100g: '3',
-    fat_100g: '10'
+    fat_100g: '10',
+    quantity: '300 g',
+    product_quantity: '300'
   },
   {
     code: '01472165',
@@ -36,7 +40,9 @@ const products = [
     'energy-kcal_100g': '250',
     proteins_100g: '8',
     carbohydrates_100g: '45',
-    fat_100g: '3'
+    fat_100g: '3',
+    quantity: '400 g',
+    product_quantity: '400'
   },
   {
     code: '04295181',
@@ -46,7 +52,9 @@ const products = [
     'energy-kcal_100g': '65',
     proteins_100g: '3.1',
     carbohydrates_100g: '4.7',
-    fat_100g: '3.6'
+    fat_100g: '3.6',
+    quantity: '1 L',
+    product_quantity: '1000'
   }
 ];
 

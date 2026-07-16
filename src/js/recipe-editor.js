@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   bindEvents();
+
+  const codeParam = params.get('code');
+  if (codeParam) {
+    document.getElementById('ingredient-search').value = codeParam;
+    setTimeout(searchIngredient, 500);
+  }
 });
 
 // ─── Cargar receta existente ───────────────────────────────────────────────────
@@ -85,6 +91,10 @@ function bindEvents() {
 
   // Buscador de ingredientes
   document.getElementById('btn-search-ingredient').addEventListener('click', searchIngredient);
+  document.getElementById('btn-scan-ingredient')?.addEventListener('click', () => {
+    const rId = recipeId ? `&id=${recipeId}` : '';
+    window.location.href = `/scan.html?return=recipe-editor.html${rId}`;
+  });
   document.getElementById('ingredient-search').addEventListener('keypress', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchIngredient(); }
   });
@@ -184,22 +194,35 @@ async function searchIngredient() {
   const query = document.getElementById('ingredient-search').value.trim();
   if (!query) return;
 
-  let results = [];
-  if (/^\d+$/.test(query)) {
-    const p = await db.products.get(query);
-    if (p) results = [p];
-  } else {
-    const q = query.toLowerCase();
-    results = await db.products
-      .filter(p => p.product_name && p.product_name.toLowerCase().includes(q))
-      .limit(20).toArray();
-  }
-
   const searchPantryOnly = document.getElementById('search-pantry-only')?.checked;
+  
+  let results = [];
   if (searchPantryOnly) {
     const pantryItems = await db.pantry.toArray();
-    const pantryCodes = new Set(pantryItems.map(item => item.productCode));
-    results = results.filter(p => pantryCodes.has(p.code));
+    const pantryCodes = Array.from(new Set(pantryItems.map(item => item.productCode)));
+    
+    if (/^\d+$/.test(query)) {
+      if (pantryCodes.includes(query)) {
+        const p = await db.products.get(query);
+        if (p) results = [p];
+      }
+    } else {
+      const q = query.toLowerCase();
+      results = await db.products
+        .where('code').anyOf(pantryCodes)
+        .filter(p => p.product_name && p.product_name.toLowerCase().includes(q))
+        .toArray();
+    }
+  } else {
+    if (/^\d+$/.test(query)) {
+      const p = await db.products.get(query);
+      if (p) results = [p];
+    } else {
+      const q = query.toLowerCase();
+      results = await db.products
+        .filter(p => p.product_name && p.product_name.toLowerCase().includes(q))
+        .limit(20).toArray();
+    }
   }
 
   const container = document.getElementById('ingredient-search-results');
