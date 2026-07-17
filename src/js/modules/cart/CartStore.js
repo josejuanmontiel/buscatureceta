@@ -92,27 +92,38 @@ export async function getLastKnownPrice(productCode) {
  */
 export async function checkout() {
   const { items } = await getCart();
+  const warnings = [];
   
   for (const item of items) {
     let stockAmount = item.amount;
     let stockUnit = item.unit;
 
     const product = await db.products.get(item.productCode);
-    if (product && product.product_quantity && item.unit === 'unidad') {
-      const pq = parseFloat(product.product_quantity);
-      if (!isNaN(pq) && pq > 0) {
-        stockAmount = item.amount * pq;
-        // Asumimos 'g' como unidad por defecto para cantidades numéricas extraídas de OFF
-        // A menos que contenga 'ml' o 'l' en el string quantity
-        if (product.quantity && product.quantity.toLowerCase().includes('l')) {
-          stockUnit = 'ml';
-          if (product.quantity.toLowerCase().includes(' l')) {
-             // A veces product_quantity viene en Litros (e.g. 1.5). Si pq < 10 y dice L, multiplicamos por 1000
-             if (pq < 10) stockAmount *= 1000;
+    if (item.unit === 'unidad') {
+      if (product && product.product_quantity) {
+        const pq = parseFloat(product.product_quantity);
+        if (!isNaN(pq) && pq > 0) {
+          stockAmount = item.amount * pq;
+          // Asumimos 'g' como unidad por defecto para cantidades numéricas extraídas de OFF
+          // A menos que contenga 'ml' o 'l' en el string quantity
+          if (product.quantity && product.quantity.toLowerCase().includes('l')) {
+            stockUnit = 'ml';
+            if (product.quantity.toLowerCase().includes(' l')) {
+               // A veces product_quantity viene en Litros (e.g. 1.5). Si pq < 10 y dice L, multiplicamos por 1000
+               if (pq < 10) stockAmount *= 1000;
+            }
+          } else {
+            stockUnit = 'g';
           }
         } else {
+          stockAmount = item.amount * 1000;
           stockUnit = 'g';
+          warnings.push(`- ${item.productName || item.productCode}: cantidad inválida, asumiendo 1kg/unidad.`);
         }
+      } else {
+        stockAmount = item.amount * 1000;
+        stockUnit = 'g';
+        warnings.push(`- ${item.productName || item.productCode}: sin peso registrado, asumiendo 1kg/unidad.`);
       }
     }
 
@@ -120,4 +131,5 @@ export async function checkout() {
   }
   
   await emptyCart();
+  return warnings;
 }

@@ -57,14 +57,58 @@ test.describe('Purchase Flow E2E', () => {
     // 5. Finalizar compra (Checkout)
     await page.click('#btn-checkout');
 
+    // Si salta el modal de pesos (porque salchichas no tiene peso en OFF de prueba), lo rellenamos
+    const missingWeightsModal = page.locator('#modal-missing-weights');
+    try {
+      await expect(missingWeightsModal).toBeVisible({ timeout: 2000 });
+      await page.fill('.missing-weight-input', '350');
+      await page.click('#btn-save-missing-weights');
+    } catch (e) {
+      // Si no salta el modal, continuamos normal
+    }
+
     // Esperar a que nos lleve a la despensa
     await page.waitForURL('**/pantry.html');
     
     // Validar que la tabla de la despensa tiene la compra
-    // Asumiendo que Tabulator o la tabla de despensa dibuja las filas
-    // Esperamos un poco a que cargue Tabulator
     await page.waitForTimeout(1000);
-    // Verificamos que aparece en alguna parte del body
     await expect(page.locator('body')).toContainText(/Salchichas de Pollo/i);
+  });
+
+  test('should prompt for missing weights on checkout for generic products', async ({ page }) => {
+    await page.goto('/index.html');
+    page.on('dialog', dialog => dialog.accept());
+    await page.fill('#filters', 'E250');
+    await page.fill('#database', '/test_products.tsv.zz');
+    await page.click('#download-btn');
+    await page.waitForURL('**/grid.html');
+
+    // Añadir un producto inventado por texto (genérico)
+    await page.fill('#code-input', 'Producto Raro');
+    await page.click('#query-btn');
+    
+    // Al ser texto, salta el confirm() que el test auto-acepta
+    // y se añade como genérico directamente.
+    
+    // Now it's loaded as current
+    await page.fill('#scanned-amount', '2');
+    await page.click('#btn-add-cart');
+
+    // Checkout
+    await page.click('#btn-checkout');
+
+    // Modal de pesos faltantes debe aparecer
+    const missingWeightsModal = page.locator('#modal-missing-weights');
+    await expect(missingWeightsModal).toBeVisible();
+
+    // Rellenar peso
+    await page.fill('.missing-weight-input', '500');
+    await page.click('#btn-save-missing-weights');
+
+    // Finaliza en pantry
+    await page.waitForURL('**/pantry.html');
+    await expect(page.locator('body')).toContainText(/Producto Raro/i);
+    // Verificamos que guardó los 1000g (2 * 500g)
+    await expect(page.locator('body')).toContainText(/1000/i);
   });
 });

@@ -50,6 +50,8 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   // ─────────────────────────────────────────────────────────
   await test.step('🛒 Setup: Load DB with E250 exclusion filter', async () => {
     await page.goto('/index.html');
+    page.on('console', msg => console.log('BROWSER: ' + msg.text()));
+    page.on('pageerror', err => console.log('BROWSER_ERR: ' + err.message));
     page.on('dialog', dialog => dialog.accept());
 
     await page.fill('#filters', 'E250');
@@ -126,6 +128,22 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
 
   await test.step('🏪 Checkout: move full cart to pantry', async () => {
     await page.click('#btn-checkout');
+
+    // El checkout puede mostrar un modal de pesos faltantes o ir directo a despensa
+    try {
+      // Esperamos hasta 2 segundos para ver si salta el modal
+      await page.waitForSelector('#modal-missing-weights.show', { timeout: 2000 });
+      // Si aparece, rellenar todos los inputs de peso
+      const inputs = page.locator('.missing-weight-input');
+      const count = await inputs.count();
+      for (let i = 0; i < count; i++) {
+        await inputs.nth(i).fill('500');
+      }
+      await page.click('#btn-save-missing-weights');
+    } catch (e) {
+      // Ignore si no salta el modal (timeout)
+    }
+
     await page.waitForURL('**/pantry.html');
     await expect(page).toHaveTitle(/Despensa - NutriAgenda/i);
   });
@@ -216,7 +234,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     const todayIndex = day === 0 ? 6 : day - 1;
 
     // Abrir modal de hoy
-    await page.locator('.diary-day button').nth(todayIndex).click();
+    await page.locator('.diary-day').nth(todayIndex).locator('button', { hasText: 'Añadir' }).first().click();
     await expect(page.locator('#mealModal')).toBeVisible();
 
     // La pestaña activa por defecto es "Receta guardada" — seleccionar nuestra receta
@@ -234,7 +252,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await recipeSelect.selectOption({ label: optionText });
 
     // Registrar 1 ración en la cena
-    await page.fill('#meal-recipe-servings', '1');
+    await page.fill('#meal-recipe-amount', '1');
     await page.selectOption('#meal-type', 'dinner');
 
     await page.click('#btn-save-meal');
@@ -255,7 +273,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.waitForTimeout(1000); // Wait for previous modal to fully close
 
     // Abrir modal del segundo día (mañana)
-    await page.locator('.diary-day button').nth(tomorrowIndex).click();
+    await page.locator('.diary-day').nth(tomorrowIndex).locator('button', { hasText: 'Añadir' }).first().click();
     await expect(page.locator('#mealModal')).toBeVisible();
 
     // Cambiar al tab de producto

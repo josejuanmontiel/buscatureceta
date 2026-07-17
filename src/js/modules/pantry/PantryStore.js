@@ -101,13 +101,18 @@ export async function getPantryInventory() {
   const pantryItems = await db.pantry.filter(i => i.amount > 0).toArray();
   const codes = pantryItems.map(i => i.productCode);
   
-  // Buscar nombres
+  // Buscar nombres y cantidades
   const products = await db.products.where('code').anyOf(codes).toArray();
   const productMap = {};
-  products.forEach(p => { productMap[p.code] = p.product_name; });
+  const quantityMap = {};
+  products.forEach(p => { 
+    productMap[p.code] = p.product_name; 
+    quantityMap[p.code] = p.quantity || (p.product_quantity ? p.product_quantity + 'g' : '');
+  });
 
   return pantryItems.map(item => ({
     ...item,
-    productName: productMap[item.productCode] || 'Producto Desconocido'
+    productName: productMap[item.productCode] || 'Producto Desconocido',
+    productQuantity: quantityMap[item.productCode] || ''
   }));
 }

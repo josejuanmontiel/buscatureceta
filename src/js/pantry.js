@@ -63,7 +63,7 @@ async function loadPantry(query = '') {
       <div class="pantry-card d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="window.openProductDetail(event, '${item.productCode}', ${item.amount}, '${item.unit}')">
         <div class="me-3" style="flex: 1; min-width: 0;" title="${item.productName}">
           <h5 class="mb-1 text-wrap text-break">${item.productName}</h5>
-          <small class="text-muted">${item.productCode}</small>
+          <small class="text-muted">${item.productCode}${item.productQuantity ? ' - ' + item.productQuantity : ''}</small>
         </div>
         <div class="text-end" style="flex-shrink: 0;">
           <h4 class="mb-0 text-success">${item.amount} <small class="fs-6">${item.unit}</small></h4>
@@ -149,7 +149,12 @@ window.openProductDetail = async function(event, code, amount, unit) {
   const movements = await db.pantryLog.where('productCode').equals(code).reverse().sortBy('date');
 
   document.getElementById('detail-product-name').innerText = product && product.product_name ? product.product_name : 'Producto Desconocido';
-  document.getElementById('detail-product-code').innerText = code;
+  
+  let productQuantity = '';
+  if (product) {
+    productQuantity = product.quantity || (product.product_quantity ? product.product_quantity + 'g' : '');
+  }
+  document.getElementById('detail-product-code').innerText = code + (productQuantity ? ` - ${productQuantity}` : '');
   document.getElementById('detail-product-stock').innerText = `${amount} ${unit}`;
 
   let nutriscoreHtml = '';

@@ -2,6 +2,7 @@ import { db, migrateFromLegacyDB } from './db/schema.js';
 import * as CartStore from './modules/cart/CartStore.js';
 import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
 import { saveImageToPendingUploads, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
+import { Modal } from 'bootstrap';
 
 let currentScannedProduct = null;
 let capturedImageBlob = null;
@@ -185,9 +186,75 @@ async function handleCheckout() {
     const { items } = await CartStore.getCart();
     if (items.length === 0) return alert('El carro está vacío');
 
-    if (confirm(`¿Terminar compra y mover ${items.length} productos a la despensa?`)) {
-        await CartStore.checkout();
-        alert('¡Compra guardada en Despensa!');
+    const missingWeights = [];
+    for (const item of items) {
+        if (item.unit === 'unidad') {
+            const product = await db.products.get(item.productCode);
+            if (!product || !product.product_quantity || isNaN(parseFloat(product.product_quantity)) || parseFloat(product.product_quantity) <= 0) {
+                missingWeights.push({ item, product });
+            }
+        }
+    }
+
+    if (missingWeights.length > 0) {
+        const form = document.getElementById('missing-weights-form');
+        form.innerHTML = missingWeights.map(mw => `
+            <div class="mb-3">
+                <label class="form-label small">${mw.product?.product_name || mw.item.productName || mw.item.productCode}</label>
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control missing-weight-input" data-code="${mw.item.productCode}" placeholder="Ej: 500" min="1" required>
+                    <span class="input-group-text">g/ml</span>
+                </div>
+            </div>
+        `).join('');
+
+        const modalEl = document.getElementById('modal-missing-weights');
+        const modal = Modal.getOrCreateInstance(modalEl);
+        modal.show();
+
+        document.getElementById('btn-save-missing-weights').onclick = async () => {
+            const inputs = form.querySelectorAll('.missing-weight-input');
+            let allValid = true;
+            for (const input of inputs) {
+                if (!input.value || parseFloat(input.value) <= 0) {
+                    allValid = false;
+                    input.classList.add('is-invalid');
+                } else {
+                    input.classList.remove('is-invalid');
+                }
+            }
+
+            if (!allValid) return;
+
+            // Save weights to db.products
+            for (const input of inputs) {
+                const code = input.dataset.code;
+                const weightStr = parseFloat(input.value).toString();
+                const p = await db.products.get(code);
+                if (p) {
+                    await db.products.update(code, { product_quantity: weightStr });
+                } else {
+                    // Create minimal entry if it doesn't exist
+                    await db.products.add({ code: code, product_name: 'Producto ' + code, product_quantity: weightStr });
+                }
+            }
+
+            modal.hide();
+            await performCheckout(items.length);
+        };
+    } else {
+        await performCheckout(items.length);
+    }
+}
+
+async function performCheckout(itemCount) {
+    if (confirm(`¿Terminar compra y mover ${itemCount} productos a la despensa?`)) {
+        const warnings = await CartStore.checkout();
+        let msg = '¡Compra guardada en Despensa!';
+        if (warnings && warnings.length > 0) {
+            msg += "\n\n⚠️ Atención:\n" + warnings.join("\n") + "\n\nSe ha asumido 1kg para los que no tenían peso.";
+        }
+        alert(msg);
         window.location.href = 'pantry.html';
     }
 }
@@ -324,7 +391,7 @@ function initCredentialsModal() {
     btnOpen.addEventListener('click', () => {
         populateCredentialsForm();
         // Bootstrap 5 Modal
-        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const bsModal = Modal.getOrCreateInstance(modalEl);
         bsModal.show();
     });
 

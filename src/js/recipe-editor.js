@@ -68,6 +68,7 @@ async function loadRecipe(id) {
   vBadge.style.display = 'inline';
 
   document.getElementById('btn-delete-recipe').style.display = 'inline-block';
+  document.getElementById('btn-duplicate-recipe').style.display = 'inline-block';
 
   renderIngredients();
   renderTags();
@@ -87,6 +88,31 @@ function bindEvents() {
     await RecipeStore.deleteRecipe(recipeId);
     showToast('Receta eliminada');
     setTimeout(() => { window.location.href = 'recipes.html'; }, 800);
+  });
+
+  // Duplicar
+  document.getElementById('btn-duplicate-recipe').addEventListener('click', async () => {
+    if (!recipeId) return;
+    const recipe = await RecipeStore.getRecipeById(recipeId);
+    if (!recipe) return;
+    const duplicateData = {
+      name: recipe.name + ' (Copia)',
+      servings: recipe.servings,
+      description: recipe.description,
+      instructions: recipe.instructions,
+      notes: recipe.notes,
+      tags: recipe.tags ? [...recipe.tags] : [],
+      ingredients: recipe.ingredients ? JSON.parse(JSON.stringify(recipe.ingredients)) : [],
+      nutritionPerServing: recipe.nutritionPerServing,
+      photoBlob: recipe.photoBlob || null
+    };
+    try {
+      const newId = await RecipeStore.createRecipe(duplicateData);
+      showToast('Receta duplicada');
+      setTimeout(() => { window.location.href = `recipe-editor.html?id=${newId}`; }, 800);
+    } catch (err) {
+      showToast('Error al duplicar: ' + err.message, true);
+    }
   });
 
   // Buscador de ingredientes

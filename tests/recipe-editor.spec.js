@@ -58,6 +58,40 @@ test.describe('Recipe Editor Flow', () => {
     expect(instructions).toBe('Paso 1: Pelar patatas.');
   });
 
+  test('should duplicate an existing recipe', async ({ page }) => {
+    // 1. Navegar a nueva receta y crearla
+    await page.goto('/recipe-editor.html');
+    await page.fill('#recipe-name', 'Macarrones con Tomate');
+    await page.fill('#recipe-servings', '2');
+    await page.click('#btn-save-recipe');
+
+    // Esperar a que se asigne ID
+    await page.waitForURL('**/recipe-editor.html?id=*');
+
+    // Comprobar que aparece el botón de duplicar
+    const btnDuplicate = page.locator('#btn-duplicate-recipe');
+    await expect(btnDuplicate).toBeVisible();
+
+    // Capturar la URL original
+    const originalUrl = page.url();
+
+    // Pulsar botón de duplicar
+    await btnDuplicate.click();
+
+    // Esperar a la recarga en la nueva receta duplicada (el toast tiene 800ms)
+    await page.waitForTimeout(1500);
+
+    // Comprobar que estamos en otra URL distinta
+    const newUrl = page.url();
+    expect(newUrl).not.toBe(originalUrl);
+
+    // Comprobar que el nombre es la copia
+    const duplicatedName = await page.inputValue('#recipe-name');
+    expect(duplicatedName).toBe('Macarrones con Tomate (Copia)');
+    const duplicatedServings = await page.inputValue('#recipe-servings');
+    expect(duplicatedServings).toBe('2');
+  });
+
   test('should only find products in pantry when filter is checked', async ({ page }) => {
     await loadTestDB(page);
 

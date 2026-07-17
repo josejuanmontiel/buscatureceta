@@ -169,6 +169,7 @@ window.openMealModal = async function(dayKey) {
   currentSelectedDate = dayKey;
   document.getElementById('meal-date').value = dayKey;
   document.getElementById('meal-form').reset();
+  document.getElementById('meal-type').value = getDefaultMealType();
   document.getElementById('meal-product-results').innerHTML = '';
   document.getElementById('meal-product-selected').value = '';
   
@@ -249,29 +250,59 @@ async function searchProduct() {
   const query = document.getElementById('meal-product-search').value.trim();
   if (!query) return;
 
-  const qLower = query.toLowerCase();
-  const results = await db.products
-    .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower) || p.code === query)
-    .limit(10)
-    .toArray();
+  const spinner = document.getElementById('meal-search-spinner');
+  if (spinner) spinner.classList.remove('d-none');
 
-  let html = results.map(p => `
-    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-            onclick="window.selectProduct('${p.code}', '${p.product_name?.replace(/'/g, "\\'")}')">
-      ${p.product_name || 'Sin nombre'}
-    </button>
-  `).join('');
+  try {
+    const qLower = query.toLowerCase();
+    const searchPantryOnly = document.getElementById('meal-search-pantry-only')?.checked;
+    
+    let results = [];
+    if (searchPantryOnly) {
+      const pantryItems = await db.pantry.toArray();
+      const pantryCodes = Array.from(new Set(pantryItems.map(item => item.productCode)));
+      
+      if (/^\d+$/.test(query)) {
+        if (pantryCodes.includes(query)) {
+          const p = await db.products.get(query);
+          if (p) results = [p];
+        }
+      } else {
+        results = await db.products
+          .where('code').anyOf(pantryCodes)
+          .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower))
+          .toArray();
+      }
+    } else {
+      if (/^\d+$/.test(query)) {
+        const p = await db.products.get(query);
+        if (p) results = [p];
+      } else {
+        results = await db.products
+          .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower))
+          .limit(10)
+          .toArray();
+      }
+    }
 
-  // Botón para añadir como genérico
-  html += `
-    <button type="button" class="list-group-item list-group-item-action list-group-item-warning"
-            onclick="window.addGenericProduct('${query.replace(/'/g, "\\'")}')">
-      <em>➕ Añadir "${query}" como genérico sin código...</em>
-    </button>
-  `;
+    let html = '';
+    if (results.length === 0) {
+      html = '<div class="list-group-item text-muted small">Sin resultados.</div>';
+    } else {
+      html = results.map(p => `
+        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                onclick="window.selectProduct('${p.code}', '${p.product_name?.replace(/'/g, "\\'")}')">
+          <span class="small">${p.product_name || 'Sin nombre'}</span>
+          <span class="badge bg-secondary">${p.code}</span>
+        </button>
+      `).join('');
+    }
 
-  const container = document.getElementById('meal-product-results');
-  container.innerHTML = html;
+    const container = document.getElementById('meal-product-results');
+    container.innerHTML = html;
+  } finally {
+    if (spinner) spinner.classList.add('d-none');
+  }
 }
 
 window.addGenericProduct = async function(name) {
@@ -419,7 +450,7 @@ async function saveMeal() {
 window.openDiaryPhotoModal = async function(dayKey) {
   diaryPhotoCapturedBlob = null;
   document.getElementById('diary-photo-date').value = dayKey;
-  document.getElementById('diary-photo-meal-type').value = '';
+  document.getElementById('diary-photo-meal-type').value = getDefaultMealType();
   document.getElementById('diary-photo-preview-section').style.display = 'none';
   document.getElementById('diary-camera-section').style.display = 'block';
   document.getElementById('btn-diary-save-photo').disabled = true;
@@ -503,4 +534,12 @@ async function updateDiaryPhotoBadge() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+function getDefaultMealType() {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 12) return 'breakfast';
+  if (hour >= 12 && hour < 16) return 'lunch';
+  if (hour >= 16 && hour < 20) return 'snack';
+  return 'dinner';
 }

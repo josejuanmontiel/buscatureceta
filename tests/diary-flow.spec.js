@@ -149,7 +149,7 @@ test.describe('Diary (Agenda) Flow', () => {
     await expect(photoModal).not.toBeVisible();
   });
 
-  test('should allow adding generic products from search by clicking the add generic button', async ({ page }) => {
+  test('should allow adding generic products by clicking the generic button', async ({ page }) => {
     await loadTestDB(page);
     await page.goto('/diary.html');
 
@@ -160,16 +160,11 @@ test.describe('Diary (Agenda) Flow', () => {
     await page.click('#tab-product');
     await page.waitForTimeout(300);
 
-    // Search for a product that DOES NOT exist in the db
     await page.fill('#meal-product-search', 'Plátano de Canarias Inventado');
-    await page.click('#btn-search-meal-product');
 
-    // The button to add it as generic should appear
-    const genericBtn = page.locator('#meal-product-results button').filter({ hasText: 'como genérico sin código' });
+    // The new button is outside search results
+    const genericBtn = page.locator('button', { hasText: '+ Genérico rápido' });
     await expect(genericBtn).toBeVisible();
-
-    // Accept the confirm dialog
-    // dialog handled by loadTestDB
     
     // Click the button
     await genericBtn.click();
@@ -180,6 +175,24 @@ test.describe('Diary (Agenda) Flow', () => {
     
     const value = await selectedInput.inputValue();
     expect(value).toContain('GENERIC_');
+  });
+
+  test('should have updated UI elements (pantry check, collapsed hunger)', async ({ page }) => {
+    await loadTestDB(page);
+    await page.goto('/diary.html');
+
+    const addBtn = page.locator('.diary-day button').first();
+    await addBtn.click();
+    await expect(page.locator('#mealModal')).toBeVisible();
+    await page.click('#tab-product');
+
+    // Pantry check
+    const pantryCheck = page.locator('#meal-search-pantry-only');
+    await expect(pantryCheck).toBeVisible();
+
+    // Details for hunger
+    const details = page.locator('details summary', { hasText: 'Opciones opcionales' });
+    await expect(details).toBeVisible();
   });
 
   test('should display editable ingredients when logging a recipe with grams', async ({ page }) => {

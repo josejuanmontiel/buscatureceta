@@ -140,9 +140,20 @@
                 <div class="tab-pane fade" id="pane-product">
                   <div class="input-group mb-2">
                     <input type="text" id="meal-product-search" class="form-control" placeholder="Buscar por nombre o escanear...">
-                    <button class="btn btn-outline-secondary" type="button" id="btn-scan-meal" title="Escanear código"><i class="bi bi-upc-scan"></i></button>
-                    <button class="btn btn-outline-secondary" type="button" id="btn-search-meal-product">Buscar</button>
+                    <button class="btn btn-outline-secondary" type="button" id="btn-scan-meal" title="Escanear código">📷</button>
+                    <button class="btn btn-outline-secondary" type="button" id="btn-search-meal-product">
+                      <span id="meal-search-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span> Buscar
+                    </button>
                   </div>
+                  
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="meal-search-pantry-only">
+                      <label class="form-check-label small" for="meal-search-pantry-only">Solo en mi despensa</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-warning" type="button" onclick="window.addGenericProduct(document.getElementById('meal-product-search').value || 'Genérico')">+ Genérico rápido</button>
+                  </div>
+
                   <div id="meal-product-results" class="list-group mb-2" style="max-height: 100px; overflow-y: auto;"></div>
                   <input type="hidden" id="meal-product-selected">
                   
@@ -152,11 +163,14 @@
               </div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">Hambre antes de comer (opcional)</label>
-              <input type="range" class="form-range" id="meal-hunger" min="1" max="10" value="5">
-              <div class="d-flex justify-content-between"><small>Poca</small><small>Mucha</small></div>
-            </div>
+            <details class="mb-3">
+              <summary class="form-label text-info" style="cursor:pointer;">Opciones opcionales (Hambre, notas...)</summary>
+              <div class="mt-2 border border-secondary p-2 rounded bg-dark">
+                <label class="form-label small">Hambre antes de comer</label>
+                <input type="range" class="form-range" id="meal-hunger" min="1" max="10" value="5">
+                <div class="d-flex justify-content-between"><small>Poca</small><small>Mucha</small></div>
+              </div>
+            </details>
 
             <div class="form-check mb-3">
               <input class="form-check-input" type="checkbox" id="meal-deduct-pantry" checked>

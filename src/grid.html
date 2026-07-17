@@ -194,6 +194,28 @@
     </div>
   </div>
 
+  <!-- Modal: Missing Weights -->
+  <div class="modal fade" id="modal-missing-weights" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title">⚖️ Faltan Pesos</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-start">
+          <p class="small text-muted mb-3">Los siguientes productos no tienen peso registrado en la base de datos. Por favor, indícalo (en gramos) para que el inventario funcione correctamente.</p>
+          <form id="missing-weights-form">
+            <!-- Injected by JS -->
+          </form>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-save-missing-weights">Guardar y Continuar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 
 </html>
