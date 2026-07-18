@@ -1,3 +1,4 @@
+import * as ProductStore from "./modules/products/ProductStore.js";
 import { db, migrateFromLegacyDB } from './db/schema.js';
 import * as CartStore from './modules/cart/CartStore.js';
 import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
@@ -60,14 +61,14 @@ async function handleSearch() {
 
     // Si no es un número (código), buscar por nombre en local
     if (!/^\d+$/.test(query)) {
-        const qLower = query.toLowerCase();
-        const p = await db.products.filter(pr => pr.product_name && pr.product_name.toLowerCase().includes(qLower)).first();
+        const res = await ProductStore.searchProducts(qLower, 1);
+        const p = res.length > 0 ? res[0] : null;
         if (p) {
             query = p.code;
         } else {
             if (confirm(`No se encontró "${query}" en la base de datos local.\n¿Quieres añadirlo como producto genérico sin código de barras al carrito?`)) {
                 const genericCode = 'GENERIC_' + Date.now();
-                await db.products.add({
+                await ProductStore.addCustomProduct({
                     code: genericCode,
                     product_name: query,
                     ingredients_text: '',
@@ -189,7 +190,7 @@ async function handleCheckout() {
     const missingWeights = [];
     for (const item of items) {
         if (item.unit === 'unidad') {
-            const product = await db.products.get(item.productCode);
+            const product = await ProductStore.getProductByCode(item.productCode);
             if (!product || !product.product_quantity || isNaN(parseFloat(product.product_quantity)) || parseFloat(product.product_quantity) <= 0) {
                 missingWeights.push({ item, product });
             }
@@ -230,12 +231,16 @@ async function handleCheckout() {
             for (const input of inputs) {
                 const code = input.dataset.code;
                 const weightStr = parseFloat(input.value).toString();
-                const p = await db.products.get(code);
+                const p = await ProductStore.getProductByCode(code);
                 if (p) {
-                    await db.products.update(code, { product_quantity: weightStr });
+                    if (p.is_custom) {
+                        await db.customProducts.update(code, { product_quantity: weightStr });
+                    } else {
+                        await db.products.update(code, { product_quantity: weightStr });
+                    }
                 } else {
                     // Create minimal entry if it doesn't exist
-                    await db.products.add({ code: code, product_name: 'Producto ' + code, product_quantity: weightStr });
+                    await ProductStore.addCustomProduct({ code: code, product_name: 'Producto ' + code, product_quantity: weightStr });
                 }
             }
 

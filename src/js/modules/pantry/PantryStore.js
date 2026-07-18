@@ -1,3 +1,4 @@
+import * as ProductStore from "../products/ProductStore.js";
 /**
  * PantryStore — Control de Despensa (Stock e Historial de Movimientos)
  */
@@ -102,7 +103,7 @@ export async function getPantryInventory() {
   const codes = pantryItems.map(i => i.productCode);
   
   // Buscar nombres y cantidades
-  const products = await db.products.where('code').anyOf(codes).toArray();
+  const products = await ProductStore.getProductsByCodes(codes);
   const productMap = {};
   const quantityMap = {};
   products.forEach(p => { 

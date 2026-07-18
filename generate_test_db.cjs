@@ -2,7 +2,7 @@ const fs = require('fs');
 const zlib = require('zlib');
 
 const headers = [
-  'code', 'product_name', 'nutriscore_grade', 'additives_tags', 'ingredients_text',
+  'code', 'product_name', 'brands', 'nutriscore_grade', 'additives_tags', 'ingredients_text',
   'energy-kcal_100g', 'proteins_100g', 'carbohydrates_100g', 'fat_100g', 'quantity', 'product_quantity'
 ];
 
@@ -55,6 +55,19 @@ const products = [
     fat_100g: '3.6',
     quantity: '1 L',
     product_quantity: '1000'
+  },
+  {
+    code: '8410014413611',
+    product_name: 'Tosta Rica',
+    brands: 'Cuétara',
+    nutriscore_grade: 'unknown',
+    additives_tags: '',
+    'energy-kcal_100g': '460',
+    proteins_100g: '6',
+    carbohydrates_100g: '72',
+    fat_100g: '16',
+    quantity: '570g',
+    product_quantity: '570'
   }
 ];
 

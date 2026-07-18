@@ -1,3 +1,4 @@
+import * as ProductStore from "../products/ProductStore.js";
 import { db } from '../../db/schema.js';
 import * as CartStore from '../cart/CartStore.js';
 
@@ -6,7 +7,7 @@ import * as CartStore from '../cart/CartStore.js';
  * y, si no lo es, devuelve una advertencia y posibles alternativas.
  */
 export async function analyzeProductForCart(productCode) {
-  const product = await db.products.get(productCode);
+  const product = await ProductStore.getProductByCode(productCode);
   if (!product) return { status: 'not_found' };
 
   const rawFilters = localStorage.getItem("filters");

@@ -72,7 +72,7 @@ Tras haber consolidado el flujo principal de *Compra → Despensa → Ingesta* (
 - [ ] **Compartición P2P:** Aprovechar WebRTC/PeerJS (experiencia de "pingo") para compartir la despensa o la lista de la compra entre miembros de la misma familia sin pasar por un servidor centralizado.
 - [ ] **Adaptadores externos de Recetas:** Conectores (solo lectura) para importar recetas estructuradas desde APIs como Mealie o Tandoor si el usuario tiene su propio servidor casero.
 - [ ] **Export/Import de Privacidad:** Mecanismo robusto para descargar toda tu vida nutricional en un archivo JSON y llevártela a otro dispositivo.
-
+E
 ---
 
 ## Flujo End-to-End (E2E) Automatizado

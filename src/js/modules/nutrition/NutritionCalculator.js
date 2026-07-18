@@ -1,3 +1,4 @@
+import * as ProductStore from "../products/ProductStore.js";
 /**
  * NutritionCalculator — Cálculo de valores nutricionales por receta
  *
@@ -83,7 +84,7 @@ export async function calculateTotalNutrition(ingredients) {
     const grams = toGrams(ingredient.amount, ingredient.unit);
     if (grams === null) continue; // unidad no calculable
 
-    const product = await db.products.get(ingredient.productCode);
+    const product = await ProductStore.getProductByCode(ingredient.productCode);
     if (!product) continue; // producto no en IndexedDB
 
     for (const [field, offKey] of Object.entries(OFF_FIELD_MAP)) {

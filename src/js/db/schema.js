@@ -171,6 +171,29 @@ db.version(6).stores({
   mealPhotos: '++id, date, mealType, status',
 });
 
+// ── v7: Base de Datos Local Personalizada (Custom Products) ──────────────────
+db.version(7).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+
+  /**
+   * customProducts — Productos genéricos creados por el usuario
+   *
+   * Estos productos sobreviven a la recarga de la BD de OpenFoodFacts
+   * y pueden ser editados localmente.
+   */
+  customProducts: 'code, product_name',
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

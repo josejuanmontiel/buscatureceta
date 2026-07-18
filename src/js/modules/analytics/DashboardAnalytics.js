@@ -1,3 +1,4 @@
+import * as ProductStore from "../products/ProductStore.js";
 import { db, DEFAULT_GOALS, FOOD_GROUPS } from '../../db/schema.js';
 import * as DiaryStore from '../diary/DiaryStore.js';
 
@@ -68,7 +69,7 @@ export async function getWeeklyVariety(referenceDate = new Date()) {
     groupCounts[groupKey] = 0;
   }
 
-  const products = await db.products.where('code').anyOf([...consumedProductCodes]).toArray();
+  const products = await ProductStore.getProductsByCodes([...consumedProductCodes]);
   
   products.forEach(p => {
     const tagsStr = (p.categories_tags || '').toLowerCase();

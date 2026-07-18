@@ -1,3 +1,4 @@
+import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
@@ -87,15 +88,12 @@ async function searchProduct() {
   let results = [];
   if (/^\d+$/.test(query)) {
     // Es código de barras
-    const p = await db.products.get(query);
+    const p = await ProductStore.getProductByCode(query);
     if (p) results = [p];
   } else {
     // Es nombre (búsqueda parcial case-insensitive, max 20 resultados)
     const qLower = query.toLowerCase();
-    results = await db.products
-      .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower))
-      .limit(20)
-      .toArray();
+    results = await ProductStore.searchProducts(qLower, 20);
   }
 
   const resultContainer = document.getElementById('product-search-results');

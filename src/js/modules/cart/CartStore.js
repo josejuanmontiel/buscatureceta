@@ -1,3 +1,4 @@
+import * as ProductStore from "../products/ProductStore.js";
 /**
  * CartStore — Control del Carrito de la Compra e Historial de Precios
  */
@@ -55,7 +56,7 @@ export async function getCart() {
   let total = 0;
   
   const codes = items.map(i => i.productCode);
-  const products = await db.products.where('code').anyOf(codes).toArray();
+  const products = await ProductStore.getProductsByCodes(codes);
   const productMap = {};
   products.forEach(p => { productMap[p.code] = p.product_name; });
 
@@ -98,7 +99,7 @@ export async function checkout() {
     let stockAmount = item.amount;
     let stockUnit = item.unit;
 
-    const product = await db.products.get(item.productCode);
+    const product = await ProductStore.getProductByCode(item.productCode);
     if (item.unit === 'unidad') {
       if (product && product.product_quantity) {
         const pq = parseFloat(product.product_quantity);

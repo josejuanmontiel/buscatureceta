@@ -1,3 +1,4 @@
+import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as DiaryStore from './modules/diary/DiaryStore.js';
@@ -290,24 +291,19 @@ async function searchProduct() {
       
       if (/^\d+$/.test(query)) {
         if (pantryCodes.includes(query)) {
-          const p = await db.products.get(query);
+          const p = await ProductStore.getProductByCode(query);
           if (p) results = [p];
         }
       } else {
-        results = await db.products
-          .where('code').anyOf(pantryCodes)
-          .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower))
-          .toArray();
+        const pResults = await ProductStore.searchProducts(qLower, 50);
+        results = pResults.filter(p => pantryCodes.includes(p.code));
       }
     } else {
       if (/^\d+$/.test(query)) {
-        const p = await db.products.get(query);
+        const p = await ProductStore.getProductByCode(query);
         if (p) results = [p];
       } else {
-        results = await db.products
-          .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower))
-          .limit(10)
-          .toArray();
+        results = await ProductStore.searchProducts(qLower, 10);
       }
     }
 
@@ -332,9 +328,9 @@ async function searchProduct() {
 }
 
 window.addGenericProduct = async function(name) {
-  if (!confirm(`¿Quieres añadir "${name}" como producto genérico sin código de barras a la base de datos local?`)) return;
+  if (!confirm(`¿Quieres añadir "${name}" como producto genérico sin código de barras a tu Base de Datos Personal?`)) return;
   const genericCode = 'GENERIC_' + Date.now();
-  await db.products.add({
+  await ProductStore.addCustomProduct({
       code: genericCode,
       product_name: name,
       ingredients_text: '',
@@ -420,7 +416,7 @@ async function saveMeal() {
     
     if (!code) return alert('Busca y selecciona un producto');
     
-    const product = await db.products.get(code);
+    const product = await ProductStore.getProductByCode(code);
     if (!product) return alert('Error al cargar producto');
     
     const nutrition = await NutritionCalc.calculateTotalNutrition([

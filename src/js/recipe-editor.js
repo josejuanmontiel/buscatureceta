@@ -1,3 +1,4 @@
+import * as ProductStore from "./modules/products/ProductStore.js";
 /**
  * recipe-editor.js — Lógica del editor completo de recetas
  *
@@ -229,25 +230,21 @@ async function searchIngredient() {
     
     if (/^\d+$/.test(query)) {
       if (pantryCodes.includes(query)) {
-        const p = await db.products.get(query);
+        const p = await ProductStore.getProductByCode(query);
         if (p) results = [p];
       }
     } else {
       const q = query.toLowerCase();
-      results = await db.products
-        .where('code').anyOf(pantryCodes)
-        .filter(p => p.product_name && p.product_name.toLowerCase().includes(q))
-        .toArray();
+      const searchRes = await ProductStore.searchProducts(q, 50);
+      results = searchRes.filter(p => pantryCodes.includes(p.code));
     }
   } else {
     if (/^\d+$/.test(query)) {
-      const p = await db.products.get(query);
+      const p = await ProductStore.getProductByCode(query);
       if (p) results = [p];
     } else {
       const q = query.toLowerCase();
-      results = await db.products
-        .filter(p => p.product_name && p.product_name.toLowerCase().includes(q))
-        .limit(20).toArray();
+      results = await ProductStore.searchProducts(q, 20);
     }
   }
 

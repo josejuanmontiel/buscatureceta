@@ -1,3 +1,4 @@
+import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
@@ -79,10 +80,7 @@ async function searchProduct() {
   if (!query) return;
 
   const qLower = query.toLowerCase();
-  const results = await db.products
-    .filter(p => p.product_name && p.product_name.toLowerCase().includes(qLower) || p.code === query)
-    .limit(10)
-    .toArray();
+  const results = await ProductStore.searchProducts(qLower, 10);
 
   const container = document.getElementById('stock-product-results');
   container.innerHTML = results.map(p => `
@@ -145,7 +143,7 @@ window.openProductDetail = async function(event, code, amount, unit) {
     return;
   }
   
-  const product = await db.products.get(code);
+  const product = await ProductStore.getProductByCode(code);
   const movements = await db.pantryLog.where('productCode').equals(code).reverse().sortBy('date');
 
   document.getElementById('detail-product-name').innerText = product && product.product_name ? product.product_name : 'Producto Desconocido';

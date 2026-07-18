@@ -1,39 +1,75 @@
 import { db } from './db/schema.js';
+import * as ProductStore from './modules/products/ProductStore.js';
+
+let table;
+let currentDb = 'official'; // 'official' o 'custom'
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Mostrar recuento total rápido
-    const count = await db.products.count();
-    document.getElementById('db-count').textContent = `${count} productos`;
+    await updateCount();
 
-    if (count === 0) {
-        document.getElementById('db-table').innerHTML = '<div class="alert alert-warning">La base de datos está vacía. Ve a "Inicio" para cargarla.</div>';
-        return;
-    }
+    // Configuración de columnas base
+    const columns = [
+        { title: "Código", field: "code", width: 150, headerFilter: "input", editable: false },
+        { title: "Nombre", field: "product_name", headerFilter: "input", editable: false },
+        { title: "Marcas", field: "brands", width: 150, headerFilter: "input", editable: false },
+        { title: "Nutriscore", field: "nutriscore_grade", width: 100, formatter: "uppercase", hozAlign: "center", editable: false },
+        { title: "Energía (kcal)", field: "energy-kcal_100g", width: 120, hozAlign: "right", editable: false },
+        { title: "Proteínas", field: "proteins_100g", width: 100, hozAlign: "right", editable: false },
+        { title: "Carbohidratos", field: "carbohydrates_100g", width: 120, hozAlign: "right", editable: false },
+        { title: "Grasas", field: "fat_100g", width: 100, hozAlign: "right", editable: false }
+    ];
 
-    // 2. Cargar los primeros 1000 registros para no bloquear la UI si son 400k
-    // (En una app real con millones de filas, Tabulator puede usar Ajax/Pagination directamente contra IndexedDB,
-    // pero para nuestro caso, limitamos la vista inicial para rendimiento).
-    const initialData = await db.products.limit(1000).toArray();
-
-    // 3. Inicializar Tabulator
-    const table = new Tabulator("#db-table", {
-        data: initialData,
+    // Inicializar Tabulator
+    table = new Tabulator("#db-table", {
+        data: [], // Se carga luego
         layout: "fitColumns",
         responsiveLayout: "collapse",
         pagination: "local",
         paginationSize: 50,
         placeholder: "No hay datos disponibles",
-        columns: [
-            { title: "Código", field: "code", width: 150, headerFilter: "input" },
-            { title: "Nombre", field: "product_name", headerFilter: "input" },
-            { title: "Marcas", field: "brands", width: 150, headerFilter: "input" },
-            { title: "Nutriscore", field: "nutriscore_grade", width: 100, formatter: "uppercase", hozAlign: "center" },
-            { title: "Energía (kcal)", field: "energy-kcal_100g", width: 120, hozAlign: "right" },
-            { title: "Nova", field: "nova_group", width: 80, hozAlign: "center" }
-        ],
+        columns: columns,
     });
 
-    // 4. Búsqueda manual contra IndexedDB para saltar el límite de 1000
+    // Evento de edición de celdas (solo afecta a custom)
+    table.on("cellEdited", async function(cell) {
+        if (currentDb !== 'custom') return;
+        const rowData = cell.getRow().getData();
+        const field = cell.getField();
+        const newVal = cell.getValue();
+
+        try {
+            await ProductStore.updateCustomProduct(rowData.code, { [field]: newVal });
+            showToast(`Actualizado ${field}. Sincronizando con agenda...`);
+        } catch (err) {
+            alert('Error al guardar: ' + err.message);
+        }
+    });
+
+    // Cargar datos iniciales
+    await loadTableData();
+
+    // Toggle de BD
+    document.querySelectorAll('input[name="dbtype"]').forEach(radio => {
+        radio.addEventListener('change', async (e) => {
+            currentDb = e.target.value;
+            await updateCount();
+            
+            // Si es custom, hacer editables las columnas nutricionales y el nombre
+            const isCustom = currentDb === 'custom';
+            const newCols = columns.map(col => {
+                if (['energy-kcal_100g', 'proteins_100g', 'carbohydrates_100g', 'fat_100g', 'product_name', 'brands'].includes(col.field)) {
+                    return { ...col, editor: isCustom ? "input" : false, editable: isCustom };
+                }
+                return col;
+            });
+            table.setColumns(newCols);
+            
+            document.getElementById('db-search').value = '';
+            await loadTableData();
+        });
+    });
+
+    // Búsqueda
     const searchInput = document.getElementById('db-search');
     let searchTimeout;
 
@@ -42,23 +78,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         const term = e.target.value.trim().toLowerCase();
 
         searchTimeout = setTimeout(async () => {
-            if (term.length < 3 && term.length > 0) return; // Esperar al menos 3 caracteres
+            if (term.length < 3 && term.length > 0) return;
 
             let results = [];
+            const targetDb = currentDb === 'custom' ? db.customProducts : db.products;
+
             if (term.length === 0) {
-                // Volver a los primeros 1000
-                results = await db.products.limit(1000).toArray();
-            } else if (/^\d+$/.test(term)) {
-                // Si son números, buscar por código exacto o que empiece por...
-                // Dexie no soporta 'startsWith' nativo en strings a menos que usemos bounds.
-                // Lo más fácil es filtrar.
-                results = await db.products.filter(p => p.code && String(p.code).includes(term)).limit(500).toArray();
+                results = await targetDb.limit(1000).toArray();
             } else {
-                // Buscar por nombre
-                results = await db.products.filter(p => p.product_name && p.product_name.toLowerCase().includes(term)).limit(500).toArray();
+                const terms = term.split(' ').filter(t => t.length > 0);
+                results = await targetDb.filter(p => {
+                    const name = (p.product_name || '').toLowerCase();
+                    const brand = (p.brands || '').toLowerCase();
+                    const code = (p.code || '').toLowerCase();
+                    return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
+                }).limit(500).toArray();
             }
 
             table.replaceData(results);
-        }, 500); // Debounce de 500ms
+        }, 500);
     });
 });
+
+async function loadTableData() {
+    const targetDb = currentDb === 'custom' ? db.customProducts : db.products;
+    const initialData = await targetDb.limit(1000).toArray();
+    table.replaceData(initialData);
+}
+
+async function updateCount() {
+    const count = currentDb === 'custom' ? await db.customProducts.count() : await db.products.count();
+    document.getElementById('db-count').textContent = `${count} productos`;
+}
+
+// Pequeño toast para el visor
+function showToast(msg) {
+    let toast = document.getElementById('viewer-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'viewer-toast';
+        toast.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #198754; color: white; padding: 10px 20px; border-radius: 5px; z-index: 9999; transition: opacity 0.3s; opacity: 0;';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    setTimeout(() => toast.style.opacity = '0', 3000);
+}
