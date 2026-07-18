@@ -29,12 +29,12 @@
 
     /* ── Filtros ─── */
     .filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-bottom:1.25rem; }
-    .filter-btn { border-radius:20px; font-size:.8rem; padding:.3rem .9rem; }
+    .filter-btn { border-radius:20px; font-size:.8rem; padding:.3rem .9rem; flex: 1; text-align: center; min-width: 100px; }
     .filter-btn.active { background:#6ea8fe; border-color:#6ea8fe; color:#000; }
 
     /* ── Cámara inline ─── */
     #quick-camera-section { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:1rem; margin-bottom:1.25rem; display:none; }
-    #quick-video { width:100%; border-radius:10px; max-height:260px; display:block; }
+    #quick-video { width:100%; border-radius:10px; max-height:260px; object-fit: cover; display:block; }
 
     /* ── Modal anotación ─── */
     .modal-photo-preview { width:100%; border-radius:10px; max-height:200px; object-fit:cover; margin-bottom:1rem; }
@@ -62,8 +62,8 @@
 
     <main class="px-3 flex-grow-1">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 class="mb-0">📷 Fotos de lo que como</h1>
-        <button class="btn btn-primary btn-sm" id="btn-quick-capture">📷 Añadir foto ahora</button>
+        <h4 class="mb-0">📷 Fotos de comidas</h4>
+        <button class="btn btn-primary btn-sm flex-grow-1 flex-md-grow-0" id="btn-quick-capture">📷 Añadir foto</button>
       </div>
 
       <!-- Cámara rápida inline -->
@@ -84,14 +84,11 @@
           </div>
         </div>
         <div class="d-flex gap-2 mt-2">
-          <button class="btn btn-primary flex-grow-1" id="btn-snap">📸 Capturar foto</button>
-          <button class="btn btn-outline-secondary" id="btn-cancel-quick-camera">Cancelar</button>
+          <button class="btn btn-primary flex-grow-1" id="btn-snap">📸 Capturar</button>
+          <button class="btn btn-outline-info" id="btn-quick-gallery" title="Elegir foto de galería">🖼️ Galería</button>
+          <button class="btn btn-outline-secondary" id="btn-cancel-quick-camera" title="Cancelar">✕</button>
         </div>
-        <div class="mt-2 text-center text-muted small">O bien:</div>
-        <div class="mt-1 text-center">
-          <input type="file" id="quick-file-input" accept="image/*" style="display:none;">
-          <button class="btn btn-outline-secondary btn-sm" id="btn-quick-gallery">🖼️ Elegir de galería</button>
-        </div>
+        <input type="file" id="quick-file-input" accept="image/*" style="display:none;">
       </div>
 
       <!-- Filtros -->

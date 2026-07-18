@@ -83,14 +83,18 @@ async function toggleQuickCapture() {
   if (isOpen) { cancelQuickCamera(); return; }
 
   section.style.display = 'block';
+  document.getElementById('quick-video').style.display = 'block';
+  document.getElementById('btn-snap').style.display = 'block';
   section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   try {
     quickCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     document.getElementById('quick-video').srcObject = quickCameraStream;
   } catch (err) {
-    showToast('No se pudo acceder a la cámara: ' + err.message, true);
-    section.style.display = 'none';
+    // Si no hay cámara o sin permisos
+    document.getElementById('quick-video').style.display = 'none';
+    document.getElementById('btn-snap').style.display = 'none';
+    document.getElementById('quick-file-input').click(); // Auto abrir galería
   }
 }
 
@@ -285,9 +289,12 @@ async function sendPhotoToAgendaEmpty() {
     await MealPhotoStore.logPhoto(currentAnnotateId, item.name, entryId);
     
     annotateModal.hide();
-    showToast('Foto enlazada a la agenda ✓');
     await renderGallery();
     await updatePendingBadge();
+
+    if (confirm('Foto enviada a la agenda.\n\n¿Quieres ir a la agenda para revisarla?')) {
+      window.location.href = '/diary.html';
+    }
   } catch (err) {
     showToast('Error al enlazar: ' + err.message, true);
   }
@@ -319,7 +326,8 @@ async function processAIJson() {
     };
   }
 
-  const { addDiaryEntry, db } = await import('./modules/diary/DiaryStore.js');
+  const { addDiaryEntry } = await import('./modules/diary/DiaryStore.js');
+  const { db } = await import('./db/schema.js');
 
   // Limpiar el ítem de la foto "vacía" si existe en este día y tipo de comida
   const existingEntry = await db.diary.where({ date, mealType }).first();
@@ -361,9 +369,14 @@ async function processAIJson() {
       return;
     }
     
-    showToast('Alimento añadido a la agenda mágicamente ✨');
     await renderGallery();
     await updatePendingBadge();
+
+    if (confirm('Alimento añadido a la agenda mágicamente ✨.\n\n¿Quieres ir a la agenda a verlo?')) {
+      window.location.href = '/diary.html';
+    } else {
+      showToast('Alimento añadido a la agenda mágicamente ✨');
+    }
   } catch (err) {
     showToast('Error al guardar en agenda: ' + err.message, true);
   }

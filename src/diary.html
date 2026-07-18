@@ -216,18 +216,15 @@
             <video id="diary-video" autoplay playsinline class="w-100 rounded mb-2" style="max-height:220px;"></video>
             <div class="d-flex gap-2">
               <button class="btn btn-primary flex-grow-1" id="btn-diary-snap">📸 Capturar</button>
-              <button class="btn btn-outline-secondary" id="btn-diary-stop-camera">✕ Cancelar cámara</button>
+              <button class="btn btn-outline-info" id="btn-diary-gallery" title="Elegir foto de galería">🖼️ Galería</button>
+              <button class="btn btn-outline-secondary" id="btn-diary-stop-camera" title="Cancelar">✕</button>
             </div>
+            <input type="file" id="diary-file-input" accept="image/*" style="display:none;">
           </div>
 
           <div id="diary-photo-preview-section" style="display:none;">
             <img id="diary-photo-preview" class="w-100 rounded mb-2" style="max-height:220px;object-fit:cover;" alt="Vista previa">
-            <button class="btn btn-outline-secondary btn-sm" id="btn-diary-retake">🔄 Repetir</button>
-          </div>
-
-          <div class="mt-2 text-center">
-            <input type="file" id="diary-file-input" accept="image/*" style="display:none;">
-            <button class="btn btn-outline-secondary btn-sm" id="btn-diary-gallery">🖼️ Elegir de galería</button>
+            <button class="btn btn-outline-secondary btn-sm w-100" id="btn-diary-retake">🔄 Repetir foto o cambiar</button>
           </div>
         </div>
         <div class="modal-footer">

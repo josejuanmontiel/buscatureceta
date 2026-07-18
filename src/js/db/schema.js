@@ -194,6 +194,23 @@ db.version(7).stores({
   customProducts: 'code, product_name',
 });
 
+// ── v8: Historial de Productos Recientes ─────────────────────────────────────
+db.version(8).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

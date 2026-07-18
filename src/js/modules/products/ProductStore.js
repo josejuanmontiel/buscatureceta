@@ -1,5 +1,6 @@
 import { db } from '../../db/schema.js';
 import { syncNutrition } from './ProductSync.js';
+import * as RecentStore from './RecentStore.js';
 
 /**
  * Obtener un producto por código.
@@ -35,7 +36,11 @@ export async function getProductsByCodes(codes) {
  */
 export async function searchProducts(query, limit = 500) {
   const qLower = query.toLowerCase().trim();
-  if (!qLower) return [];
+  if (!qLower) {
+    const recentCodes = await RecentStore.getRecentProductCodes();
+    if (recentCodes.length === 0) return [];
+    return getProductsByCodes(recentCodes);
+  }
   
   const terms = qLower.split(' ').filter(t => t.length > 0);
   
@@ -56,7 +61,23 @@ export async function searchProducts(query, limit = 500) {
     return filterFunc(p);
   }).limit(limit).toArray();
   
-  return [...customResults, ...officialResults].slice(0, limit);
+  const allResults = [...customResults, ...officialResults];
+  
+  // Boost recientes
+  const recentCodes = await RecentStore.getRecentProductCodes();
+  
+  // Ordenar: primero los que estén en recentCodes (ordenados por fecha desc), luego el resto
+  allResults.sort((a, b) => {
+    const idxA = recentCodes.indexOf(a.code);
+    const idxB = recentCodes.indexOf(b.code);
+    
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return 0; // mantener orden original si ninguno es reciente
+  });
+  
+  return allResults.slice(0, limit);
 }
 
 /**

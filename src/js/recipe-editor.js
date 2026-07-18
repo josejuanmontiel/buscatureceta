@@ -1,3 +1,5 @@
+import * as ShoppingAssistant from "./modules/insights/ShoppingAssistant.js";
+import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
 /**
  * recipe-editor.js — Lógica del editor completo de recetas
@@ -262,10 +264,51 @@ async function searchIngredient() {
   container.style.display = 'block';
 }
 
-window._addIngredient = function(code, name) {
+let pendingIngredient = null;
+let ingredientWarningModal = null;
+
+window._addIngredient = async function(code, name, force = false) {
+  if (!force) {
+    const analysisResult = await ShoppingAssistant.analyzeProductForCart(code);
+    if (analysisResult && analysisResult.status === 'success') {
+      const { warnings, healthyAlternative } = analysisResult.analysis;
+      if (warnings.length > 0 || healthyAlternative) {
+        if (!ingredientWarningModal) {
+           ingredientWarningModal = new Modal(document.getElementById('ingredientWarningModal'));
+        }
+        pendingIngredient = { code, name };
+        
+        document.getElementById('ing-warning-text').innerText = `El producto "${name}" tiene los siguientes avisos:`;
+        const list = document.getElementById('ing-warning-list');
+        list.innerHTML = warnings.map(w => `<li>${w}</li>`).join('');
+        
+        const altContainer = document.getElementById('ing-alternative-container');
+        if (healthyAlternative) {
+          altContainer.style.display = 'block';
+          document.getElementById('ing-alternative-name').innerText = healthyAlternative.product_name;
+          document.getElementById('btn-use-alternative').onclick = () => {
+            ingredientWarningModal.hide();
+            _addIngredient(healthyAlternative.code, healthyAlternative.product_name, true);
+          };
+        } else {
+          altContainer.style.display = 'none';
+        }
+        
+        document.getElementById('btn-ignore-warning').onclick = () => {
+          ingredientWarningModal.hide();
+          _addIngredient(pendingIngredient.code, pendingIngredient.name, true);
+        };
+        
+        ingredientWarningModal.show();
+        return;
+      }
+    }
+  }
+
   currentIngredients.push({ productCode: code, productName: name || `Prod ${code}`, amount: 100, unit: 'g' });
   document.getElementById('ingredient-search').value = '';
   document.getElementById('ingredient-search-results').style.display = 'none';
+  RecentStore.markAsUsed(code);
   renderIngredients();
   updateNutrition();
 };

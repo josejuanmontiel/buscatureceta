@@ -2,10 +2,57 @@
 import { defineConfig } from 'vite';
 import path from 'path';
 import basicSsl from '@vitejs/plugin-basic-ssl';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   plugins: [
-    basicSsl()
+    basicSsl(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      manifest: {
+        name: 'NutriAgenda',
+        short_name: 'NutriAgenda',
+        description: 'Gestor Nutricional Offline-First',
+        theme_color: '#212529',
+        background_color: '#212529',
+        display: 'standalone',
+        icons: [
+          {
+            src: 'icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
+        maximumFileSizeToCacheInBytes: 5000000,
+        // Configurar runtime caching para scripts o fuentes externas si es necesario
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/unpkg\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'unpkg-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
+      }
+    })
   ],
 
   root: path.resolve(__dirname, 'src'),

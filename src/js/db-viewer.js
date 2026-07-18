@@ -79,6 +79,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         searchTimeout = setTimeout(async () => {
             if (term.length < 3 && term.length > 0) return;
+            
+            const countEl = document.getElementById('db-count');
+            countEl.textContent = "Buscando...";
 
             let results = [];
             const targetDb = currentDb === 'custom' ? db.customProducts : db.products;
@@ -87,16 +90,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 results = await targetDb.limit(1000).toArray();
             } else {
                 const terms = term.split(' ').filter(t => t.length > 0);
-                results = await targetDb.filter(p => {
-                    const name = (p.product_name || '').toLowerCase();
-                    const brand = (p.brands || '').toLowerCase();
-                    const code = (p.code || '').toLowerCase();
-                    return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
-                }).limit(500).toArray();
+                
+                // 1. Si es un código exacto (o parece un código), probar búsqueda directa ultra-rápida
+                if (/^\d+$/.test(terms[0]) && terms.length === 1) {
+                    const exact = await targetDb.get(terms[0]);
+                    if (exact) results = [exact];
+                }
+                
+                // 2. Búsqueda por texto (escanea la BD, puede tardar un par de segundos)
+                if (results.length === 0) {
+                    results = await targetDb.filter(p => {
+                        const name = (p.product_name || '').toLowerCase();
+                        const brand = (p.brands || '').toLowerCase();
+                        const code = (p.code || '').toLowerCase();
+                        return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
+                    }).limit(150).toArray();
+                }
             }
 
             table.replaceData(results);
-        }, 500);
+            await updateCount();
+        }, 800); // Aumentamos el debounce para no atascar el navegador si tecleas rápido
     });
 });
 

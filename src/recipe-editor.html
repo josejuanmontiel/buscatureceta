@@ -187,6 +187,32 @@
     </div>
   </div>
 
+  <!-- Modal Advertencia Ingrediente -->
+  <div class="modal fade" id="ingredientWarningModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title">⚠️ Atención con este ingrediente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p id="ing-warning-text" class="fw-bold"></p>
+          <ul id="ing-warning-list" class="text-danger small mb-3"></ul>
+          
+          <div id="ing-alternative-container" style="display:none;" class="p-3 bg-dark border border-success rounded">
+            <h6 class="text-success mb-1">💡 Alternativa más saludable:</h6>
+            <p id="ing-alternative-name" class="mb-2 fw-bold"></p>
+            <button type="button" class="btn btn-sm btn-success w-100" id="btn-use-alternative">¡Usar alternativa!</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm" id="btn-ignore-warning">Añadir de todos modos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-container">
     <div class="my-toast" id="app-toast"></div>
   </div>

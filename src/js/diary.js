@@ -1,3 +1,4 @@
+import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
@@ -144,7 +145,7 @@ function renderMealSlot(label, mealType, items, dayKey) {
         if (i.type === 'photo') {
           icon = '📷 ';
           textClass = 'text-info fst-italic';
-          action = `window.resolvePhotoItem(${i.entryId}, ${i.photoId})`;
+          action = `window.openItemDetail(${i.entryId}, '${(i.name||'').replace(/'/g, "\\'")}', 0, 0, 0, 0, ${i.photoId}, true)`;
           kcalText = 'Resolver';
         } else if (i.type === 'custom_macros') {
           icon = '✨ ';
@@ -160,12 +161,6 @@ function renderMealSlot(label, mealType, items, dayKey) {
     </div>
   `;
 }
-
-window.resolvePhotoItem = function(entryId, photoId) {
-  if (confirm('¿Quieres resolver esta foto ahora? Se te redirigirá para usar la IA.')) {
-    window.location.href = `/meal-photos.html?resolvePhotoId=${photoId}`;
-  }
-};
 
 // Expuesto globalmente para el botón onclick en el HTML generado
 window.openMealModal = async function(dayKey) {
@@ -240,7 +235,7 @@ async function updateRecipeIngredientsPreview() {
   }).join('');
 }
 
-window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId) {
+window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId, isUnresolvedPhoto = false) {
   document.getElementById('itemDetailTitle').textContent = name;
   document.getElementById('itemDetailKcal').textContent = Math.round(kcal);
   document.getElementById('itemDetailProt').textContent = Math.round(prot);
@@ -253,6 +248,13 @@ window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId)
   if (photoId) {
     photoContainer.style.display = 'block';
     photoLink.href = `/meal-photos.html?resolvePhotoId=${photoId}`;
+    if (isUnresolvedPhoto) {
+      photoLink.innerHTML = '✨ Resolver foto con IA';
+      photoLink.className = 'btn btn-outline-warning btn-sm w-100';
+    } else {
+      photoLink.innerHTML = '🖼️ Ver foto original';
+      photoLink.className = 'btn btn-outline-info btn-sm w-100';
+    }
   } else {
     photoContainer.style.display = 'none';
   }
@@ -343,6 +345,8 @@ window.selectProduct = function(code, name) {
   document.getElementById('meal-product-selected').value = code;
   document.getElementById('meal-product-search').value = name;
   document.getElementById('meal-product-results').innerHTML = '';
+  document.getElementById('meal-product-results').style.display = 'none';
+  RecentStore.markAsUsed(code);
 };
 
 async function saveMeal() {
@@ -477,13 +481,18 @@ window.openDiaryPhotoModal = async function(dayKey) {
   document.getElementById('diary-camera-section').style.display = 'block';
   document.getElementById('btn-diary-save-photo').disabled = true;
 
+  document.getElementById('diary-video').style.display = 'block';
+  document.getElementById('btn-diary-snap').style.display = 'block';
+
   // Iniciar cámara automáticamente
   try {
     diaryCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     document.getElementById('diary-video').srcObject = diaryCameraStream;
   } catch {
-    // Si no hay cámara, ocultar sección de video
-    document.getElementById('diary-camera-section').style.display = 'none';
+    // Si no hay cámara o sin permisos
+    document.getElementById('diary-video').style.display = 'none';
+    document.getElementById('btn-diary-snap').style.display = 'none';
+    document.getElementById('diary-file-input').click(); // Auto abrir galería
   }
 
   diaryPhotoModal.show();

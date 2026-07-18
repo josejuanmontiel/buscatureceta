@@ -1,3 +1,4 @@
+import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
@@ -95,6 +96,7 @@ window.selectProduct = function(code, name) {
   document.getElementById('stock-product-selected').value = code;
   document.getElementById('stock-product-search').value = name;
   document.getElementById('stock-product-results').innerHTML = '';
+  RecentStore.markAsUsed(code);
 };
 
 async function saveStock() {

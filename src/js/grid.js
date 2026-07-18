@@ -1,3 +1,4 @@
+import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
 import { db, migrateFromLegacyDB } from './db/schema.js';
 import * as CartStore from './modules/cart/CartStore.js';
@@ -61,7 +62,7 @@ async function handleSearch() {
 
     // Si no es un número (código), buscar por nombre en local
     if (!/^\d+$/.test(query)) {
-        const res = await ProductStore.searchProducts(qLower, 1);
+        const res = await ProductStore.searchProducts(query, 1);
         const p = res.length > 0 ? res[0] : null;
         if (p) {
             query = p.code;
@@ -147,6 +148,7 @@ async function handleAddToCart() {
     // Asumimos unit='unidad' si compramos paquetes, o si sabemos que es 500g podríamos guardar gramos. 
     // Por defecto en la lista de la compra metemos "unidades" o paquetes.
     await CartStore.addToCart(currentScannedProduct.code, amount, price, 'unidad');
+    RecentStore.markAsUsed(currentScannedProduct.code);
     
     // Limpiar UI
     document.getElementById('add-to-cart-panel').classList.add('d-none');
