@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Core Functionality Tests', () => {
   // Placeholder for more complex tests
   test('should verify main elements on index.html', async ({ page }) => {
-    await page.goto('/index.html');
+    await page.goto('/#index');
     
     // Just a placeholder test to show where to add more specific interactions
     // e.g., finding the search bar, clicking a button, checking local storage

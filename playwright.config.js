@@ -13,7 +13,10 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     video: 'on',
-    permissions: ['camera'] // for QR scan if needed, though we'll likely mock or navigate directly
+    permissions: ['camera'],
+    // Force a new browser context per test to isolate localStorage.
+    // IndexedDB isolation is handled by clearDB() in tests that need it.
+    storageState: { cookies: [], origins: [] },
   },
   projects: [
     {

@@ -3,7 +3,7 @@ test('debug purchase flow generic', async ({ page }) => {
   page.on('console', msg => console.log('BROWSER_LOG:', msg.text()));
   page.on('pageerror', err => console.log('BROWSER_ERR:', err));
   
-  await page.goto('/index.html');
+  await page.goto('/#index');
   page.on('dialog', async dialog => {
     console.log('DIALOG:', dialog.message());
     await dialog.accept();
@@ -12,7 +12,7 @@ test('debug purchase flow generic', async ({ page }) => {
   await page.fill('#filters', 'E250');
   await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
-  await page.waitForURL('**/grid.html');
+  await page.waitForURL('**/#grid');
 
   await page.fill('#code-input', 'Producto Raro');
   await page.click('#query-btn');

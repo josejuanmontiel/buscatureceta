@@ -1,19 +1,19 @@
 import { test, expect } from '@playwright/test';
 
 async function loadTestDB(page) {
-  await page.goto('/index.html');
+  await page.goto('/#index');
   page.on('dialog', dialog => dialog.accept());
   await page.fill('#filters', 'E250');
   await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
-  await page.waitForURL('**/grid.html');
+  await page.waitForURL('**/#grid');
 }
 
 test.describe('Recipe Editor Flow', () => {
 
   test('should create a recipe, edit it to create a new version, and restore previous version', async ({ page }) => {
     // 1. Navegar a nueva receta
-    await page.goto('/recipe-editor.html');
+    await page.goto('/#recipe-editor');
     await expect(page.locator('#editor-page-title')).toContainText('Nueva Receta');
 
     // 2. Rellenar datos básicos
@@ -23,7 +23,7 @@ test.describe('Recipe Editor Flow', () => {
     await page.click('#btn-save-recipe');
 
     // Esperar a que se asigne ID y cambie la URL
-    await page.waitForURL('**/recipe-editor.html?id=*');
+    await page.waitForURL('**/#recipe-editor?id=*');
     
     // Verificar que aparece el badge de versión 1
     const versionBadge = page.locator('#version-badge');
@@ -60,13 +60,13 @@ test.describe('Recipe Editor Flow', () => {
 
   test('should duplicate an existing recipe', async ({ page }) => {
     // 1. Navegar a nueva receta y crearla
-    await page.goto('/recipe-editor.html');
+    await page.goto('/#recipe-editor');
     await page.fill('#recipe-name', 'Macarrones con Tomate');
     await page.fill('#recipe-servings', '2');
     await page.click('#btn-save-recipe');
 
     // Esperar a que se asigne ID
-    await page.waitForURL('**/recipe-editor.html?id=*');
+    await page.waitForURL('**/#recipe-editor?id=*');
 
     // Comprobar que aparece el botón de duplicar
     const btnDuplicate = page.locator('#btn-duplicate-recipe');
@@ -96,7 +96,7 @@ test.describe('Recipe Editor Flow', () => {
     await loadTestDB(page);
 
     // 1. Add product to pantry
-    await page.goto('/pantry.html');
+    await page.goto('/#pantry');
     await page.click('[data-bs-target="#addStockModal"]');
     await expect(page.locator('#addStockModal')).toBeVisible();
     await page.fill('#stock-product-search', 'Salchichas de Pollo');
@@ -108,7 +108,7 @@ test.describe('Recipe Editor Flow', () => {
     await expect(page.locator('#addStockModal')).not.toBeVisible();
 
     // 2. Go to recipe editor
-    await page.goto('/recipe-editor.html');
+    await page.goto('/#recipe-editor');
     
     // 3. Search without filter
     await page.fill('#ingredient-search', 'Pan de Molde'); // Assume 'Pan de Molde' is in global DB but not in pantry

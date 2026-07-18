@@ -3,15 +3,16 @@ import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
+import { showToast } from './modules/ui/UI.js';
 
 let addStockModal, consumeStockModal, productDetailModal;
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
   addStockModal = new Modal(document.getElementById('addStockModal'));
   consumeStockModal = new Modal(document.getElementById('consumeStockModal'));
   productDetailModal = new Modal(document.getElementById('productDetailModal'));
   
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const codeFromUrl = urlParams.get('code');
   const actionFromUrl = urlParams.get('action');
   if (codeFromUrl && actionFromUrl !== 'addStock') {
@@ -34,18 +35,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const scanPantryBtn = document.getElementById('scan-pantry-btn');
   if (scanPantryBtn) {
     scanPantryBtn.addEventListener('click', () => {
-      window.location.href = "/scan.html?return=pantry.html";
+      window.location.href = '/scan.html?return=%23pantry';
     });
   }
 
   document.getElementById('btn-scan-stock')?.addEventListener('click', () => {
-    window.location.href = "/scan.html?return=pantry.html&action=addStock";
+    window.location.href = '/scan.html?return=%23pantry&action=addStock';
   });
 
   document.getElementById('btn-search-stock-product').addEventListener('click', searchProduct);
   document.getElementById('btn-save-stock').addEventListener('click', saveStock);
   document.getElementById('btn-confirm-consume').addEventListener('click', confirmConsume);
-});
+}
 
 async function loadPantry(query = '') {
   const items = await PantryStore.getPantryInventory();
@@ -68,8 +69,12 @@ async function loadPantry(query = '') {
           <small class="text-muted">${item.productCode}${item.productQuantity ? ' - ' + item.productQuantity : ''}</small>
         </div>
         <div class="text-end" style="flex-shrink: 0;">
-          <h4 class="mb-0 text-success">${item.amount} <small class="fs-6">${item.unit}</small></h4>
-          <button class="btn btn-sm btn-outline-warning mt-2" onclick="event.stopPropagation(); window.openConsumeModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}', ${item.amount}, '${item.unit}')">Retirar</button>
+          <div class="d-flex align-items-center justify-content-end gap-2">
+            <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="-100g / -1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', -1, '${item.unit}')">-</button>
+            <h4 class="mb-0 text-success">${item.amount} <small class="fs-6">${item.unit}</small></h4>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="+100g / +1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', 1, '${item.unit}')">+</button>
+          </div>
+          <button class="btn btn-sm btn-outline-warning mt-2" onclick="event.stopPropagation(); window.openConsumeModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}', ${item.amount}, '${item.unit}')">Detalles / Retirar</button>
         </div>
       </div>
     </div>
@@ -104,8 +109,8 @@ async function saveStock() {
   const amount = parseFloat(document.getElementById('stock-amount').value);
   const unit = document.getElementById('stock-unit').value;
   
-  if (!code) return alert('Selecciona un producto primero');
-  if (!amount || amount <= 0) return alert('Cantidad inválida');
+  if (!code) return showToast('Selecciona un producto primero', 'warning');
+  if (!amount || amount <= 0) return showToast('Cantidad inválida', 'warning');
 
   await PantryStore.addStock(code, amount, unit);
   
@@ -207,3 +212,17 @@ window.openProductDetail = async function(event, code, amount, unit) {
   productDetailModal.show();
 };
 
+window.quickAdjust = async function(code, direction, unit) {
+  // Ajustar 1 unidad o 100g dependiendo de la unidad
+  let delta = (unit === 'g' || unit === 'ml') ? 100 : 1;
+  delta *= direction;
+  
+  if (delta > 0) {
+    await PantryStore.addStock(code, delta, unit);
+  } else {
+    // Para consumo silencioso rápido
+    await PantryStore.consumeStock(code, Math.abs(delta), 'consumed_me');
+  }
+  
+  await loadPantry(document.getElementById('pantry-search').value.trim());
+};

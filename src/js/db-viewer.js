@@ -4,7 +4,7 @@ import * as ProductStore from './modules/products/ProductStore.js';
 let table;
 let currentDb = 'official'; // 'official' o 'custom'
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
     await updateCount();
 
     // Configuración de columnas base
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await updateCount();
         }, 800); // Aumentamos el debounce para no atascar el navegador si tecleas rápido
     });
-});
+}
 
 async function loadTableData() {
     const targetDb = currentDb === 'custom' ? db.customProducts : db.products;

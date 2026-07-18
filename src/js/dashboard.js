@@ -5,13 +5,13 @@ import * as Analytics from './modules/analytics/DashboardAnalytics.js';
 let kcalChartInstance = null;
 let weekChartInstance = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
   // Configuración global de Chart.js para modo oscuro
   Chart.defaults.color = '#adb5bd';
   Chart.defaults.borderColor = '#495057';
 
   await renderDashboard();
-});
+}
 
 async function renderDashboard() {
   const today = toDateKey(new Date());

@@ -1,0 +1,724 @@
+🚀 Ejecutando suite completa de tests E2E con Playwright...
+
+Running 33 tests using 7 workers
+
+[1/33] [chromium] › tests/diary-flow.spec.js:15:3 › Diary (Agenda) Flow › should render the weekly diary grid with all 7 days
+[2/33] [chromium] › tests/dashboard-flow.spec.js:5:3 › Dashboard Flow › should render the dashboard with all key sections
+[3/33] [chromium] › tests/dashboard-flow.spec.js:27:3 › Dashboard Flow › should show kcal text on dashboard after page loads
+[4/33] [chromium] › tests/dashboard-flow.spec.js:63:3 › Dashboard Flow › should render macro progress bars
+[5/33] [chromium] › tests/dashboard-flow.spec.js:38:3 › Dashboard Flow › should show updated kcal text format after page loads
+[6/33] [chromium] › tests/dashboard-flow.spec.js:48:3 › Dashboard Flow › should show variety list with food groups
+[7/33] [chromium] › tests/core-functionality.spec.js:5:3 › Core Functionality Tests › should verify main elements on index.html
+[chromium] › tests/core-functionality.spec.js:5:3 › Core Functionality Tests › should verify main elements on index.html
+Has search box: true
+
+[8/33] [chromium] › tests/diary-flow.spec.js:27:3 › Diary (Agenda) Flow › should show updated kcal after diary entry is seeded via UI
+[9/33] [chromium] › tests/diary-flow.spec.js:62:3 › Diary (Agenda) Flow › should navigate to previous and next week
+[10/33] [chromium] › tests/diary-flow.spec.js:78:3 › Diary (Agenda) Flow › should open the meal modal when clicking + Añadir on a day
+[11/33] [chromium] › tests/diary-flow.spec.js:92:3 › Diary (Agenda) Flow › should add a product to the diary via the meal modal
+[12/33] [chromium] › tests/diary-flow.spec.js:129:3 › Diary (Agenda) Flow › should open the photo capture modal from a diary day
+[13/33] [chromium] › tests/diary-flow.spec.js:151:3 › Diary (Agenda) Flow › should allow adding generic products by clicking the generic button
+[14/33] [chromium] › tests/diary-flow.spec.js:181:3 › Diary (Agenda) Flow › should have updated UI elements (pantry check, collapsed hunger)
+[15/33] [chromium] › tests/diary-flow.spec.js:199:3 › Diary (Agenda) Flow › should display editable ingredients when logging a recipe with grams
+[16/33] [chromium] › tests/navigation.spec.js:4:3 › Navigation Tests › should load index.html
+[17/33] [chromium] › tests/navigation.spec.js:9:3 › Navigation Tests › should load dashboard.html
+[chromium] › tests/diary-flow.spec.js:27:3 › Diary (Agenda) Flow › should show updated kcal after diary entry is seeded via UI
+Kcal text after UI seeding: 0 / 2000 kcal
+
+[18/33] [chromium] › tests/navigation.spec.js:14:3 › Navigation Tests › should load diary.html
+[19/33] [chromium] › tests/navigation.spec.js:19:3 › Navigation Tests › should load grid.html
+[20/33] [chromium] › tests/navigation.spec.js:24:3 › Navigation Tests › should load pantry.html
+[21/33] [chromium] › tests/navigation.spec.js:29:3 › Navigation Tests › should load recipes.html
+[22/33] [chromium] › tests/navigation.spec.js:34:3 › Navigation Tests › should load recipe-editor.html
+[23/33] [chromium] › tests/navigation.spec.js:39:3 › Navigation Tests › should load meal-photos.html
+[24/33] [chromium] › tests/navigation.spec.js:44:3 › Navigation Tests › should load scan.html
+[25/33] [chromium] › tests/navigation.spec.js:49:3 › Navigation Tests › should load settings.html
+[26/33] [chromium] › tests/photo-to-diary.spec.js:4:3 › Photo to Diary Flow › should upload a photo, annotate it with AI JSON and move it to the diary
+[27/33] [chromium] › tests/purchase-flow.spec.js:4:3 › Purchase Flow E2E › should load DB, detect bad product, switch to alternative and add to cart
+[28/33] [chromium] › tests/purchase-flow.spec.js:78:3 › Purchase Flow E2E › should prompt for missing weights on checkout for generic products
+  1) [chromium] › tests/diary-flow.spec.js:62:3 › Diary (Agenda) Flow › should navigate to previous and next week 
+
+    Error: expect(locator).not.toBeEmpty() failed
+
+    Locator: locator('#current-week-label')
+    Expected: not empty
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "not toBeEmpty" with timeout 5000ms
+      - waiting for locator('#current-week-label')
+
+
+      62 |   test('should navigate to previous and next week', async ({ page }) => {
+      63 |     await loadTestDB(page);
+    > 64 |     await expect(page.locator('#current-week-label')).not.toBeEmpty();
+         |                                                           ^
+      65 |     const initialLabel = await page.locator('#current-week-label').innerText();
+      66 |
+      67 |     await page.click('#btn-prev-week');
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/diary-flow.spec.js:64:59
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/diary-flow-Diary-Agenda-Fl-87a68-e-to-previous-and-next-week-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/diary-flow-Diary-Agenda-Fl-87a68-e-to-previous-and-next-week-chromium/error-context.md
+
+
+[29/33] [chromium] › tests/recipe-editor.spec.js:14:3 › Recipe Editor Flow › should create a recipe, edit it to create a new version, and restore previous version
+  2) [chromium] › tests/navigation.spec.js:4:3 › Navigation Tests › should load index.html ─────────
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected pattern: /OpenFoodFacts by accreativos/i
+    Received string:  "NutriAgenda"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 5000ms
+        14 × unexpected value "NutriAgenda"
+
+
+      4 |   test('should load index.html', async ({ page }) => {
+      5 |     await page.goto('/#index');
+    > 6 |     await expect(page).toHaveTitle(/OpenFoodFacts by accreativos/i);
+        |                        ^
+      7 |   });
+      8 |
+      9 |   test('should load dashboard.html', async ({ page }) => {
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/navigation.spec.js:6:24
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/navigation-Navigation-Tests-should-load-index-html-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/navigation-Navigation-Tests-should-load-index-html-chromium/error-context.md
+
+
+[30/33] [chromium] › tests/recipe-editor.spec.js:61:3 › Recipe Editor Flow › should duplicate an existing recipe
+  3) [chromium] › tests/diary-flow.spec.js:92:3 › Diary (Agenda) Flow › should add a product to the diary via the meal modal 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('.diary-grid')
+    Expected pattern: /Salchichas de Pollo/i
+    Received string:  ""
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for locator('.diary-grid')
+        14 × locator resolved to <div id="diary-grid" class="diary-grid"></div>
+           - unexpected value ""
+
+
+      125 |
+      126 |     // El grid debería mostrar la entrada en el día correspondiente
+    > 127 |     await expect(page.locator('.diary-grid')).toContainText(/Salchichas de Pollo/i);
+          |                                               ^
+      128 |   });
+      129 |   test('should open the photo capture modal from a diary day', async ({ page }) => {
+      130 |     await loadTestDB(page);
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/diary-flow.spec.js:127:47
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/diary-flow-Diary-Agenda-Fl-a2c65-he-diary-via-the-meal-modal-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/diary-flow-Diary-Agenda-Fl-a2c65-he-diary-via-the-meal-modal-chromium/error-context.md
+
+
+[31/33] [chromium] › tests/recipe-editor.spec.js:95:3 › Recipe Editor Flow › should only find products in pantry when filter is checked
+  4) [chromium] › tests/purchase-flow.spec.js:4:3 › Purchase Flow E2E › should load DB, detect bad product, switch to alternative and add to cart 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('scan.htmlned-product-name')
+    Expected pattern: /Costilla Adobada/i
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for locator('scan.htmlned-product-name')
+
+
+      28 |
+      29 |     // Comprobar que carga la Costilla Adobada El Pradal y sale la alerta
+    > 30 |     await expect(page.locator('scan.htmlned-product-name')).toContainText(/Costilla Adobada/i);
+         |                                                             ^
+      31 |     
+      32 |     const alertDiv = page.locator('#assistant-alert');
+      33 |     await expect(alertDiv).toBeVisible();
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/purchase-flow.spec.js:30:61
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/purchase-flow-Purchase-Flo-c9c4a-alternative-and-add-to-cart-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/purchase-flow-Purchase-Flo-c9c4a-alternative-and-add-to-cart-chromium/error-context.md
+
+
+  5) [chromium] › tests/photo-to-diary.spec.js:4:3 › Photo to Diary Flow › should upload a photo, annotate it with AI JSON and move it to the diary 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('.diary-grid')
+    Timeout: 5000ms
+    - Expected substring  -   1
+    + Received string     + 156
+
+    - Arroz a la cubana
+    +
+    +     
+    +       
+    +         Lun
+    +         13
+    +       
+    +       
+    +       
+    +         Desayuno
+    +         
+    +         
+    +       
+    +       
+    +         Comida
+    +         
+    +         
+    +       
+    +       
+    +         Merienda
+    +         
+    +         
+    +       
+    +       
+    +         Cena
+    +         
+    +         
+    +       
+    +
+    +       + Añadir📷
+    +       0 kcal
+    +     
+    +   
+    +     
+    +       
+    +         Mar
+    +         14
+    +       
+    +       
+    +       
+    +         Desayuno
+    +         
+    +         
+    +       
+    +       
+    +         Comida
+    +         
+    +         
+    +       
+    +       
+    +         Merienda
+    +         
+    +         
+    +       
+    +       
+    +         Cena
+    +         
+    +         
+    +       
+    +
+    +       + Añadir📷
+    +       0 kcal
+    +     
+    +   
+    +     
+    +       
+    +         Mié
+    +         15
+    +       
+    +       
+    +       
+    +         Desayuno
+    +         
+    +         
+    +       
+    +       
+    +         Comida
+    +         
+    +         
+    +       
+    +       
+    +         Merienda
+    +         
+    +         
+    +       
+    +       
+    +         Cena
+    +         
+    +         
+    +       
+    +
+    +       + Añadir📷
+    +       0 kcal
+    +     
+    +   
+    +     
+    +       
+    +         Jue
+    +         16
+    +       
+    +       
+    +       
+    +         Desayuno
+    +         
+    +         
+    +       
+    +       
+    +         Comida
+    +         
+    +         
+    +       
+    +       
+    +         Merienda
+    +         
+    +         
+    +       
+    +       
+    +         Cena
+    +         
+    +         
+    +       
+    +
+    +       + Añadir📷
+    +       0 kcal
+    +     
+    +   
+    +     
+    +       
+    +         Vie
+    +         17
+    +       
+    +       
+    +       
+    +         Desayuno
+    +         
+    +         
+    +       
+    +       
+    +         Comida
+    +         
+    +         
+    +       
+    +       
+    +         Merienda
+    +         
+    +         
+    +       
+    +       
+    +         Cena
+    +         
+    +         
+    +       
+    +
+    +       + Añadir📷
+    +       0 kcal
+    +     
+    +   
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for locator('.diary-grid')
+        13 × locator resolved to <div id="diary-grid" class="diary-grid">…</div>
+           - unexpected value "
+        
+          
+            Lun
+            13
+          
+          
+          
+            Desayuno
+            
+            
+          
+          
+            Comida
+            
+            
+          
+          
+            Merienda
+            
+            
+          
+          
+            Cena
+            
+            
+          
+    
+          + Añadir📷
+          0 kcal
+        
+      
+        
+          
+            Mar
+            14
+          
+          
+          
+            Desayuno
+            
+            
+          
+          
+            Comida
+            
+            
+          
+          
+            Merienda
+            
+            
+          
+          
+            Cena
+            
+            
+          
+    
+          + Añadir📷
+          0 kcal
+        
+      
+        
+          
+            Mié
+            15
+          
+          
+          
+            Desayuno
+            
+            
+          
+          
+            Comida
+            
+            
+          
+          
+            Merienda
+            
+            
+          
+          
+            Cena
+            
+            
+          
+    
+          + Añadir📷
+          0 kcal
+        
+      
+        
+          
+            Jue
+            16
+          
+          
+          
+            Desayuno
+            
+            
+          
+          
+            Comida
+            
+            
+          
+          
+            Merienda
+            
+            
+          
+          
+            Cena
+            
+            
+          
+    
+          + Añadir📷
+          0 kcal
+        
+      
+        
+          
+            Vie
+            17
+          
+          
+          
+            Desayuno
+            
+            
+          
+          
+            Comida
+            
+            
+          
+          
+            Merienda
+            
+            
+          
+          
+            Cena
+            
+            
+          
+    
+          + Añadir📷
+          0 kcal
+        
+      "
+
+
+      43 |     
+      44 |     // 7. Verify the new entry is in the diary
+    > 45 |     await expect(page.locator('.diary-grid')).toContainText('Arroz a la cubana');
+         |                                               ^
+      46 |   });
+      47 | });
+      48 |
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/photo-to-diary.spec.js:45:47
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/photo-to-diary-Photo-to-Di-52a55-ON-and-move-it-to-the-diary-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/photo-to-diary-Photo-to-Di-52a55-ON-and-move-it-to-the-diary-chromium/error-context.md
+
+
+[32/33] [chromium] › tests/supermarket-to-plate.spec.js:46:1 › Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard
+[33/33] [chromium] › tests/test-debug.spec.js:2:1 › debug purchase flow generic
+[chromium] › tests/test-debug.spec.js:2:1 › debug purchase flow generic
+BROWSER_LOG: [vite] connecting...
+
+BROWSER_LOG: [vite] connected.
+
+[chromium] › tests/supermarket-to-plate.spec.js:46:1 › Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard
+BROWSER: Guardados 5 productos exitosamente.
+
+[chromium] › tests/test-debug.spec.js:2:1 › debug purchase flow generic
+BROWSER_LOG: Guardados 5 productos exitosamente.
+
+  6) [chromium] › tests/recipe-editor.spec.js:14:3 › Recipe Editor Flow › should create a recipe, edit it to create a new version, and restore previous version 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('#editor-page-title')
+    Expected substring: "Nueva Receta"
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for locator('#editor-page-title')
+
+
+      15 |     // 1. Navegar a nueva receta
+      16 |     await page.goto('/#recipe-editor');
+    > 17 |     await expect(page.locator('#editor-page-title')).toContainText('Nueva Receta');
+         |                                                      ^
+      18 |
+      19 |     // 2. Rellenar datos básicos
+      20 |     await page.fill('#recipe-name', 'Tortilla de Patatas');
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/recipe-editor.spec.js:17:54
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/recipe-editor-Recipe-Edito-3ceb2-nd-restore-previous-version-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/recipe-editor-Recipe-Edito-3ceb2-nd-restore-previous-version-chromium/error-context.md
+
+
+DIALOG: No se encontró "Producto Raro" en la base de datos local.
+¿Quieres añadirlo como producto genérico sin código de barras al carrito?
+
+  7) [chromium] › tests/supermarket-to-plate.spec.js:46:1 › Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard › 🚨 Scan bad product (E250 → Salchicha Mala) and get alert 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('scan.htmlned-product-name')
+    Expected pattern: /Costilla Adobada/i
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" with timeout 5000ms
+      - waiting for locator('scan.htmlned-product-name')
+
+
+      70 |     await page.goto('/#grid?code=2087569003329');
+      71 |
+    > 72 |     await expect(page.locator('scan.htmlned-product-name')).toContainText(/Costilla Adobada/i);
+         |                                                             ^
+      73 |     await expect(page.locator('#assistant-alert')).toBeVisible();
+      74 |     await expect(page.locator('#assistant-warning-text')).toContainText('E250');
+      75 |   });
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/supermarket-to-plate.spec.js:72:61
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/supermarket-to-plate.spec.js:68:3
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/supermarket-to-plate-Full--d936b--Recipe-→-Diary-→-Dashboard-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/supermarket-to-plate-Full--d936b--Recipe-→-Diary-→-Dashboard-chromium/error-context.md
+
+
+  8) [chromium] › tests/diary-flow.spec.js:199:3 › Diary (Agenda) Flow › should display editable ingredients when logging a recipe with grams 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.waitForSelector: Test timeout of 120000ms exceeded.
+    Call log:
+      - waiting for locator('#ingredient-search-results button') to be visible
+
+
+      209 |     await page.fill('#ingredient-search', 'Salchichas');
+      210 |     await page.click('#btn-search-ingredient');
+    > 211 |     await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+          |                ^
+      212 |     await page.locator('#ingredient-search-results button').first().click();
+      213 |     await page.click('#btn-save-recipe');
+      214 |     await page.waitForURL('**/#recipe-editor?id=*');
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/diary-flow.spec.js:211:16
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/diary-flow-Diary-Agenda-Fl-a7867-logging-a-recipe-with-grams-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/diary-flow-Diary-Agenda-Fl-a7867-logging-a-recipe-with-grams-chromium/error-context.md
+
+
+  9) [chromium] › tests/purchase-flow.spec.js:78:3 › Purchase Flow E2E › should prompt for missing weights on checkout for generic products 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.fill: Test timeout of 120000ms exceeded.
+    Call log:
+      - waiting for locator('scan.htmlned-amount')
+
+
+      92 |     
+      93 |     // Now it's loaded as current
+    > 94 |     await page.fill('scan.htmlned-amount', '2');
+         |                ^
+      95 |     await page.click('#btn-add-cart');
+      96 |
+      97 |     // Checkout
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/purchase-flow.spec.js:94:16
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/purchase-flow-Purchase-Flo-00a5a-eckout-for-generic-products-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/purchase-flow-Purchase-Flo-00a5a-eckout-for-generic-products-chromium/error-context.md
+
+
+  10) [chromium] › tests/recipe-editor.spec.js:61:3 › Recipe Editor Flow › should duplicate an existing recipe 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.click: Test timeout of 120000ms exceeded.
+    Call log:
+      - waiting for locator('#btn-save-recipe')
+
+
+      64 |     await page.fill('#recipe-name', 'Macarrones con Tomate');
+      65 |     await page.fill('#recipe-servings', '2');
+    > 66 |     await page.click('#btn-save-recipe');
+         |                ^
+      67 |
+      68 |     // Esperar a que se asigne ID
+      69 |     await page.waitForURL('**/#recipe-editor?id=*');
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/recipe-editor.spec.js:66:16
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/recipe-editor-Recipe-Edito-f1693-uplicate-an-existing-recipe-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/recipe-editor-Recipe-Edito-f1693-uplicate-an-existing-recipe-chromium/error-context.md
+
+
+  11) [chromium] › tests/recipe-editor.spec.js:95:3 › Recipe Editor Flow › should only find products in pantry when filter is checked 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.waitForSelector: Test timeout of 120000ms exceeded.
+    Call log:
+      - waiting for locator('#ingredient-search-results button') to be visible
+
+
+      114 |     await page.fill('#ingredient-search', 'Pan de Molde'); // Assume 'Pan de Molde' is in global DB but not in pantry
+      115 |     await page.click('#btn-search-ingredient');
+    > 116 |     await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
+          |                ^
+      117 |     let results = await page.locator('#ingredient-search-results button').count();
+      118 |     expect(results).toBeGreaterThan(0);
+      119 |
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/recipe-editor.spec.js:116:16
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/recipe-editor-Recipe-Edito-f0d0b-ntry-when-filter-is-checked-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/recipe-editor-Recipe-Edito-f0d0b-ntry-when-filter-is-checked-chromium/error-context.md
+
+
+  12) [chromium] › tests/test-debug.spec.js:2:1 › debug purchase flow generic ──────────────────────
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.fill: Test timeout of 120000ms exceeded.
+    Call log:
+      - waiting for locator('scan.htmlned-amount')
+
+
+      19 |   
+      20 |   await page.waitForSelector('#add-to-cart-panel:not(.d-none)', { timeout: 3000 });
+    > 21 |   await page.fill('scan.htmlned-amount', '2');
+         |              ^
+      22 | });
+      23 |
+        at /home/jose/workspace/josejuanmontiel/buscatureceta/tests/test-debug.spec.js:21:14
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/test-debug-debug-purchase-flow-generic-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/test-debug-debug-purchase-flow-generic-chromium/error-context.md
+
+
+  12 failed
+    [chromium] › tests/diary-flow.spec.js:62:3 › Diary (Agenda) Flow › should navigate to previous and next week 
+    [chromium] › tests/diary-flow.spec.js:92:3 › Diary (Agenda) Flow › should add a product to the diary via the meal modal 
+    [chromium] › tests/diary-flow.spec.js:199:3 › Diary (Agenda) Flow › should display editable ingredients when logging a recipe with grams 
+    [chromium] › tests/navigation.spec.js:4:3 › Navigation Tests › should load index.html ──────────
+    [chromium] › tests/photo-to-diary.spec.js:4:3 › Photo to Diary Flow › should upload a photo, annotate it with AI JSON and move it to the diary 
+    [chromium] › tests/purchase-flow.spec.js:4:3 › Purchase Flow E2E › should load DB, detect bad product, switch to alternative and add to cart 
+    [chromium] › tests/purchase-flow.spec.js:78:3 › Purchase Flow E2E › should prompt for missing weights on checkout for generic products 
+    [chromium] › tests/recipe-editor.spec.js:14:3 › Recipe Editor Flow › should create a recipe, edit it to create a new version, and restore previous version 
+    [chromium] › tests/recipe-editor.spec.js:61:3 › Recipe Editor Flow › should duplicate an existing recipe 
+    [chromium] › tests/recipe-editor.spec.js:95:3 › Recipe Editor Flow › should only find products in pantry when filter is checked 
+    [chromium] › tests/supermarket-to-plate.spec.js:46:1 › Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard 
+    [chromium] › tests/test-debug.spec.js:2:1 › debug purchase flow generic ────────────────────────
+  21 passed (2.2m)
+
+  Serving HTML report at http://localhost:42285. Press Ctrl+C to quit.

@@ -7,6 +7,8 @@ import * as RecipeStore from './modules/recipes/RecipeStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
 import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
+import { showToast, confirmModal, compressImage } from './modules/ui/UI.js';
+import { globalEvents } from './modules/core/EventEmitter.js';
 
 let mealModal;
 let diaryPhotoModal;
@@ -18,7 +20,7 @@ let diaryCameraStream = null;
 
 const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
   mealModal = new Modal(document.getElementById('mealModal'));
   diaryPhotoModal = new Modal(document.getElementById('diaryPhotoModal'));
   itemDetailModal = new Modal(document.getElementById('itemDetailModal'));
@@ -26,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await renderWeek(currentDate);
   await updateDiaryPhotoBadge();
 
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const codeParam = urlParams.get('code');
   const actionParam = urlParams.get('action');
   if (codeParam && actionParam === 'addMeal') {
@@ -78,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Limpiar cámara al cerrar modal
   document.getElementById('diaryPhotoModal').addEventListener('hidden.bs.modal', stopDiaryCamera);
-});
+}
 
 async function renderWeek(date) {
   const { weekDays } = await DiaryStore.getCurrentWeekEntries(date);
@@ -321,6 +323,17 @@ async function searchProduct() {
         </button>
       `).join('');
     }
+    
+    // Add generic button at the end
+    if (query && !/^\d+$/.test(query)) {
+      html += `
+        <div class="mt-2 text-center">
+           <button type="button" class="btn btn-sm btn-outline-info w-100" onclick="window.addGenericProduct('${query.replace(/'/g, "\\'")}')">
+             + Genérico rápido
+           </button>
+        </div>
+      `;
+    }
 
     const container = document.getElementById('meal-product-results');
     container.innerHTML = html;
@@ -330,7 +343,8 @@ async function searchProduct() {
 }
 
 window.addGenericProduct = async function(name) {
-  if (!confirm(`¿Quieres añadir "${name}" como producto genérico sin código de barras a tu Base de Datos Personal?`)) return;
+  const confirmed = await confirmModal(`¿Quieres añadir "${name}" como producto genérico sin código de barras a tu Base de Datos Personal?`);
+  if (!confirmed) return;
   const genericCode = 'GENERIC_' + Date.now();
   await ProductStore.addCustomProduct({
       code: genericCode,

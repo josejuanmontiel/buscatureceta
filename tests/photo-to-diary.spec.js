@@ -3,10 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Photo to Diary Flow', () => {
   test('should upload a photo, annotate it with AI JSON and move it to the diary', async ({ page }) => {
     // 1. Navigate to meal photos gallery
-    await page.goto('/meal-photos.html');
+    await page.goto('/#meal-photos');
     
-    // Auto-accept the dialog when it asks to go to the diary
-    page.on('dialog', dialog => dialog.accept());
+    // Note: We use confirmModal now instead of native dialogs.
 
     // 2. Upload the photo
     const fileInput = page.locator('#quick-file-input');
@@ -36,9 +35,11 @@ test.describe('Photo to Diary Flow', () => {
     
     // 5. Process AI JSON
     await page.click('#btn-process-ai');
+    await page.waitForSelector('#btn-global-confirm', { state: 'visible' });
+    await page.click('#btn-global-confirm');
     
     // 6. Verify we are redirected to diary.html
-    await page.waitForURL('**/diary.html');
+    await page.waitForURL('**/#diary');
     
     // 7. Verify the new entry is in the diary
     await expect(page.locator('.diary-grid')).toContainText('Arroz a la cubana');

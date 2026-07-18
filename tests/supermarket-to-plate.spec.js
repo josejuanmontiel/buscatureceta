@@ -1,5 +1,16 @@
 import { test, expect } from '@playwright/test';
 
+async function clearDB(page) {
+  // Navigate to index so the app's Dexie connection is open and index.js registers __resetUserData
+  await page.goto('/#index');
+  // Wait for initView to expose the reset helper
+  await page.waitForFunction(() => typeof window.__resetUserData === 'function', { timeout: 10000 });
+  // Use the app's own helper that clears tables via the active Dexie connection
+  await page.evaluate(() => window.__resetUserData());
+  // Navigate away so the next page.goto to /#index triggers a real hashchange
+  await page.goto('/#settings');
+}
+
 /**
  * ============================================================
  *  MEGA E2E — Del Supermercado al Plato (con Receta)
@@ -49,7 +60,9 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   //  [1] CONFIGURACIÓN — Cargar BD con filtros de E250
   // ─────────────────────────────────────────────────────────
   await test.step('🛒 Setup: Load DB with E250 exclusion filter', async () => {
-    await page.goto('/index.html');
+    // Clear any leftover data from parallel test runs
+    await clearDB(page);
+    await page.goto('/#index');
     page.on('console', msg => console.log('BROWSER: ' + msg.text()));
     page.on('pageerror', err => console.log('BROWSER_ERR: ' + err.message));
     page.on('dialog', dialog => dialog.accept());
@@ -58,7 +71,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
 
-    await page.waitForURL('**/grid.html');
+    await page.waitForURL('**/#grid');
     await expect(page.locator('body')).toBeVisible();
   });
 
@@ -67,7 +80,8 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   // ─────────────────────────────────────────────────────────
   await test.step('🚨 Scan bad product (E250 → Salchicha Mala) and get alert', async () => {
     // Simular escaneo QR del código EAN real: Costilla Adobada El Pradal (tiene E250)
-    await page.goto('/grid.html?code=2087569003329');
+    await page.goto('/#grid?code=2087569003329');
+    await page.waitForTimeout(500);
 
     await expect(page.locator('#scanned-product-name')).toContainText(/Costilla Adobada/i);
     await expect(page.locator('#assistant-alert')).toBeVisible();
@@ -78,6 +92,11 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     const alternativeBtn = page.locator('#assistant-alternatives button').first();
     await expect(alternativeBtn).toContainText(/Salchichas de Pollo/i);
     await alternativeBtn.click();
+    
+    // Wait for async selectAlternative to finish and update currentScannedProduct
+    await page.waitForFunction(() =>
+      window.currentScannedProduct && /Salchichas/i.test(window.currentScannedProduct.product_name)
+    , { timeout: 10000 });
 
     await expect(page.locator('#scanned-product-name')).toContainText(/Salchichas de Pollo/i);
     await expect(page.locator('#assistant-alert')).toHaveClass(/d-none/);
@@ -94,7 +113,8 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
 
   await test.step('🍞 Scan second product (Pan de Molde Bimbo) and add to cart', async () => {
     // Simular escaneo EAN real del pan de molde
-    await page.goto('/grid.html?code=01472165');
+    await page.goto('/#grid?code=01472165');
+    await page.waitForTimeout(500);
 
     await expect(page.locator('#scanned-product-name')).toContainText(/Pan de Molde Blanco/i);
     // Sin E250 → no debe disparar alerta
@@ -111,7 +131,8 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   });
 
   await test.step('🥛 Scan third product (Leche Entera) and add to cart', async () => {
-    await page.goto('/grid.html?code=04295181');
+    await page.goto('/#grid?code=04295181');
+    await page.waitForTimeout(500);
 
     await expect(page.locator('#scanned-product-name')).toContainText('Leche entera');
     await expect(page.locator('#assistant-alert')).toHaveClass(/d-none/);
@@ -144,7 +165,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
       // Ignore si no salta el modal (timeout)
     }
 
-    await page.waitForURL('**/pantry.html');
+    await page.waitForURL('**/#pantry');
     await expect(page).toHaveTitle(/Despensa - NutriAgenda/i);
   });
 
@@ -165,12 +186,12 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   //  [4] RECETAS — Crear receta "Bocadillo de Salchicha"
   // ─────────────────────────────────────────────────────────
   await test.step('📖 Recipes: open Recipes page and create a new recipe', async () => {
-    await page.goto('/recipes.html');
+    await page.goto('/#recipes');
     await expect(page).toHaveTitle(/Recetas - NutriAgenda/i);
 
     // Navegar al nuevo editor de recetas
     await page.click('#btn-new-recipe');
-    await page.waitForURL('**/recipe-editor.html*');
+    await page.waitForURL('**/#recipe-editor*');
     await expect(page.locator('#editor-page-title')).toContainText('Nueva Receta');
   });
 
@@ -211,10 +232,10 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.click('#btn-save-recipe');
 
     // Esperamos que se guarde (la URL cambia para añadir el ?id=...)
-    await page.waitForURL('**/recipe-editor.html?id=*');
+    await page.waitForURL('**/#recipe-editor?id=*');
 
     // Volvemos a la lista de recetas
-    await page.goto('/recipes.html');
+    await page.goto('/#recipes');
 
     // La receta debe aparecer en la lista de recetas
     await expect(page.locator('#recipes-list')).toContainText('Bocadillo de Salchicha');
@@ -226,7 +247,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   //  [5] COCINA — Registrar la receta en la Agenda
   // ─────────────────────────────────────────────────────────
   await test.step('🍽️ Diary: open diary and register the recipe as a meal', async () => {
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
     await expect(page.locator('.diary-day')).toHaveCount(7);
 
     // Calcular qué día es hoy (lunes = 0)
@@ -306,7 +327,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   //  [6] DESPENSA — Verificar descuento de stock
   // ─────────────────────────────────────────────────────────
   await test.step('📦 Pantry again: verify stock reduction for Milk', async () => {
-    await page.goto('/pantry.html');
+    await page.goto('/#pantry');
     await page.waitForTimeout(800);
 
     // Compramos 1 paquete de Leche (que por test db tiene product_quantity=1000).
@@ -321,7 +342,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
   //  [6] DASHBOARD — Verificar seguimiento nutricional activo
   // ─────────────────────────────────────────────────────────
   await test.step('📊 Dashboard: verify nutritional tracking reflects the full day', async () => {
-    await page.goto('/dashboard.html');
+    await page.goto('/#dashboard');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(600);
 

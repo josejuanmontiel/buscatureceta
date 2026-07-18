@@ -2,19 +2,19 @@ import { test, expect } from '@playwright/test';
 
 // Helper: carga la BD de prueba en el contexto del navegador
 async function loadTestDB(page) {
-  await page.goto('/index.html');
+  await page.goto('/#index');
   page.on('dialog', dialog => dialog.accept());
   await page.fill('#filters', 'E250');
   await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
-  await page.waitForURL('**/grid.html');
+  await page.waitForURL('**/#grid');
 }
 
 test.describe('Diary (Agenda) Flow', () => {
   
   test('should render the weekly diary grid with all 7 days', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     // El grid semanal tiene que renderizarse con 7 columnas (diary-day)
     const days = page.locator('.diary-day');
@@ -27,7 +27,7 @@ test.describe('Diary (Agenda) Flow', () => {
   test('should show updated kcal after diary entry is seeded via UI', async ({ page }) => {
     // Cargar BD de prueba
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     // Abrir modal del primer día del grid (hoy o inicio de semana)
     await page.locator('.diary-day button').first().click();
@@ -50,7 +50,7 @@ test.describe('Diary (Agenda) Flow', () => {
     await expect(page.locator('#mealModal')).not.toBeVisible();
 
     // Ahora ir al Dashboard y comprobar que hay kcal
-    await page.goto('/dashboard.html');
+    await page.goto('/#dashboard');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(800);
 
@@ -61,13 +61,13 @@ test.describe('Diary (Agenda) Flow', () => {
 
   test('should navigate to previous and next week', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
-
+    await page.goto('/#diary');
+    await expect(page.locator('#current-week-label')).not.toBeEmpty();
     const initialLabel = await page.locator('#current-week-label').innerText();
 
-    // Ir a la semana anterior y comprobar que el label cambia
     await page.click('#btn-prev-week');
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(500); // wait for DB query and render
+    await expect(page.locator('#current-week-label')).not.toHaveText(initialLabel);
     const prevLabel = await page.locator('#current-week-label').innerText();
     expect(prevLabel).not.toBe(initialLabel);
 
@@ -78,7 +78,7 @@ test.describe('Diary (Agenda) Flow', () => {
 
   test('should open the meal modal when clicking + Añadir on a day', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     // Hacer clic en el botón "+ Añadir" del primer día del grid
     const addBtn = page.locator('.diary-day button').first();
@@ -92,7 +92,7 @@ test.describe('Diary (Agenda) Flow', () => {
 
   test('should add a product to the diary via the meal modal', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     // Abrir el modal del primer día
     const addBtn = page.locator('.diary-day button').first();
@@ -129,7 +129,7 @@ test.describe('Diary (Agenda) Flow', () => {
   });
   test('should open the photo capture modal from a diary day', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     // El botón 📷 es el segundo botón dentro de la columna del día
     // El HTML es: <button class="btn btn-sm btn-outline-secondary" onclick="..." title="Foto de lo que comí">📷</button>
@@ -151,7 +151,7 @@ test.describe('Diary (Agenda) Flow', () => {
 
   test('should allow adding generic products by clicking the generic button', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     const addBtn = page.locator('.diary-day button').first();
     await addBtn.click();
@@ -168,6 +168,8 @@ test.describe('Diary (Agenda) Flow', () => {
     
     // Click the button
     await genericBtn.click();
+    await page.waitForSelector('#btn-global-confirm', { state: 'visible' });
+    await page.click('#btn-global-confirm');
 
     // It should select it
     const selectedInput = page.locator('#meal-product-selected');
@@ -179,7 +181,7 @@ test.describe('Diary (Agenda) Flow', () => {
 
   test('should have updated UI elements (pantry check, collapsed hunger)', async ({ page }) => {
     await loadTestDB(page);
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
 
     const addBtn = page.locator('.diary-day button').first();
     await addBtn.click();
@@ -199,7 +201,7 @@ test.describe('Diary (Agenda) Flow', () => {
     await loadTestDB(page);
     
     // First create a recipe to test with
-    await page.goto('/recipe-editor.html');
+    await page.goto('/#recipe-editor');
     await page.fill('#recipe-name', 'Ensalada');
     await page.fill('#recipe-servings', '1');
     await page.fill('#recipe-instructions', 'Mezclar.');
@@ -210,10 +212,10 @@ test.describe('Diary (Agenda) Flow', () => {
     await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
     await page.locator('#ingredient-search-results button').first().click();
     await page.click('#btn-save-recipe');
-    await page.waitForURL('**/recipe-editor.html?id=*');
+    await page.waitForURL('**/#recipe-editor?id=*');
     
     // Now go to diary to log it
-    await page.goto('/diary.html');
+    await page.goto('/#diary');
     const addBtn = page.locator('.diary-day button').first();
     await addBtn.click();
     await expect(page.locator('#mealModal')).toBeVisible();

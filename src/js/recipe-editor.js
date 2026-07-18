@@ -1,6 +1,7 @@
 import * as ShoppingAssistant from "./modules/insights/ShoppingAssistant.js";
 import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
+import * as PantryStore from './modules/pantry/PantryStore.js';
 /**
  * recipe-editor.js — Lógica del editor completo de recetas
  *
@@ -12,6 +13,7 @@ import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
+import { showToast, confirmModal, compressImage } from './modules/ui/UI.js';
 
 // ─── Estado local ─────────────────────────────────────────────────────────────
 let recipeId = null;            // null → nueva receta
@@ -23,10 +25,10 @@ let pendingRestoreVersionId = null;
 let restoreModal = null;
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
   restoreModal = new Modal(document.getElementById('restoreModal'));
 
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const idParam = params.get('id');
   if (idParam) {
     recipeId = parseInt(idParam);
@@ -40,7 +42,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('ingredient-search').value = codeParam;
     setTimeout(searchIngredient, 500);
   }
-});
+
+  loadPantryQuickAdd();
+}
+
+async function loadPantryQuickAdd() {
+  const items = await PantryStore.getPantryInventory();
+  const container = document.getElementById('pantry-quick-add-list');
+  
+  if (!items || items.length === 0) {
+    container.innerHTML = '<span class="text-muted small">Tu despensa está vacía.</span>';
+    return;
+  }
+  
+  container.innerHTML = items.map(item => `
+    <button type="button" class="btn btn-sm btn-outline-info rounded-pill"
+            onclick="window._addIngredient('${item.productCode}', '${(item.productName || '').replace(/'/g, "\\'")}', true)">
+      + ${item.productName} <small class="text-white-50">(${item.amount}${item.unit})</small>
+    </button>
+  `).join('');
+}
+
 
 // ─── Cargar receta existente ───────────────────────────────────────────────────
 async function loadRecipe(id) {
@@ -87,10 +109,10 @@ function bindEvents() {
   // Eliminar
   document.getElementById('btn-delete-recipe').addEventListener('click', async () => {
     if (!recipeId) return;
-    if (!confirm('¿Eliminar esta receta y todo su historial de versiones? Esta acción no se puede deshacer.')) return;
+    if (!(await confirmModal('¿Eliminar esta receta y todo su historial de versiones? Esta acción no se puede deshacer.', 'Eliminar Receta'))) return;
     await RecipeStore.deleteRecipe(recipeId);
     showToast('Receta eliminada');
-    setTimeout(() => { window.location.href = 'recipes.html'; }, 800);
+    setTimeout(() => { window.location.hash = '#recipes'; }, 800);
   });
 
   // Duplicar
@@ -112,7 +134,7 @@ function bindEvents() {
     try {
       const newId = await RecipeStore.createRecipe(duplicateData);
       showToast('Receta duplicada');
-      setTimeout(() => { window.location.href = `recipe-editor.html?id=${newId}`; }, 800);
+      setTimeout(() => { window.location.hash = `#recipe-editor?id=${newId}`; }, 800);
     } catch (err) {
       showToast('Error al duplicar: ' + err.message, true);
     }
@@ -122,7 +144,7 @@ function bindEvents() {
   document.getElementById('btn-search-ingredient').addEventListener('click', searchIngredient);
   document.getElementById('btn-scan-ingredient')?.addEventListener('click', () => {
     const rId = recipeId ? `&id=${recipeId}` : '';
-    window.location.href = `/scan.html?return=recipe-editor.html${rId}`;
+    window.location.href = `/scan.html?return=%23recipe-editor${rId}`;
   });
   document.getElementById('ingredient-search').addEventListener('keypress', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchIngredient(); }
@@ -208,8 +230,8 @@ async function saveRecipe() {
     } else {
       const newId = await RecipeStore.createRecipe(data);
       showToast('Receta creada ✓');
-      // Navegar al editor con el id nuevo
-      window.history.replaceState({}, '', `recipe-editor.html?id=${newId}`);
+      // Navegar al editor con el id nuevo usando hash
+      window.history.replaceState({}, '', `/#recipe-editor?id=${newId}`);
       recipeId = newId;
       await loadRecipe(newId);
     }
@@ -428,18 +450,23 @@ async function openCamera() {
   }
 }
 
-function takePhoto() {
+async function takePhoto() {
   const video = document.getElementById('recipe-video');
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   stopCamera();
-  canvas.toBlob(blob => {
-    if (!blob) return;
-    currentPhotoBlob = blob;
-    showPhotoPreview(blob);
-  }, 'image/jpeg', 0.9);
+  
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+  if (!blob) return;
+  
+  try {
+    currentPhotoBlob = await compressImage(blob, 1080);
+    showPhotoPreview(currentPhotoBlob);
+  } catch (e) {
+    showToast('Error comprimiendo foto', 'danger');
+  }
 }
 
 function stopCamera() {
@@ -476,11 +503,3 @@ function removePhoto() {
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer = null;
-function showToast(msg, isError = false) {
-  const el = document.getElementById('app-toast');
-  el.textContent = msg;
-  el.className = 'my-toast' + (isError ? ' error' : '');
-  el.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-}

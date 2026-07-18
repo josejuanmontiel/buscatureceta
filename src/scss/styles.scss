@@ -1,2 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+// Bootstrap Variables Override
+$font-family-base: 'Inter', sans-serif;
+
+// Colors (Emerald/Teal Theme)
+$primary: #10b981; // Emerald 500
+$secondary: #64748b; // Slate 500
+$success: #059669; // Emerald 600
+$info: #0ea5e9; // Sky 500
+$warning: #f59e0b; // Amber 500
+$danger: #ef4444; // Red 500
+$dark: #0f172a; // Slate 900
+$body-bg: #0f172a;
+$body-color: #f8fafc;
+
+// Styling
+$border-radius: 1rem;
+$border-radius-sm: 0.5rem;
+$border-radius-lg: 1.5rem;
+$card-border-radius: 1.25rem;
+
 // Import all of Bootstrap's CSS
 @import "~bootstrap/scss/bootstrap";
+
+// Custom Utility Classes for Premium Feel
+.glass-panel {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Base tweaks */
+body {
+  background: radial-gradient(circle at top right, #1e293b, #0f172a);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Scrollbar styling for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

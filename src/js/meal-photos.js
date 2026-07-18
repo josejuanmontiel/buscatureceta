@@ -6,6 +6,7 @@
 
 import { Modal } from 'bootstrap';
 import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
+import { showToast, confirmModal, compressImage } from './modules/ui/UI.js';
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
 let currentFilter = 'all';      // 'all' | 'pending_review' | 'logged'
@@ -19,7 +20,7 @@ const MEAL_LABELS = {
 };
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
   annotateModal = new Modal(document.getElementById('annotateModal'));
 
   // Fecha de hoy por defecto en campos de fecha
@@ -32,12 +33,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   bindEvents();
 
   // Si venimos de la agenda para resolver una foto:
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const resolveId = params.get('resolvePhotoId');
   if (resolveId) {
     window._openAnnotate(parseInt(resolveId, 10));
   }
-});
+}
 
 // ─── Binding de eventos ────────────────────────────────────────────────────────
 function bindEvents() {
@@ -111,19 +112,23 @@ function stopQuickCamera() {
   document.getElementById('quick-video').srcObject = null;
 }
 
-function snapPhoto() {
+async function snapPhoto() {
   const video = document.getElementById('quick-video');
   if (!video.videoWidth) { showToast('La cámara aún no está lista', true); return; }
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  canvas.toBlob(async blob => {
-    if (!blob) return;
-    stopQuickCamera();
-    await saveQuickPhoto(blob);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+  if (!blob) return;
+  stopQuickCamera();
+  try {
+    const compressed = await compressImage(blob, 1080);
+    await saveQuickPhoto(compressed);
     document.getElementById('quick-camera-section').style.display = 'none';
-  }, 'image/jpeg', 0.88);
+  } catch (e) {
+    showToast('Error comprimiendo foto', 'danger');
+  }
 }
 
 async function saveQuickPhoto(blob) {
@@ -267,7 +272,7 @@ async function sendPhotoToAgendaEmpty() {
   if (!currentAnnotateId) return;
   const mealType = document.getElementById('annotate-meal-type').value;
   const date = document.getElementById('annotate-date').value;
-  if (!mealType) return alert('Selecciona un tipo de comida para poder enviarla a la agenda.');
+  if (!mealType) return showToast('Selecciona un tipo de comida para poder enviarla a la agenda.', 'warning');
 
   const { addDiaryEntry } = await import('./modules/diary/DiaryStore.js');
   
@@ -292,8 +297,8 @@ async function sendPhotoToAgendaEmpty() {
     await renderGallery();
     await updatePendingBadge();
 
-    if (confirm('Foto enviada a la agenda.\n\n¿Quieres ir a la agenda para revisarla?')) {
-      window.location.href = '/diary.html';
+    if (await confirmModal('Foto enviada a la agenda.\n\n¿Quieres ir a la agenda para revisarla?', 'Foto Registrada')) {
+      window.location.hash = '#diary';
     }
   } catch (err) {
     showToast('Error al enlazar: ' + err.message, true);
@@ -306,8 +311,8 @@ async function processAIJson() {
   const date = document.getElementById('annotate-date').value;
   const jsonStr = document.getElementById('ai-json-input').value.trim();
 
-  if (!mealType) return alert('Selecciona un tipo de comida (Desayuno, Comida...).');
-  if (!jsonStr) return alert('Pega el JSON de la IA primero.');
+  if (!mealType) return showToast('Selecciona un tipo de comida (Desayuno, Comida...).', 'warning');
+  if (!jsonStr) return showToast('Pega el JSON de la IA primero.', 'warning');
 
   let data;
   try {
@@ -316,7 +321,7 @@ async function processAIJson() {
     if (!match) throw new Error("No se encontraron llaves {} en el texto");
     data = JSON.parse(match[0]);
   } catch (err) {
-    alert('Aviso: No se pudo leer el JSON correctamente, pero se guardará el registro con valores a 0 para no perder tu nota. Detalle: ' + err.message);
+    showToast('Aviso: No se pudo leer el JSON correctamente, pero se guardará el registro con valores a 0. Detalle: ' + err.message, 'warning');
     data = {
       name: 'IA (Error): ' + jsonStr.substring(0, 40).replace(/\n/g, ' ') + '...',
       kcal: 0,
@@ -363,17 +368,17 @@ async function processAIJson() {
     annotateModal.hide();
     
     // Si veníamos de la agenda para resolver, volvemos allí
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
     if (params.has('resolvePhotoId')) {
-      window.location.href = '/diary.html';
+      window.location.hash = '#diary';
       return;
     }
     
     await renderGallery();
     await updatePendingBadge();
 
-    if (confirm('Alimento añadido a la agenda mágicamente ✨.\n\n¿Quieres ir a la agenda a verlo?')) {
-      window.location.href = '/diary.html';
+    if (await confirmModal('Alimento añadido a la agenda mágicamente ✨.\n\n¿Quieres ir a la agenda a verlo?', '¡Añadido!')) {
+      window.location.hash = '#diary';
     } else {
       showToast('Alimento añadido a la agenda mágicamente ✨');
     }
@@ -422,7 +427,7 @@ async function saveAnnotation() {
 
 async function discardCurrentPhoto() {
   if (!currentAnnotateId) return;
-  if (!confirm('¿Descartar esta foto? Se ocultará del pool.')) return;
+  if (!(await confirmModal('¿Descartar esta foto? Se ocultará del pool.', 'Descartar Foto'))) return;
   await MealPhotoStore.discardPhoto(currentAnnotateId);
   annotateModal.hide();
   showToast('Foto descartada');
@@ -431,7 +436,7 @@ async function discardCurrentPhoto() {
 }
 
 window._discardPhoto = async function(id) {
-  if (!confirm('¿Descartar esta foto?')) return;
+  if (!(await confirmModal('¿Descartar esta foto?', 'Descartar Foto'))) return;
   await MealPhotoStore.discardPhoto(id);
   showToast('Foto descartada');
   await renderGallery();
@@ -450,13 +455,4 @@ async function updatePendingBadge() {
   }
 }
 
-// ─── Toast ────────────────────────────────────────────────────────────────────
-let toastTimer = null;
-function showToast(msg, isError = false) {
-  const el = document.getElementById('app-toast');
-  el.textContent = msg;
-  el.className = 'my-toast' + (isError ? ' error' : '');
-  el.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
-}
+// Funciones utilitarias (Toasts) ya están en UI.js

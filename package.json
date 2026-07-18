@@ -24,6 +24,7 @@
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.5.1",
+    "cheerio": "^1.2.0",
     "dexie": "^4.4.4",
     "luxon": "^3.5.0",
     "papaparse": "^5.4.1",

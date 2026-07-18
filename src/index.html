@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="es" class="h-100" data-bs-theme="dark">
-  <head>
+<!DOCTYPE html><html lang="es" class="h-100" data-bs-theme="dark"><head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -70,11 +68,24 @@
     <header class="mb-auto">
       <div>
         <h3 class="float-md-start mb-0">NutriAgenda</h3>
-        <app-menu current-page="index.html"></app-menu>
+        <app-menu current-page=""></app-menu>
       </div>
     </header>
 
-    <main class="px-3">
+    <main class="px-3 flex-grow-1" id="app-view"></main>
+    <footer class="mt-auto text-white-50">
+    </footer>
+  </div>
+  
+  <script type="module" src="./js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script type="module" src="./js/main.js"></script>
+
+
+
+  <template id="view-index">
+    <div class="view-content d-flex flex-column h-100">
+      
       <h1>¿Como funciona? <button type="button" class="btn btn-success" id="ya-se">Ya se como va</button></h1>
       
       <p class="lead">Esta aplicacion se ha inspirada en la charla <a href="https://www.youtube.com/watch?v=j5dUzDTQ3mc">Taller de Nutrición: Etiquetado Nutricional</a>
@@ -85,8 +96,7 @@
 
       <div class="container text-center">
         <div class="row">
-          <textarea class="form-control" placeholder="Leave a comment here" 
-          id="filters" style="height: 100px">Ingrediente 1 |
+          <textarea class="form-control" placeholder="Leave a comment here" id="filters" style="height: 100px">Ingrediente 1 |
 Ingrediente 2 |
 Ingrediente 3</textarea>
         </div>
@@ -97,24 +107,1047 @@ Ingrediente 3</textarea>
           <!-- Input group -->
           <div class="d-flex justify-content-center">
             <div class="input-group w-auto">
-                <input
-                  type="text"
-                  class="form-control"
-                  id="database"
-                  aria-describedby="button-addon1" size="50" value="/spain_products.tsv.zz"></input>
-                <button data-mdb-button-init data-mdb-ripple-init class="btn btn-primary" type="button" id="download-btn" data-mdb-ripple-color="dark">
+                <input type="text" class="form-control" id="database" aria-describedby="button-addon1" size="50" value="/spain_products.tsv.zz">
+                <button data-mdb-button-init="" data-mdb-ripple-init="" class="btn btn-primary" type="button" id="download-btn" data-mdb-ripple-color="dark">
                     Empezar
                 </button>
             </div>
           </div>
         </div>
       </div>
-    </main>
-    <footer class="mt-auto text-white-50">
-    </footer>
-  </div>
-  <script type="module" src="./js/index.js"></script>
-  <script type="module" src="./js/main.js"></script>
-</body>
+    
+      
+    </div>
+  </template>
+  
+  <template id="view-grid">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="container py-4 px-3 mx-auto">
+        
+        <!-- Botones de sincronización y configuración -->
+        <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+          <button class="btn btn-outline-danger btn-sm" id="clear-db-btn">Borrar BD Local</button>
+          <button class="btn btn-outline-secondary btn-sm" id="btn-open-credentials" title="Configurar cuenta OpenFoodFacts">
+            ⚙️ Cuenta OFF
+          </button>
+          <button class="btn btn-outline-warning btn-sm position-relative" id="btn-sync-off">
+            ☁️ Sincronizar OFF
+            <span id="sync-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"></span>
+          </button>
+        </div>
 
-</html>
+    <!-- Cabecera Presupuesto -->
+    <div class="card bg-dark text-white mb-4 border-info">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">Total Carro</h4>
+        <h2 class="mb-0 text-info" id="cart-total">0.00 €</h2>
+      </div>
+    </div>
+
+    <!-- Escáner / Búsqueda -->
+    <div class="input-group mb-4 justify-content-center">
+      <input type="text" id="code-input" class="form-control" style="max-width: 300px;" placeholder="Código o Nombre">
+      <button class="btn btn-primary" id="query-btn">Buscar</button>
+      <button class="btn btn-outline-light" id="scan-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
+    </div>
+    
+    <!-- Producto desconocido: captura de foto -->
+    <div id="unknown-product-panel" class="card bg-dark border-warning text-white mb-4 d-none text-start">
+      <div class="card-header bg-warning text-dark fw-bold">
+        ⚠️ Producto no encontrado en la BD local
+      </div>
+      <div class="card-body">
+        <p>Código escaneado: <code id="unknown-barcode-label"></code></p>
+        <p class="small text-warning-emphasis">No encontramos este producto en nuestra base de datos. Puedes hacer una foto de la etiqueta y la subiremos a OpenFoodFacts para que otros usuarios también se beneficien.</p>
+
+        <div class="row g-2 mb-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label form-label-sm">Nombre del producto (opcional)</label>
+            <input type="text" id="unknown-product-name" class="form-control form-control-sm" placeholder="Ej: Yogur Griego Hacendado">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label form-label-sm">Tipo de foto</label>
+            <select id="unknown-image-type" class="form-select form-select-sm">
+              <option value="front">Etiqueta frontal (front)</option>
+              <option value="ingredients">Ingredientes</option>
+              <option value="nutrition">Información nutricional</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Visor de cámara -->
+        <div id="camera-container" class="mb-2 d-none">
+          <video id="capture-video" autoplay="" playsinline="" class="w-100 rounded" style="max-height: 260px; object-fit: cover;"></video>
+        </div>
+
+        <!-- Preview de foto capturada -->
+        <div id="photo-preview-container" class="mb-2 d-none text-center">
+          <img id="photo-preview" class="img-fluid rounded" style="max-height: 200px;" alt="Preview">
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button id="btn-capture-photo" class="btn btn-outline-info btn-sm">📷 Abrir cámara</button>
+          <button id="btn-retake-photo" class="btn btn-outline-secondary btn-sm d-none">🔄 Repetir foto</button>
+          <button id="btn-save-photo" class="btn btn-warning btn-sm d-none">💾 Guardar en cola</button>
+          <button id="btn-cancel-capture" class="btn btn-outline-danger btn-sm ms-auto">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alertas y Sugerencias del Asistente (Oculto por defecto) -->
+    <div id="assistant-alert" class="alert alert-danger d-none text-start">
+      <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> ¡Atención!</h5>
+      <p id="assistant-warning-text"></p>
+      <hr>
+      <p class="mb-0"><strong>Alternativas saludables:</strong></p>
+      <div id="assistant-alternatives" class="list-group mt-2"></div>
+    </div>
+
+    <!-- Formulario para añadir al carrito (aparece al buscar un producto) -->
+    <div id="add-to-cart-panel" class="card bg-secondary text-white mb-4 d-none text-start">
+      <div class="card-body">
+        <h5 id="scanned-product-name" class="card-title"></h5>
+        <div class="row align-items-end mt-3">
+          <div class="col-4">
+            <label>Cantidad</label>
+            <input type="number" id="scanned-amount" class="form-control" value="1">
+          </div>
+          <div class="col-4">
+            <label>Precio (€)</label>
+            <input type="number" id="scanned-price" class="form-control" step="0.01">
+          </div>
+          <div class="col-4">
+            <button class="btn btn-success w-100" id="btn-add-cart">Al Carro</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista del carrito -->
+    <h4 class="text-start mb-3">Mi Compra</h4>
+    <div id="cart-list" class="list-group text-start mb-4">
+      <!-- Inyectado vía JS -->
+    </div>
+
+    <button class="btn btn-warning btn-lg w-100 mb-3" id="btn-checkout">Pasar por Caja (Llenar Despensa)</button>
+
+    <script type="module" src="./js/grid.js"></script>
+  </div>
+      
+      <div class="modal fade" id="modal-credentials" tabindex="-1" aria-labelledby="modal-credentials-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modal-credentials-label">⚙️ Cuenta OpenFoodFacts</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-start">
+
+          <!-- Estado actual -->
+          <div id="cred-status" class="alert alert-secondary py-2 mb-3 small">
+            Cargando estado...
+          </div>
+
+          <!-- No tienes cuenta? -->
+          <div class="card bg-dark border-info mb-3">
+            <div class="card-body py-2">
+              <p class="mb-1 small"><strong>No tienes cuenta en OpenFoodFacts?</strong></p>
+              <p class="mb-2 small text-muted">El registro es gratuito y abierto. Tu cuenta permite contribuir fotos de productos que aun no estan en la base de datos mundial.</p>
+              <a href="https://world.openfoodfacts.org/cgi/user.pl" target="_blank" rel="noopener" class="btn btn-info btn-sm w-100">
+                🌍 Crear cuenta gratis en OpenFoodFacts.org
+              </a>
+            </div>
+          </div>
+
+          <!-- Formulario -->
+          <div class="mb-3">
+            <label for="cred-username" class="form-label form-label-sm">Usuario de OpenFoodFacts</label>
+            <input type="text" id="cred-username" class="form-control form-control-sm bg-secondary text-white border-secondary" placeholder="tu_usuario" autocomplete="username">
+          </div>
+          <div class="mb-3">
+            <label for="cred-password" class="form-label form-label-sm">Contrasena</label>
+            <div class="input-group input-group-sm">
+              <input type="password" id="cred-password" class="form-control bg-secondary text-white border-secondary" placeholder="••••••••" autocomplete="current-password">
+              <button class="btn btn-outline-secondary" type="button" id="btn-toggle-password" title="Mostrar/ocultar">
+                👁
+              </button>
+            </div>
+            <div class="form-text text-muted">Las credenciales se guardan solo en este navegador (localStorage). Nunca se envian a nuestros servidores.</div>
+          </div>
+
+          <!-- Resultado de la verificacion -->
+          <div id="cred-verify-result" class="d-none small mt-2"></div>
+        </div>
+        <div class="modal-footer border-secondary flex-wrap gap-2">
+          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">🔍 Verificar credenciales</button>
+          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">🗑 Borrar credenciales</button>
+          <button class="btn btn-success btn-sm ms-auto" id="btn-save-credentials">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="modal-missing-weights" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title">⚖️ Faltan Pesos</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-start">
+          <p class="small text-muted mb-3">Los siguientes productos no tienen peso registrado en la base de datos. Por favor, indícalo (en gramos) para que el inventario funcione correctamente.</p>
+          <form id="missing-weights-form">
+            <!-- Injected by JS -->
+          </form>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-save-missing-weights">Guardar y Continuar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </template>
+  
+  <template id="view-pantry">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Mi Despensa</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStockModal">
+          + Añadir Stock
+        </button>
+      </div>
+
+      <!-- Buscador -->
+      <div class="input-group mb-4">
+        <input type="text" id="pantry-search" class="form-control" placeholder="Buscar en mi despensa...">
+        <button class="btn btn-outline-light" id="scan-pantry-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
+      </div>
+
+      <!-- Lista de inventario -->
+      <div class="row" id="pantry-list">
+        <!-- Inyectado vía JS -->
+      </div>
+    
+      <div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Añadir Stock</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="add-stock-form">
+            <div class="mb-3">
+              <label class="form-label">Producto</label>
+              <div class="input-group mb-2">
+                <input type="text" id="stock-product-search" class="form-control" placeholder="Buscar por nombre o código...">
+                <button class="btn btn-outline-secondary" type="button" id="btn-scan-stock" title="Escanear código"><i class="bi bi-upc-scan"></i></button>
+                <button class="btn btn-outline-secondary" type="button" id="btn-search-stock-product">Buscar</button>
+              </div>
+              <div id="stock-product-results" class="list-group mb-2" style="max-height: 150px; overflow-y: auto;"></div>
+              <input type="hidden" id="stock-product-selected">
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-8">
+                <label class="form-label">Cantidad</label>
+                <input type="number" class="form-control" id="stock-amount" value="500" min="1">
+              </div>
+              <div class="col-4">
+                <label class="form-label">Unidad</label>
+                <select class="form-select" id="stock-unit">
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="unidad">ud</option>
+                </select>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-stock">Añadir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="consumeStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Retirar de Despensa</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="consume-stock-form">
+            <input type="hidden" id="consume-product-code">
+            <div class="mb-3">
+              <p><strong>Producto:</strong> <span id="consume-product-name"></span></p>
+              <p><strong>Stock actual:</strong> <span id="consume-product-stock"></span></p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Motivo</label>
+              <select class="form-select" id="consume-reason">
+                <option value="consumed_family">Se lo ha comido alguien de la familia</option>
+                <option value="trashed">Se ha tirado a la basura</option>
+                <option value="expired">Ha caducado</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Cantidad a retirar</label>
+              <input type="number" class="form-control" id="consume-amount" value="100" min="1">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btn-confirm-consume">Retirar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="productDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="detail-product-name">Detalle del Producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Código:</strong> <span id="detail-product-code"></span></p>
+          <p><strong>Stock en despensa:</strong> <span id="detail-product-stock"></span></p>
+          <div id="detail-nutriscore-nova" class="mb-3"></div>
+          
+          <h6>Información Nutricional (por 100g/ml)</h6>
+          <ul class="list-group list-group-flush mb-3" id="detail-nutrition-list">
+            <!-- Rellenado por JS -->
+          </ul>
+          
+          <h6>Historial de Movimientos</h6>
+          <div class="list-group" id="detail-movements-list" style="max-height: 200px; overflow-y: auto;">
+            <!-- Rellenado por JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </template>
+  
+  <template id="view-recipes">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Mis Recetas</h1>
+        <button class="btn btn-primary" id="btn-new-recipe" data-bs-toggle="modal" data-bs-target="#recipeModal">
+          Nueva Receta
+        </button>
+      </div>
+
+      <!-- Buscador -->
+      <div class="input-group mb-4">
+        <input type="text" id="recipe-search" class="form-control" placeholder="Buscar receta...">
+      </div>
+
+      <!-- Lista de recetas -->
+      <div class="row" id="recipes-list">
+        <!-- Las recetas se inyectan aquí vía JS -->
+      </div>
+    
+      <div class="modal fade" id="recipeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="recipeModalTitle">Nueva Receta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="recipe-form">
+            <input type="hidden" id="recipe-id">
+            
+            <div class="row mb-3">
+              <div class="col-md-8">
+                <label for="recipe-name" class="form-label">Nombre de la receta</label>
+                <input type="text" class="form-control" id="recipe-name" required="">
+              </div>
+              <div class="col-md-4">
+                <label for="recipe-servings" class="form-label">Raciones</label>
+                <input type="number" class="form-control" id="recipe-servings" value="1" min="1" step="0.5" required="">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Ingredientes</label>
+              
+              <!-- Buscador de productos para añadir ingrediente -->
+              <div class="input-group mb-2">
+                <input type="text" id="ingredient-search" class="form-control" placeholder="Código de barras o nombre...">
+                <button class="btn btn-outline-secondary" type="button" id="btn-search-product">Buscar</button>
+                <button class="btn btn-outline-secondary" type="button" id="btn-scan-product">Scan</button>
+              </div>
+              <div id="product-search-results" class="list-group mb-2" style="display:none; max-height: 150px; overflow-y: auto;"></div>
+
+              <!-- Lista de ingredientes añadidos -->
+              <ul class="list-group ingredient-list" id="ingredient-list">
+                <!-- Se inyectan vía JS -->
+              </ul>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Nutrición (por ración)</label>
+              <div id="nutrition-preview" class="p-2 border rounded">
+                Añade ingredientes para calcular la nutrición.
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-recipe">Guardar Receta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </template>
+  
+  <template id="view-recipe-editor">
+    <div class="view-content d-flex flex-column h-100">
+      
+    <div class="editor-header">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary me-1" onclick="window.history.back()">←</button>
+        <h1 class="h5 mb-0" id="editor-page-title">Nueva Receta</h1>
+        <span class="version-badge" id="version-badge" style="display:none;"></span>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-info" id="btn-duplicate-recipe" style="display:none;" title="Duplicar receta">📋</button>
+        <button class="btn btn-sm btn-outline-danger" id="btn-delete-recipe" style="display:none;" title="Eliminar receta">🗑</button>
+        <button class="btn btn-sm btn-success px-3" id="btn-save-recipe">💾 Guardar</button>
+      </div>
+    </div>
+    <div class="editor-grid">
+
+      <!-- Columna principal -->
+      <div>
+        <div class="section-card">
+          <div class="section-title">📋 Información básica</div>
+          <input type="hidden" id="recipe-id">
+          <div class="row g-3">
+            <div class="col-8">
+              <label class="form-label small">Nombre</label>
+              <input type="text" class="form-control" id="recipe-name" placeholder="Nombre de la receta" required="">
+            </div>
+            <div class="col-4">
+              <label class="form-label small">Raciones</label>
+              <input type="number" class="form-control" id="recipe-servings" value="2" min="1" step="0.5">
+            </div>
+            <div class="col-12">
+              <label class="form-label small">Descripción breve</label>
+              <input type="text" class="form-control" id="recipe-description" placeholder="Ej: Receta tradicional de la abuela">
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">🥕 Ingredientes</div>
+          <div class="input-group mb-2">
+            <input type="text" id="ingredient-search" class="form-control" placeholder="Nombre o código de barras...">
+            <button class="btn btn-outline-secondary" type="button" id="btn-scan-ingredient" title="Escanear código"><i class="bi bi-upc-scan"></i></button>
+            <button class="btn btn-outline-secondary" type="button" id="btn-search-ingredient">Buscar</button>
+          </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="search-pantry-only">
+            <label class="form-check-label small" for="search-pantry-only">
+              Buscar solo en mi despensa
+            </label>
+          </div>
+          <div id="ingredient-search-results" class="list-group mb-3" style="display:none;max-height:150px;overflow-y:auto;"></div>
+          <div id="ingredient-list"><div class="text-muted small">Aún no hay ingredientes.</div></div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">👨‍🍳 Instrucciones / Pasos</div>
+          <textarea class="form-control" id="recipe-instructions" placeholder="1. Precalentar horno a 180°C
+2. Mezclar ingredientes secos
+..."></textarea>
+          <div class="form-text mt-1 small">Texto libre. Puedes usar numeración manual.</div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">📝 Notas personales</div>
+          <textarea class="form-control" id="recipe-notes" rows="3" placeholder="Variaciones probadas, sustituciones, fuente de la receta..."></textarea>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">🏷️ Etiquetas</div>
+          <div id="tags-container" class="d-flex flex-wrap gap-2 mb-2"></div>
+          <div class="input-group input-group-sm" style="max-width:260px;">
+            <input type="text" id="tag-input" class="form-control" placeholder="Nueva etiqueta...">
+            <button class="btn btn-outline-secondary" type="button" id="btn-add-tag">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div>
+        <div class="section-card">
+          <div class="section-title">📷 Foto de la receta</div>
+          <div class="recipe-photo-box" id="recipe-photo-box">
+            <div id="photo-placeholder" style="color:#7c8ca0;text-align:center;">
+              <div style="font-size:2.2rem;">🍽️</div>
+              <div class="small mt-1">Toca para añadir foto</div>
+            </div>
+            <div class="photo-overlay"><span style="font-size:1.4rem;">📷</span><small class="mt-1">Cambiar foto</small></div>
+          </div>
+          <input type="file" id="recipe-photo-input" accept="image/*" capture="environment" style="display:none;">
+          <div id="camera-section" style="display:none;" class="mt-2">
+            <video id="recipe-video" autoplay="" playsinline="" class="w-100 rounded" style="max-height:200px;"></video>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-sm btn-primary flex-grow-1" id="btn-take-photo">📸 Capturar</button>
+              <button class="btn btn-sm btn-outline-secondary" id="btn-cancel-camera">Cancelar</button>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="btn-open-camera">📷 Cámara</button>
+            <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="btn-open-gallery">🖼️ Galería</button>
+            <button class="btn btn-sm btn-outline-danger" id="btn-remove-photo" style="display:none;" title="Quitar foto">✕</button>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-title">📊 Nutrición por ración</div>
+          <div class="nutrition-grid" id="nutrition-preview">
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">kcal</div></div>
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">Prot.</div></div>
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">Carb.</div></div>
+            <div class="nutrition-pill"><div class="val">–</div><div class="lbl">Grasa</div></div>
+          </div>
+        </div>
+
+        <div class="section-card" id="versions-card" style="display:none;">
+          <div class="section-title d-flex justify-content-between">
+            <span>🕒 Historial de versiones</span>
+            <span class="badge bg-secondary" id="versions-count">0</span>
+          </div>
+          <div class="version-timeline" id="version-timeline">
+            <div class="text-muted small">Sin versiones anteriores.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  
+      <div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Restaurar versión</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p id="restore-modal-text"></p>
+          <p class="text-muted small">La versión actual quedará guardada en el historial.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm" id="btn-confirm-restore">Restaurar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="ingredientWarningModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title">⚠️ Atención con este ingrediente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p id="ing-warning-text" class="fw-bold"></p>
+          <ul id="ing-warning-list" class="text-danger small mb-3"></ul>
+          
+          <div id="ing-alternative-container" style="display:none;" class="p-3 bg-dark border border-success rounded">
+            <h6 class="text-success mb-1">💡 Alternativa más saludable:</h6>
+            <p id="ing-alternative-name" class="mb-2 fw-bold"></p>
+            <button type="button" class="btn btn-sm btn-success w-100" id="btn-use-alternative">¡Usar alternativa!</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm" id="btn-ignore-warning">Añadir de todos modos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </template>
+  
+  <template id="view-diary">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Agenda de Comidas</h1>
+        <div>
+          <button class="btn btn-outline-light me-2" id="btn-prev-week">&lt; Semana Anterior</button>
+          <span id="current-week-label" class="fw-bold me-2"></span>
+          <button class="btn btn-outline-light" id="btn-next-week">Semana Siguiente &gt;</button>
+        </div>
+      </div>
+
+      <!-- Grid semanal -->
+      <div class="diary-grid" id="diary-grid">
+        <!-- Los días se inyectan vía JS -->
+      </div>
+    
+      <div class="modal fade" id="mealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="mealModalTitle">Registrar Comida</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="meal-form">
+            <input type="hidden" id="meal-date">
+            
+            <div class="mb-3">
+              <label for="meal-type" class="form-label">Tipo de comida</label>
+              <select class="form-select" id="meal-type">
+                <option value="breakfast">Desayuno</option>
+                <option value="lunch" selected="">Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">¿Qué has comido?</label>
+              
+              <!-- Tabs para Receta o Producto -->
+              <ul class="nav nav-tabs mb-2" id="mealTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="tab-recipe" data-bs-toggle="tab" data-bs-target="#pane-recipe" type="button">Receta guardada</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-product" data-bs-toggle="tab" data-bs-target="#pane-product" type="button">Producto escaneado</button>
+                </li>
+              </ul>
+
+              <div class="tab-content" id="mealTabContent">
+                <!-- Panel Receta -->
+                <div class="tab-pane fade show active" id="pane-recipe">
+                  <select class="form-select mb-2" id="meal-recipe-select">
+                    <option value="">-- Selecciona receta --</option>
+                  </select>
+                  <label class="form-label mt-2">Cantidad consumida</label>
+                  <div class="input-group mb-2">
+                    <input type="number" class="form-control" id="meal-recipe-amount" value="1" min="0.1" step="0.1">
+                    <select class="form-select" id="meal-recipe-unit" style="max-width: 120px;">
+                      <option value="servings">Raciones</option>
+                      <option value="grams">Gramos</option>
+                    </select>
+                  </div>
+                  
+                  <div id="meal-recipe-ingredients-container" style="display: none;" class="mt-3 p-2 bg-dark rounded border border-secondary">
+                    <label class="form-label small text-info mb-1">Ajuste manual de ingredientes</label>
+                    <div id="meal-recipe-ingredients" style="max-height: 150px; overflow-y: auto;">
+                      <!-- Injected via JS -->
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Panel Producto -->
+                <div class="tab-pane fade" id="pane-product">
+                  <div class="input-group mb-2">
+                    <input type="text" id="meal-product-search" class="form-control" placeholder="Buscar por nombre o escanear...">
+                    <button class="btn btn-outline-secondary" type="button" id="btn-scan-meal" title="Escanear código">📷</button>
+                    <button class="btn btn-outline-secondary" type="button" id="btn-search-meal-product">
+                      <span id="meal-search-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span> Buscar
+                    </button>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="checkbox" id="meal-search-pantry-only">
+                      <label class="form-check-label small" for="meal-search-pantry-only">Solo en mi despensa</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-warning" type="button" onclick="window.addGenericProduct(document.getElementById('meal-product-search').value || 'Genérico')">+ Genérico rápido</button>
+                  </div>
+
+                  <div id="meal-product-results" class="list-group mb-2" style="max-height: 100px; overflow-y: auto;"></div>
+                  <input type="hidden" id="meal-product-selected">
+                  
+                  <label class="form-label mt-2">Gramos consumidos</label>
+                  <input type="number" class="form-control" id="meal-product-grams" value="100" min="1">
+                </div>
+              </div>
+            </div>
+
+            <details class="mb-3">
+              <summary class="form-label text-info" style="cursor:pointer;">Opciones opcionales (Hambre, notas...)</summary>
+              <div class="mt-2 border border-secondary p-2 rounded bg-dark">
+                <label class="form-label small">Hambre antes de comer</label>
+                <input type="range" class="form-range" id="meal-hunger" min="1" max="10" value="5">
+                <div class="d-flex justify-content-between"><small>Poca</small><small>Mucha</small></div>
+              </div>
+            </details>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="meal-deduct-pantry" checked="">
+              <label class="form-check-label" for="meal-deduct-pantry">
+                Descontar automáticamente de mi Despensa
+              </label>
+            </div>
+            
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-meal">Guardar Ingesta</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="diaryPhotoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">📷 Foto de lo que comí</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="diary-photo-date">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small">Tipo de comida</label>
+              <select class="form-select form-select-sm" id="diary-photo-meal-type">
+                <option value="">-- Sin especificar --</option>
+                <option value="breakfast">Desayuno</option>
+                <option value="lunch">Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="diary-camera-section">
+            <video id="diary-video" autoplay="" playsinline="" class="w-100 rounded mb-2" style="max-height:220px;"></video>
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary flex-grow-1" id="btn-diary-snap">📸 Capturar</button>
+              <button class="btn btn-outline-info" id="btn-diary-gallery" title="Elegir foto de galería">🖼️ Galería</button>
+              <button class="btn btn-outline-secondary" id="btn-diary-stop-camera" title="Cancelar">✕</button>
+            </div>
+            <input type="file" id="diary-file-input" accept="image/*" style="display:none;">
+          </div>
+
+          <div id="diary-photo-preview-section" style="display:none;">
+            <img id="diary-photo-preview" class="w-100 rounded mb-2" style="max-height:220px;object-fit:cover;" alt="Vista previa">
+            <button class="btn btn-outline-secondary btn-sm w-100" id="btn-diary-retake">🔄 Repetir foto o cambiar</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-diary-save-photo" disabled="">💾 Guardar foto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title text-truncate" id="itemDetailTitle">Detalle</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between mb-2">
+            <strong>Calorías:</strong> <span><span id="itemDetailKcal">0</span> kcal</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Proteínas:</span> <span><span id="itemDetailProt">0</span> g</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Carbohidratos:</span> <span><span id="itemDetailCarbs">0</span> g</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3 small text-muted">
+            <span>Grasas:</span> <span><span id="itemDetailFat">0</span> g</span>
+          </div>
+          
+          <div id="itemDetailPhotoContainer" class="text-center mb-1" style="display:none;">
+             <a id="itemDetailPhotoLink" href="#" class="btn btn-outline-info btn-sm">🖼️ Ver foto original</a>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btn-delete-item">🗑️ Borrar</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </template>
+  
+  <template id="view-meal-photos">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h4 class="mb-0">📷 Fotos de comidas</h4>
+        <button class="btn btn-primary btn-sm flex-grow-1 flex-md-grow-0" id="btn-quick-capture">📷 Añadir foto</button>
+      </div>
+
+      <!-- Cámara rápida inline -->
+      <div id="quick-camera-section">
+        <video id="quick-video" autoplay="" playsinline=""></video>
+        <div class="row g-2 mt-2">
+          <div class="col-6">
+            <select class="form-select form-select-sm" id="quick-meal-type">
+              <option value="">-- Tipo de comida --</option>
+              <option value="breakfast">Desayuno</option>
+              <option value="lunch">Comida</option>
+              <option value="snack">Merienda</option>
+              <option value="dinner">Cena</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <input type="date" class="form-control form-control-sm" id="quick-date">
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-primary flex-grow-1" id="btn-snap">📸 Capturar</button>
+          <button class="btn btn-outline-info" id="btn-quick-gallery" title="Elegir foto de galería">🖼️ Galería</button>
+          <button class="btn btn-outline-secondary" id="btn-cancel-quick-camera" title="Cancelar">✕</button>
+        </div>
+        <input type="file" id="quick-file-input" accept="image/*" style="display:none;">
+      </div>
+
+      <!-- Filtros -->
+      <div class="filter-bar">
+        <button class="btn btn-outline-secondary filter-btn active" data-filter="all" id="filter-all">Todas</button>
+        <button class="btn btn-outline-warning filter-btn" data-filter="pending_review" id="filter-pending">⏳ Pendientes</button>
+        <button class="btn btn-outline-success filter-btn" data-filter="logged" id="filter-logged">✅ Anotadas</button>
+        <span class="ms-auto text-muted small" id="photo-count"></span>
+      </div>
+
+      <!-- Grid de fotos -->
+      <div class="photos-grid" id="photos-grid">
+        <div class="empty-state col-span-all">
+          <div class="icon">🍽️</div>
+          <h4>Sin fotos todavía</h4>
+          <p class="small">Pulsa "Añadir foto ahora" o ve a la Agenda y usa el botón 📷 en cualquier día.</p>
+        </div>
+      </div>
+
+    
+      <div class="modal fade" id="annotateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">✏️ Anotar foto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <img id="annotate-preview" class="modal-photo-preview" src="" alt="Foto a anotar">
+
+          <div class="d-flex gap-2 mb-2">
+            <button class="btn btn-outline-info btn-sm flex-grow-1" id="btn-copy-clipboard" title="Copiar imagen al portapapeles para pegar en IA">
+              📋 Copiar Foto
+            </button>
+            <button class="btn btn-outline-info btn-sm flex-grow-1" id="btn-copy-prompt" title="Copiar instrucciones para la IA">
+              📝 Copiar Prompt
+            </button>
+          </div>
+          <div id="clipboard-status" class="small text-center mb-3" style="display:none;"></div>
+
+          <div class="mb-3 p-2 border border-secondary rounded">
+            <label class="form-label small text-warning">🤖 Carga Mágica por IA</label>
+            <textarea class="form-control form-control-sm font-monospace bg-dark text-info border-secondary" id="ai-json-input" rows="2" placeholder="Pega el JSON de la IA aquí..."></textarea>
+            <button class="btn btn-sm btn-outline-warning w-100 mt-2" id="btn-process-ai">Crear en Agenda desde JSON</button>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">Notas manuales</label>
+            <textarea class="form-control" id="annotate-notes" rows="2" placeholder="Ej: Paella de verduras..."></textarea>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small">Tipo de comida</label>
+              <select class="form-select form-select-sm" id="annotate-meal-type">
+                <option value="">-- Sin especificar --</option>
+                <option value="breakfast">Desayuno</option>
+                <option value="lunch">Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small">Fecha</label>
+              <input type="date" class="form-control form-control-sm" id="annotate-date">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer flex-wrap">
+          <button type="button" class="btn btn-outline-danger btn-sm me-auto" id="btn-discard-photo">🗑</button>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="btn-send-to-agenda" title="Enviar a agenda sin datos para resolver luego">Mover a Agenda (vacía)</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-save-annotation">Guardar nota</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    </div>
+  </template>
+  
+  <template id="view-dashboard">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <h1 class="mb-4">Dashboard Nutricional</h1>
+
+      <div class="row g-4 mb-4">
+        <!-- Resumen del día (Kcal) -->
+        <div class="col-md-4">
+          <div class="dashboard-card text-center d-flex flex-column justify-content-center">
+            <h5 class="text-muted">Calorías Hoy</h5>
+            <div class="chart-container" style="height: 200px;">
+              <canvas id="kcalChart"></canvas>
+            </div>
+            <div class="mt-2" id="kcal-text">-- / -- kcal</div>
+          </div>
+        </div>
+
+        <!-- Macros del día -->
+        <div class="col-md-4">
+          <div class="dashboard-card">
+            <h5 class="text-muted mb-3">Macros (Hoy)</h5>
+            
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Proteínas</span><span id="macro-prot-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-info" id="macro-prot-bar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Carbohidratos</span><span id="macro-carb-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-warning" id="macro-carb-bar" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Grasas</span><span id="macro-fat-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-danger" id="macro-fat-bar" style="width: 0%"></div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small">
+                <span>Fibra</span><span id="macro-fiber-text">--/-- g</span>
+              </div>
+              <div class="progress macro-progress bg-dark">
+                <div class="progress-bar bg-success" id="macro-fiber-bar" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variedad Semanal -->
+        <div class="col-md-4">
+          <div class="dashboard-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="text-muted mb-0">Variedad Semanal</h5>
+              <span class="badge bg-primary" id="variety-score">--%</span>
+            </div>
+            <div class="variety-list" id="variety-list">
+              <!-- Se inyecta por JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico de la semana -->
+      <div class="row">
+        <div class="col-12">
+          <div class="dashboard-card">
+            <h5 class="text-muted mb-3">Histórico de Calorías (Semana)</h5>
+            <div class="chart-container">
+              <canvas id="weekChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+      
+    </div>
+  </template>
+  
+  <template id="view-db-viewer">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0 text-start">Visor de Productos</h4>
+        <div class="btn-group" role="group">
+          <input type="radio" class="btn-check" name="dbtype" id="db-official" value="official" checked="">
+          <label class="btn btn-outline-primary btn-sm" for="db-official">BD Oficial</label>
+
+          <input type="radio" class="btn-check" name="dbtype" id="db-custom" value="custom">
+          <label class="btn btn-outline-primary btn-sm" for="db-custom">Mis Productos</label>
+        </div>
+        <span id="db-count" class="badge bg-primary ms-2">Cargando...</span>
+      </div>
+      
+      <div class="input-group mb-3">
+        <input type="text" id="db-search" class="form-control bg-dark text-white border-secondary" placeholder="Buscar por nombre o código...">
+      </div>
+
+      <!-- El contenedor donde Tabulator dibujará la tabla -->
+      <div id="db-table" class="flex-grow-1 text-start" style="min-height: 400px; height: 60vh;"></div>
+    
+      
+    </div>
+  </template>
+  
+  <template id="view-settings">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <h1 class="mb-4">⚙️ Ajustes y Copias de Seguridad</h1>
+
+      <div class="settings-section">
+        <h4 class="mb-3">Exportar Datos</h4>
+        <p class="text-muted small mb-3">
+          Descarga una copia de seguridad de toda tu base de datos (recetas, agenda, inventario, fotos). 
+          <strong>Nota:</strong> La base de datos maestra de productos (OpenFoodFacts) no se exporta porque se puede volver a descargar y ocuparía demasiado espacio.
+        </p>
+        <button class="btn btn-primary" id="btn-export">💾 Descargar Backup (.json)</button>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="mb-3">Importar Datos</h4>
+        <p class="text-muted small mb-3 text-warning">
+          <strong>⚠️ Cuidado:</strong> Al restaurar un backup, se sobrescribirán por completo tus recetas, agenda e inventario actuales. Esta acción no se puede deshacer.
+        </p>
+        <div class="input-group mb-3">
+          <input type="file" class="form-control" id="import-file" accept=".json">
+          <button class="btn btn-outline-warning" type="button" id="btn-import">Restaurar</button>
+        </div>
+      </div>
+    
+      
+    </div>
+  </template>
+  </body></html>

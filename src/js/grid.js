@@ -5,13 +5,20 @@ import * as CartStore from './modules/cart/CartStore.js';
 import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
 import { saveImageToPendingUploads, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
 import { Modal } from 'bootstrap';
+import { showToast, confirmModal } from './modules/ui/UI.js';
 
 let currentScannedProduct = null;
 let capturedImageBlob = null;
 let unknownBarcode = null;
+// Expose to allow Playwright tests to wait for product to be loaded
+Object.defineProperty(window, 'currentScannedProduct', {
+    get: () => currentScannedProduct,
+    configurable: true
+});
+
 
 // Inicialización
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
     await migrateFromLegacyDB().catch(console.error);
     await updateCartUI();
 
@@ -23,7 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById("btn-add-cart").addEventListener("click", handleAddToCart);
     document.getElementById("btn-checkout").addEventListener("click", handleCheckout);
     document.getElementById("scan-btn").addEventListener("click", () => {
-        window.location.href = "/scan.html";
+        window.location.href = '/scan.html';
     });
 
     document.getElementById("clear-db-btn").addEventListener("click", async () => {
@@ -48,13 +55,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCredentialsModal();
 
     // Leer parámetro URL si venimos del scanner
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
     const codeFromUrl = urlParams.get('code');
     if (codeFromUrl) {
         document.getElementById("code-input").value = codeFromUrl;
         handleSearch();
     }
-});
+}
 
 async function handleSearch() {
     let query = document.getElementById("code-input").value.trim();
@@ -134,9 +141,9 @@ function showProductPanel(analysis) {
     document.getElementById('add-to-cart-panel').classList.remove('d-none');
 }
 
-window.selectAlternative = function(code) {
+window.selectAlternative = async function(code) {
     document.getElementById('code-input').value = code;
-    handleSearch();
+    await handleSearch();
 };
 
 async function handleAddToCart() {
@@ -187,7 +194,7 @@ window.removeFromCart = async function(id) {
 
 async function handleCheckout() {
     const { items } = await CartStore.getCart();
-    if (items.length === 0) return alert('El carro está vacío');
+    if (items.length === 0) return showToast('El carro está vacío', 'warning');
 
     const missingWeights = [];
     for (const item of items) {
@@ -214,6 +221,11 @@ async function handleCheckout() {
         const modalEl = document.getElementById('modal-missing-weights');
         const modal = Modal.getOrCreateInstance(modalEl);
         modal.show();
+
+        document.getElementById('btn-skip-missing-weights').onclick = async () => {
+            modal.hide();
+            await performCheckout(items.length);
+        };
 
         document.getElementById('btn-save-missing-weights').onclick = async () => {
             const inputs = form.querySelectorAll('.missing-weight-input');
@@ -261,8 +273,8 @@ async function performCheckout(itemCount) {
         if (warnings && warnings.length > 0) {
             msg += "\n\n⚠️ Atención:\n" + warnings.join("\n") + "\n\nSe ha asumido 1kg para los que no tenían peso.";
         }
-        alert(msg);
-        window.location.href = 'pantry.html';
+        showToast(msg.replace(/\n/g, '<br>'));
+        setTimeout(() => window.location.hash = '#pantry', 1000);
     }
 }
 

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>OpenFoodFacts by accreativos</title>
+    <script src="./js/papaparse.min.js" type="text/javascript"></script>
+    <script src="./js/pako_inflate.min.js"></script>
+
+  <style>
+    .bd-placeholder-img {
+      font-size: 1.125rem;
+      text-anchor: middle;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+    }
+
+    @media (min-width: 768px) {
+      .bd-placeholder-img-lg {
+        font-size: 3.5rem;
+      }
+    }
+
+    .b-example-divider {
+      height: 3rem;
+      background-color: rgba(0, 0, 0, .1);
+      border: solid rgba(0, 0, 0, .15);
+      border-width: 1px 0;
+      box-shadow: inset 0 .5em 1.5em rgba(0, 0, 0, .1), inset 0 .125em .5em rgba(0, 0, 0, .15);
+    }
+
+    .b-example-vr {
+      flex-shrink: 0;
+      width: 1.5rem;
+      height: 100vh;
+    }
+
+    .bi {
+      vertical-align: -.125em;
+      fill: currentColor;
+    }
+
+    .nav-scroller {
+      position: relative;
+      z-index: 2;
+      height: 2.75rem;
+      overflow-y: hidden;
+    }
+
+    .nav-scroller .nav {
+      display: flex;
+      flex-wrap: nowrap;
+      padding-bottom: 1rem;
+      margin-top: -1px;
+      overflow-x: auto;
+      text-align: center;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+
+</head>
+
+<body class="d-flex h-100 text-center">
+
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-auto">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <app-menu current-page="index.html"></app-menu>
+      </div>
+    </header>
+
+    <main class="px-3">
+      <h1>¿Como funciona? <button type="button" class="btn btn-success" id="ya-se">Ya se como va</button></h1>
+      
+      <p class="lead">Esta aplicacion se ha inspirada en la charla <a href="https://www.youtube.com/watch?v=j5dUzDTQ3mc">Taller de Nutrición: Etiquetado Nutricional</a>
+        de la fundacion <a href="https://www.fundacionuapo.org/">UAPO</a></p> 
+
+      <p>El codigo y mas informacion tecnica la puedes encontrar <a href="https://github.com/josejuanmontiel/OpenFoodFacts">aqui.</a></p>
+      <p>Basicamente, descargara la base de datos de codigos de barras y te avisara de los valores que no quieras que tus alimentos tengan.</p>
+
+      <div class="container text-center">
+        <div class="row">
+          <textarea class="form-control" placeholder="Leave a comment here" 
+          id="filters" style="height: 100px">Ingrediente 1 |
+Ingrediente 2 |
+Ingrediente 3</textarea>
+        </div>
+        <div class="row">
+          &nbsp;
+        </div>
+        <div class="row">
+          <!-- Input group -->
+          <div class="d-flex justify-content-center">
+            <div class="input-group w-auto">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="database"
+                  aria-describedby="button-addon1" size="50" value="/spain_products.tsv.zz"></input>
+                <button data-mdb-button-init data-mdb-ripple-init class="btn btn-primary" type="button" id="download-btn" data-mdb-ripple-color="dark">
+                    Empezar
+                </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="mt-auto text-white-50">
+    </footer>
+  </div>
+  <script type="module" src="./js/index.js"></script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+
+</html>

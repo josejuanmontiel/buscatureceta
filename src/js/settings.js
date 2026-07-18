@@ -1,9 +1,10 @@
 import * as BackupStore from './modules/backup/BackupStore.js';
+import { showToast, confirmModal } from './modules/ui/UI.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+export async function initView() {
   document.getElementById('btn-export').addEventListener('click', handleExport);
   document.getElementById('btn-import').addEventListener('click', handleImport);
-});
+}
 
 async function handleExport() {
   const btn = document.getElementById('btn-export');
@@ -29,10 +30,10 @@ async function handleExport() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    alert('Copia de seguridad descargada con éxito.');
+    showToast('Copia de seguridad descargada con éxito.');
   } catch (err) {
     console.error('Error al exportar:', err);
-    alert('Error al exportar: ' + err.message);
+    showToast('Error al exportar: ' + err.message, 'danger');
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;
@@ -44,11 +45,11 @@ async function handleImport() {
   const file = fileInput.files[0];
   
   if (!file) {
-    alert('Por favor, selecciona un archivo .json para restaurar.');
+    showToast('Por favor, selecciona un archivo .json para restaurar.', 'warning');
     return;
   }
 
-  if (!confirm('¿Estás seguro de que quieres sobrescribir tus datos actuales con este backup? ESTA ACCIÓN ES IRREVERSIBLE.')) {
+  if (!(await confirmModal('¿Estás seguro de que quieres sobrescribir tus datos actuales con este backup? ESTA ACCIÓN ES IRREVERSIBLE.', 'Restaurar Copia'))) {
     return;
   }
 
@@ -62,11 +63,11 @@ async function handleImport() {
     const text = await file.text();
     await BackupStore.importData(text);
     
-    alert('Copia de seguridad restaurada correctamente. La página se recargará.');
-    window.location.reload();
+    showToast('Copia de seguridad restaurada correctamente. La página se recargará.');
+    setTimeout(() => window.location.reload(), 1500);
   } catch (err) {
     console.error('Error al restaurar:', err);
-    alert('Error al restaurar la copia de seguridad. Asegúrate de que es un archivo válido.\nDetalles: ' + err.message);
+    showToast('Error al restaurar la copia de seguridad.\nDetalles: ' + err.message, 'danger');
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;

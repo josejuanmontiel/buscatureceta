@@ -3,11 +3,12 @@ import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
+import { showToast, confirmModal } from './modules/ui/UI.js';
 
 let recipeModal;
 let currentIngredients = [];
 
-document.addEventListener('DOMContentLoaded', async () => {
+export async function initView() {
   recipeModal = new Modal(document.getElementById('recipeModal'));
   
   await loadRecipes();
@@ -17,9 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.getElementById('btn-new-recipe').addEventListener('click', () => {
-    window.location.href = 'recipe-editor.html';
+    window.location.hash = '#recipe-editor';
   });
-});
+}
 
 async function loadRecipes(query = '') {
   const recipes = await RecipeStore.searchRecipes(query);
@@ -33,7 +34,7 @@ async function loadRecipes(query = '') {
   container.innerHTML = recipes.map(recipe => `
     <div class="col-md-6 col-lg-4 mb-4">
       <div class="card bg-secondary text-white recipe-card h-100">
-        <div class="card-body" onclick="window.location.href='recipe-editor.html?id=${recipe.id}'" style="cursor:pointer;">
+        <div class="card-body" onclick="window.location.hash = '#recipe-editor?id=${recipe.id}'" style="cursor:pointer;">
           <h5 class="card-title">${recipe.name}</h5>
           <h6 class="card-subtitle mb-2 text-light">${recipe.servings} raciones · v${recipe.version || 1}</h6>
           <p class="card-text nutrition-summary">
@@ -49,7 +50,7 @@ async function loadRecipes(query = '') {
         <div class="card-footer d-flex gap-2 bg-dark border-secondary">
           <a href="recipe-editor.html?id=${recipe.id}" class="btn btn-sm btn-outline-light flex-grow-1">✏️ Editar</a>
           <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window._duplicateRecipe(${recipe.id})" title="Duplicar">📋</button>
-          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window._deleteRecipe(${recipe.id})" title="Eliminar">🗑</button>
+          <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window.deleteRecipe(${recipe.id})" title="Eliminar">🗑</button>
         </div>
       </div>
     </div>
@@ -189,7 +190,7 @@ async function saveRecipe() {
   const servings = parseFloat(document.getElementById('recipe-servings').value) || 1;
   
   if (!name) {
-    alert("Por favor, introduce un nombre para la receta.");
+    showToast("Por favor, introduce un nombre para la receta.", 'warning');
     return;
   }
 
@@ -213,8 +214,8 @@ async function saveRecipe() {
 }
 
 // Eliminar receta desde la lista (con confirmación)
-window._deleteRecipe = async function(id) {
-  if (!confirm('¿Eliminar esta receta y todo su historial? Esta acción no se puede deshacer.')) return;
+window.deleteRecipe = async function(id) {
+  if (!(await confirmModal('¿Eliminar esta receta y todo su historial? Esta acción no se puede deshacer.', 'Eliminar Receta'))) return;
   await RecipeStore.deleteRecipe(id);
   await loadRecipes();
 };

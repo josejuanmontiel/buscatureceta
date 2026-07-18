@@ -1,17 +1,3 @@
-const valores = localStorage.getItem("filters");
-if (valores!=null && valores.length>0) {
-    document.getElementById("filters").textContent = valores;
-}
-
-// Event listener para el botón
-function goToGrid() {
-    var filters = document.getElementById('filters').value;
-    localStorage.setItem("filters", filters);
-    window.location.href = "/grid.html";
-}
-
-document.getElementById("ya-se").addEventListener("click", goToGrid);
-
 // Función para parsear el CSV
 function parseCSV(data) {
     // Si la primera línea tiene tabuladores, es TSV (como viene de OpenFoodFacts)
@@ -29,11 +15,20 @@ function parseCSV(data) {
     throw new Error("Librería PapaParse no encontrada");
 }
 
-
 import { db, migrateFromLegacyDB } from './db/schema.js';
 
 // Llamar a migración al inicio
 migrateFromLegacyDB().catch(console.error);
+
+// E2E test helper: clear all user-generated data (keeps products intact)
+window.__resetUserData = async function() {
+  const stores = ['cart', 'pantry', 'pantryLog', 'diary', 'recipes',
+    'recipeVersions', 'recentProducts', 'customProducts', 'priceHistory', 'mealPhotos'];
+  for (const store of stores) {
+    if (db[store]) await db[store].clear();
+  }
+};
+
 
 // Función para guardar los datos en Dexie
 async function saveToDatabase(data) {
@@ -48,6 +43,24 @@ async function saveToDatabase(data) {
         console.error("Error al guardar los datos: ", error);
     }
 }
+
+export async function initView() {
+    const valores = localStorage.getItem("filters");
+    if (valores!=null && valores.length>0) {
+        document.getElementById("filters").textContent = valores;
+    }
+
+    // Event listener para el botón
+    function goToGrid() {
+        var filters = document.getElementById('filters').value;
+        localStorage.setItem("filters", filters);
+        window.location.hash = "#grid";
+    }
+
+    const yaSeBtn = document.getElementById("ya-se");
+    if(yaSeBtn) yaSeBtn.addEventListener("click", goToGrid);
+
+
 
 // Función para descargar y cargar el CSV usando Streams para evitar falta de memoria
 async function downloadAndLoadCSV() {
@@ -188,4 +201,7 @@ async function downloadAndLoadCSV() {
 }
 
 // Event listener para el botón
-document.getElementById("download-btn").addEventListener("click", downloadAndLoadCSV);
+const dlBtn = document.getElementById("download-btn");
+if(dlBtn) dlBtn.addEventListener("click", downloadAndLoadCSV);
+
+}
