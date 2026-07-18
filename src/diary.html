@@ -238,7 +238,42 @@
     </div>
   </div>
 
+  <!-- Modal Detalle de Ítem -->
+  <div class="modal fade" id="itemDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title text-truncate" id="itemDetailTitle">Detalle</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between mb-2">
+            <strong>Calorías:</strong> <span><span id="itemDetailKcal">0</span> kcal</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Proteínas:</span> <span><span id="itemDetailProt">0</span> g</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1 small text-muted">
+            <span>Carbohidratos:</span> <span><span id="itemDetailCarbs">0</span> g</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3 small text-muted">
+            <span>Grasas:</span> <span><span id="itemDetailFat">0</span> g</span>
+          </div>
+          
+          <div id="itemDetailPhotoContainer" class="text-center mb-1" style="display:none;">
+             <a id="itemDetailPhotoLink" href="#" class="btn btn-outline-info btn-sm">🖼️ Ver foto original</a>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btn-delete-item">🗑️ Borrar</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/diary.js"></script>
 </body>
 </html>
+

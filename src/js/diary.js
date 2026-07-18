@@ -8,6 +8,7 @@ import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
 
 let mealModal;
 let diaryPhotoModal;
+let itemDetailModal;
 let currentDate = new Date();
 let currentSelectedDate = null;
 let diaryPhotoCapturedBlob = null;
@@ -18,6 +19,7 @@ const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 document.addEventListener('DOMContentLoaded', async () => {
   mealModal = new Modal(document.getElementById('mealModal'));
   diaryPhotoModal = new Modal(document.getElementById('diaryPhotoModal'));
+  itemDetailModal = new Modal(document.getElementById('itemDetailModal'));
 
   await renderWeek(currentDate);
   await updateDiaryPhotoBadge();
@@ -134,7 +136,7 @@ function renderMealSlot(label, mealType, items, dayKey) {
       ${items.map(i => {
         let icon = '';
         let kcal = Math.round(i.nutrition?.kcal || 0);
-        let action = `window.removeMealItem(${i.entryId}, '${i.productCode || i.recipeId || i.photoId}')`;
+        let action = `window.openItemDetail(${i.entryId}, '${i.name?.replace(/'/g, "\\'")}', ${kcal}, ${i.nutrition?.proteins_g||0}, ${i.nutrition?.carbs_g||0}, ${i.nutrition?.fat_g||0}, ${i.photoId || 'null'})`;
         let textClass = '';
         let kcalText = kcal;
 
@@ -237,10 +239,34 @@ async function updateRecipeIngredientsPreview() {
   }).join('');
 }
 
-window.removeMealItem = async function(entryId, itemId) {
+window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId) {
+  document.getElementById('itemDetailTitle').textContent = name;
+  document.getElementById('itemDetailKcal').textContent = Math.round(kcal);
+  document.getElementById('itemDetailProt').textContent = Math.round(prot);
+  document.getElementById('itemDetailCarbs').textContent = Math.round(carbs);
+  document.getElementById('itemDetailFat').textContent = Math.round(fat);
+  
+  const photoContainer = document.getElementById('itemDetailPhotoContainer');
+  const photoLink = document.getElementById('itemDetailPhotoLink');
+  
+  if (photoId) {
+    photoContainer.style.display = 'block';
+    photoLink.href = `/meal-photos.html?resolvePhotoId=${photoId}`;
+  } else {
+    photoContainer.style.display = 'none';
+  }
+  
+  document.getElementById('btn-delete-item').onclick = () => {
+    itemDetailModal.hide();
+    window.removeMealItem(entryId);
+  };
+  
+  itemDetailModal.show();
+};
+
+window.removeMealItem = async function(entryId) {
   if (confirm('¿Eliminar este registro?')) {
     // Para simplificar, si hay varios items en la misma entry, se borra toda la entry en este MVP.
-    // Una implementación completa usaría DiaryStore.removeDiaryItem buscando el index exacto.
     await DiaryStore.deleteDiaryEntry(entryId);
     await renderWeek(currentDate);
   }

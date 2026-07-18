@@ -304,11 +304,19 @@ async function processAIJson() {
 
   let data;
   try {
-    // A veces la IA devuelve markdown tipo ```json ... ```
-    const cleaned = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
-    data = JSON.parse(cleaned);
+    // Extraer solo la parte que parece un JSON (entre llaves)
+    const match = jsonStr.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No se encontraron llaves {} en el texto");
+    data = JSON.parse(match[0]);
   } catch (err) {
-    return alert('El JSON no es válido. Asegúrate de copiar solo las llaves {} y su contenido.');
+    alert('Aviso: No se pudo leer el JSON correctamente, pero se guardará el registro con valores a 0 para no perder tu nota. Detalle: ' + err.message);
+    data = {
+      name: 'IA (Error): ' + jsonStr.substring(0, 40).replace(/\n/g, ' ') + '...',
+      kcal: 0,
+      protein_g: 0,
+      carbs_g: 0,
+      fat_g: 0
+    };
   }
 
   const { addDiaryEntry, db } = await import('./modules/diary/DiaryStore.js');
@@ -326,13 +334,13 @@ async function processAIJson() {
     name: data.name || 'Plato (IA)',
     servings: 1,
     nutrition: {
-      kcal: data.kcal || 0,
-      proteins_g: data.protein_g || 0,
-      carbs_g: data.carbs_g || 0,
-      fat_g: data.fat_g || 0,
-      fiber_g: data.fiber_g || 0,
-      sugars_g: data.sugars_g || 0,
-      salt_g: data.salt_g || 0
+      kcal: parseFloat(data.kcal) || 0,
+      proteins_g: parseFloat(data.protein_g || data.proteins_g) || 0,
+      carbs_g: parseFloat(data.carbs_g || data.carbohydrates_g) || 0,
+      fat_g: parseFloat(data.fat_g) || 0,
+      fiber_g: parseFloat(data.fiber_g) || 0,
+      sugars_g: parseFloat(data.sugars_g) || 0,
+      salt_g: parseFloat(data.salt_g) || 0
     }
   };
 
@@ -345,6 +353,14 @@ async function processAIJson() {
     await MealPhotoStore.logPhoto(currentAnnotateId, item.name, entryId);
     
     annotateModal.hide();
+    
+    // Si veníamos de la agenda para resolver, volvemos allí
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('resolvePhotoId')) {
+      window.location.href = '/diary.html';
+      return;
+    }
+    
     showToast('Alimento añadido a la agenda mágicamente ✨');
     await renderGallery();
     await updatePendingBadge();
