@@ -4,6 +4,46 @@ import { showToast, confirmModal } from './modules/ui/UI.js';
 export async function initView() {
   document.getElementById('btn-export').addEventListener('click', handleExport);
   document.getElementById('btn-import').addEventListener('click', handleImport);
+
+  const shareBtn = document.getElementById('btn-share-sys');
+  // Check if Web Share API is available and supports files
+  if (navigator.canShare) {
+    shareBtn.style.display = 'inline-block';
+    shareBtn.addEventListener('click', handleShareSystem);
+  }
+}
+
+async function handleShareSystem() {
+  const btn = document.getElementById('btn-share-sys');
+  const originalText = btn.textContent;
+  
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Preparando...';
+    
+    const jsonString = await BackupStore.exportData();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const file = new File([jsonString], `nutriagenda_backup_${dateStr}.json`, { type: 'application/json' });
+    
+    if (navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        title: 'Copia de NutriAgenda',
+        text: 'Backup de NutriAgenda listo para enviar.',
+        files: [file]
+      });
+      showToast('Compartido con éxito.');
+    } else {
+      showToast('Tu navegador no soporta compartir este tipo de archivos.', 'warning');
+    }
+  } catch (err) {
+    console.error('Error al compartir:', err);
+    if (err.name !== 'AbortError') {
+      showToast('Error al compartir: ' + err.message, 'danger');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 async function handleExport() {

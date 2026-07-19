@@ -50,4 +50,9 @@ test.describe('Navigation Tests', () => {
     await page.goto('/#settings');
     await expect(page.locator('body')).toBeVisible();
   });
+
+  test('should load db-viewer.html', async ({ page }) => {
+    await page.goto('/#db-viewer');
+    await expect(page.locator('#db-table')).toBeVisible();
+  });
 });

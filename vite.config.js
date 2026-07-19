@@ -9,6 +9,9 @@ export default defineConfig({
     basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: '.',
+      filename: 'sw.js',
       injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
@@ -29,28 +32,26 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png'
           }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
-        maximumFileSizeToCacheInBytes: 5000000,
-        // Configurar runtime caching para scripts o fuentes externas si es necesario
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/unpkg\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'unpkg-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
+        ],
+        share_target: {
+          action: "/_share-target",
+          method: "POST",
+          enctype: "multipart/form-data",
+          params: {
+            title: "title",
+            text: "text",
+            files: [
+              {
+                name: "file",
+                accept: [".json", "application/json"]
               }
-            }
+            ]
           }
-        ]
+        }
+      },
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
+        maximumFileSizeToCacheInBytes: 5000000
       }
     })
   ],

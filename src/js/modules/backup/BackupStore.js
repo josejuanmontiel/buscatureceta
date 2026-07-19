@@ -63,3 +63,33 @@ export async function importData(jsonString) {
     }
   });
 }
+
+/**
+ * Fusiona los registros entrantes con la base de datos actual.
+ * Se excluye 'diary' por ser datos personales.
+ * Se utiliza bulkPut para realizar un Upsert (inserta o actualiza según ID).
+ * @param {string} jsonString 
+ */
+export async function mergeData(jsonString) {
+  const parsed = JSON.parse(jsonString);
+  if (!parsed.data) {
+    throw new Error('Formato de backup inválido para fusión');
+  }
+
+  const tablesToMerge = Object.keys(parsed.data).filter(t => TABLES_TO_BACKUP.includes(t) && db[t]);
+
+  await db.transaction('rw', tablesToMerge.map(t => db[t]), async () => {
+    for (const tableName of tablesToMerge) {
+      if (tableName === 'diary') {
+        // TODO: Implementar sincronización selectiva para la Agenda (Diary)
+        console.log("Omitiendo 'diary' en la fusión para no sobrescribir datos personales.");
+        continue;
+      }
+
+      const records = parsed.data[tableName];
+      if (Array.isArray(records) && records.length > 0) {
+        await db[tableName].bulkPut(records);
+      }
+    }
+  });
+}

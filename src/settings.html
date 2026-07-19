@@ -37,7 +37,10 @@
           Descarga una copia de seguridad de toda tu base de datos (recetas, agenda, inventario, fotos). 
           <strong>Nota:</strong> La base de datos maestra de productos (OpenFoodFacts) no se exporta porque se puede volver a descargar y ocuparía demasiado espacio.
         </p>
-        <button class="btn btn-primary" id="btn-export">💾 Descargar Backup (.json)</button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" id="btn-export">💾 Descargar Backup (.json)</button>
+          <button class="btn btn-info" id="btn-share-sys" style="display:none;">📤 Sincronizar (vía Pingo u otras apps)</button>
+        </div>
       </div>
 
       <div class="settings-section">
