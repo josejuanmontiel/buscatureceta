@@ -71,7 +71,7 @@ async function downloadAndLoadCSV() {
 
         var database = document.getElementById("database").value;
         if (database == null || database == "") {
-            database = '/spain_products.tsv.zz';
+            database = 'spain_products.tsv.zz';
         }
 
         const response = await fetch(database);

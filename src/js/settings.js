@@ -4,6 +4,7 @@ import { showToast, confirmModal } from './modules/ui/UI.js';
 export async function initView() {
   document.getElementById('btn-export').addEventListener('click', handleExport);
   document.getElementById('btn-import').addEventListener('click', handleImport);
+  document.getElementById('btn-clear-data').addEventListener('click', handleClearData);
 
   const shareBtn = document.getElementById('btn-share-sys');
   // Check if Web Share API is available and supports files
@@ -112,5 +113,30 @@ async function handleImport() {
     btn.disabled = false;
     btn.textContent = originalText;
     fileInput.value = '';
+  }
+}
+
+async function handleClearData() {
+  if (!(await confirmModal('¿Estás seguro de que quieres borrar todos los datos personales? Esta acción NO se puede deshacer. (Los ingredientes se mantendrán)', '¡Atención! Borrado de Datos'))) {
+    return;
+  }
+
+  const btn = document.getElementById('btn-clear-data');
+  const originalText = btn.textContent;
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Borrando datos...';
+
+    await BackupStore.clearUserData();
+    
+    showToast('Datos borrados correctamente. La página se recargará.');
+    setTimeout(() => window.location.reload(), 1500);
+  } catch (err) {
+    console.error('Error al borrar los datos:', err);
+    showToast('Error al borrar los datos.\nDetalles: ' + err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 }

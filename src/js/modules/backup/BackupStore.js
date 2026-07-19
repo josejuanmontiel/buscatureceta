@@ -93,3 +93,22 @@ export async function mergeData(jsonString) {
     }
   });
 }
+
+/**
+ * Limpia todos los datos del usuario, excepto la base de datos de productos (ingredientes).
+ */
+export async function clearUserData() {
+  // Limpiamos las mismas tablas que se incluyen en el backup
+  const tablesToClear = [...TABLES_TO_BACKUP];
+  
+  // Si también queremos borrar el historial de productos recientes:
+  if (db.recentProducts) {
+    tablesToClear.push('recentProducts');
+  }
+
+  await db.transaction('rw', tablesToClear.map(t => db[t]), async () => {
+    for (const tableName of tablesToClear) {
+      await db[tableName].clear();
+    }
+  });
+}

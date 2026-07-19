@@ -59,8 +59,7 @@
     }
   </style>
   <link rel="stylesheet" type="text/css" href="/css/style.css">
-  <link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator_bootstrap5.min.css" rel="stylesheet">
-  <script src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+
 </head>
 
 <body class="d-flex h-100 text-center">
@@ -108,7 +107,7 @@ Ingrediente 3</textarea>
           <!-- Input group -->
           <div class="d-flex justify-content-center">
             <div class="input-group w-auto">
-                <input type="text" class="form-control" id="database" aria-describedby="button-addon1" size="50" value="/spain_products.tsv.zz">
+                <input type="text" class="form-control" id="database" aria-describedby="button-addon1" size="50" value="spain_products.tsv.zz">
                 <button data-mdb-button-init="" data-mdb-ripple-init="" class="btn btn-primary" type="button" id="download-btn" data-mdb-ripple-color="dark">
                     Empezar
                 </button>
@@ -445,7 +444,7 @@ Ingrediente 3</textarea>
       
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Mis Recetas</h1>
-        <button class="btn btn-primary" id="btn-new-recipe">+ Nueva Receta</button>
+        <button class="btn btn-primary" id="btn-new-recipe" data-bs-toggle="modal" data-bs-target="#recipeModal">
           Nueva Receta
         </button>
       </div>
@@ -569,7 +568,6 @@ Ingrediente 3</textarea>
               Buscar solo en mi despensa
             </label>
           </div>
-          <div id="pantry-quick-add-list" class="d-flex flex-wrap gap-2 mb-3"></div>
           <div id="ingredient-search-results" class="list-group mb-3" style="display:none;max-height:150px;overflow-y:auto;"></div>
           <div id="ingredient-list"><div class="text-muted small">Aún no hay ingredientes.</div></div>
         </div>
@@ -1135,7 +1133,10 @@ Ingrediente 3</textarea>
           Descarga una copia de seguridad de toda tu base de datos (recetas, agenda, inventario, fotos). 
           <strong>Nota:</strong> La base de datos maestra de productos (OpenFoodFacts) no se exporta porque se puede volver a descargar y ocuparía demasiado espacio.
         </p>
-        <button class="btn btn-primary" id="btn-export">💾 Descargar Backup (.json)</button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" id="btn-export">💾 Descargar Backup (.json)</button>
+          <button class="btn btn-info" id="btn-share-sys" style="display:none;">📤 Sincronizar (vía Pingo u otras apps)</button>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -1147,6 +1148,14 @@ Ingrediente 3</textarea>
           <input type="file" class="form-control" id="import-file" accept=".json">
           <button class="btn btn-outline-warning" type="button" id="btn-import">Restaurar</button>
         </div>
+      </div>
+      <div class="settings-section border-danger border border-2">
+        <h4 class="mb-3 text-danger">Zona Peligrosa</h4>
+        <p class="text-muted small mb-3">
+          Borra todas tus recetas, diario, inventario y configuración. 
+          <strong>Nota:</strong> Esto NO borrará la base de datos de ingredientes importada.
+        </p>
+        <button class="btn btn-outline-danger" id="btn-clear-data">🗑️ Borrar Todos los Datos Personales</button>
       </div>
     
       
