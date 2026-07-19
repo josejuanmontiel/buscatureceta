@@ -1,7 +1,16 @@
 import { test, expect } from '@playwright/test';
 
+import fs from 'fs';
+import path from 'path';
+
 // Helper: carga la BD de prueba en el contexto del navegador
 async function loadTestDB(page) {
+  await page.route('**/test_products.tsv.zz', route => {
+    const filePath = path.join(process.cwd(), 'src/public/test_products.tsv.zz');
+    const buffer = fs.readFileSync(filePath);
+    route.fulfill({ status: 200, contentType: 'application/octet-stream', body: buffer });
+  });
+
   await page.goto('/#index');
   page.on('dialog', dialog => dialog.accept());
   await page.fill('#filters', 'E250');
@@ -219,6 +228,7 @@ test.describe('Diary (Agenda) Flow', () => {
     const addBtn = page.locator('.diary-day button').first();
     await addBtn.click();
     await expect(page.locator('#mealModal')).toBeVisible();
+    await page.waitForTimeout(300); // Wait for Bootstrap modal fade animation to completely finish
 
     // Ensure we are on recipe tab
     await page.click('#tab-recipe');

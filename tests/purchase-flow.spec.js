@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+import fs from 'fs';
+import path from 'path';
+
 async function clearDB(page) {
   // Navigate to index so the app's Dexie connection is open and index.js registers __resetUserData
   await page.goto('/#index');
@@ -16,6 +19,12 @@ test.describe('Purchase Flow E2E', () => {
     // 0. Limpiar datos previos de otras pruebas
     await clearDB(page);
     page.on('dialog', dialog => dialog.accept());
+
+    await page.route('**/test_products.tsv.zz', route => {
+      const filePath = path.join(process.cwd(), 'src/public/test_products.tsv.zz');
+      const buffer = fs.readFileSync(filePath);
+      route.fulfill({ status: 200, contentType: 'application/octet-stream', body: buffer });
+    });
 
     // 1. Ir a inicio y configurar filtros y BD
     await page.goto('/#index');
@@ -114,6 +123,12 @@ test.describe('Purchase Flow E2E', () => {
   });
 
   test.skip('should prompt for missing weights on checkout for generic products', async ({ page }) => {
+    await page.route('**/test_products.tsv.zz', route => {
+      const filePath = path.join(process.cwd(), 'src/public/test_products.tsv.zz');
+      const buffer = fs.readFileSync(filePath);
+      route.fulfill({ status: 200, contentType: 'application/octet-stream', body: buffer });
+    });
+
     await page.goto('/#index');
     page.on('dialog', dialog => dialog.accept());
     await page.fill('#filters', 'E250');

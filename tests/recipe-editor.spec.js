@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+import fs from 'fs';
+import path from 'path';
+
 async function loadTestDB(page) {
+  await page.route('**/test_products.tsv.zz', route => {
+    const filePath = path.join(process.cwd(), 'src/public/test_products.tsv.zz');
+    const buffer = fs.readFileSync(filePath);
+    route.fulfill({ status: 200, contentType: 'application/octet-stream', body: buffer });
+  });
+
   await page.goto('/#index');
   page.on('dialog', dialog => dialog.accept());
   await page.fill('#filters', 'E250');
