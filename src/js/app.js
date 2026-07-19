@@ -16,3 +16,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
   router.start();
 });
+
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later.
+  deferredPrompt = e;
+  // Update UI notify the user they can install the PWA
+  const installBtn = document.getElementById('btn-install-app');
+  if (installBtn) {
+    installBtn.style.display = 'block';
+    installBtn.addEventListener('click', async () => {
+      // Hide the app provided install promotion
+      installBtn.style.display = 'none';
+      // Show the install prompt
+      deferredPrompt.prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      // We've used the prompt, and can't use it again, throw it away
+      deferredPrompt = null;
+    });
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  // Hide the app-provided install promotion
+  deferredPrompt = null;
+  const installBtn = document.getElementById('btn-install-app');
+  if (installBtn) {
+    installBtn.style.display = 'none';
+  }
+  console.log('PWA was installed');
+});

@@ -20,6 +20,12 @@ export async function initView() {
   document.getElementById('btn-new-recipe').addEventListener('click', () => {
     window.location.hash = '#recipe-editor';
   });
+
+  // Recalcular al cambiar raciones
+  const servingsEl = document.getElementById('recipe-servings');
+  if (servingsEl) {
+    servingsEl.addEventListener('change', updateNutritionPreview);
+  }
 }
 
 async function loadRecipes(query = '') {
@@ -181,8 +187,7 @@ async function updateNutritionPreview() {
   `;
 }
 
-// Recalcular al cambiar raciones
-document.getElementById('recipe-servings').addEventListener('change', updateNutritionPreview);
+
 
 async function saveRecipe() {
   const id = document.getElementById('recipe-id').value;

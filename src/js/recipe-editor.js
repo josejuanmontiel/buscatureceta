@@ -248,7 +248,8 @@ async function searchIngredient() {
   const searchPantryOnly = document.getElementById('search-pantry-only')?.checked;
   
   let results = [];
-  if (searchPantryOnly) {
+  try {
+    if (searchPantryOnly) {
     const pantryItems = await db.pantry.toArray();
     const pantryCodes = Array.from(new Set(pantryItems.map(item => item.productCode)));
     
@@ -271,7 +272,11 @@ async function searchIngredient() {
       results = await ProductStore.searchProducts(q, 20);
     }
   }
+  } catch(err) {
+    console.error('SEARCH ERROR:', err);
+  }
 
+  console.log('SEARCH RESULTS:', results.length);
   const container = document.getElementById('ingredient-search-results');
   if (results.length === 0) {
     container.innerHTML = '<div class="list-group-item text-muted small">Sin resultados.</div>';

@@ -20,6 +20,7 @@ class AppMenu extends HTMLElement {
       const aria = isMatch ? 'aria-current="page"' : '';
       html += `<a class="nav-link fw-bold py-1 px-0 ${activeClass}" ${aria} data-target="${link.id}" href="#${link.id}">${link.text}</a>\n`;
     }
+    html += `<a class="nav-link fw-bold py-1 px-0 text-warning" id="btn-install-app" style="display:none; cursor:pointer;">Instalar App</a>`;
     html += `</nav>`;
     this.innerHTML = html;
   }
