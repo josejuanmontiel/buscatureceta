@@ -64,7 +64,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await clearDB(page);
     await page.goto('/#index');
     page.on('console', msg => console.log('BROWSER: ' + msg.text()));
-    page.on('pageerror', err => console.log('BROWSER_ERR: ' + err.message));
+    page.on('pageerror', err => console.log('BROWSER_ERR: ' + (err.stack || err.message)));
     page.on('dialog', dialog => dialog.accept());
 
     await page.fill('#filters', 'E250');

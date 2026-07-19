@@ -9,8 +9,11 @@ test.describe('Share Received (Merge) Flow', () => {
     await page.evaluate(async () => {
       const mockBackup = {
         data: {
+          products: [
+            { code: "MOCK123", product_name: "Producto Simulado Merge" }
+          ],
           pantry: [
-            { id: 9999, code: "MOCK123", amount: 500, unit: "g", name: "Producto Simulado Merge", updated_at: Date.now() }
+            { id: 9999, productCode: "MOCK123", amount: 500, unit: "g", updated_at: Date.now() }
           ],
           recipes: [
             { id: 8888, name: "Receta Simulada Merge", servings: 2, ingredients: [], instructions: "Test", updated_at: Date.now() }
@@ -23,6 +26,7 @@ test.describe('Share Received (Merge) Flow', () => {
 
       // Usamos window.db (Dexie) expuesto en la app para evitar que un import() dinámico cause que Vite recargue la página en modo dev
       const db = window.db;
+      if (mockBackup.data.products) await db.products.bulkPut(mockBackup.data.products);
       if (mockBackup.data.pantry) await db.pantry.bulkPut(mockBackup.data.pantry);
       if (mockBackup.data.recipes) await db.recipes.bulkPut(mockBackup.data.recipes);
     });
@@ -37,7 +41,7 @@ test.describe('Share Received (Merge) Flow', () => {
 
     // 3. Aserciones
     expect(mergedData.pantryItem).toBeTruthy();
-    expect(mergedData.pantryItem.name).toBe("Producto Simulado Merge");
+    expect(mergedData.pantryItem.productCode).toBe("MOCK123");
     expect(mergedData.recipeItem).toBeTruthy();
     expect(mergedData.recipeItem.name).toBe("Receta Simulada Merge");
     

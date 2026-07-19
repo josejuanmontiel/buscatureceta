@@ -12,6 +12,7 @@
 import Dexie from 'dexie';
 
 export const db = new Dexie('nutriagenda');
+if (typeof window !== 'undefined') window.db = db;
 
 // ── v1: Migración de "miBaseDeDatos" → "nutriagenda" ─────────────────────────
 // La store original usaba keyPath "id" con el code de barras como valor.

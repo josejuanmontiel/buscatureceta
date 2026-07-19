@@ -74,7 +74,16 @@ export class Router {
     if (route.init) {
       // init module dynamically to save initial load time
       const module = await route.init();
-      if (module && module.initView) {
+      // Verificamos que la URL siga en esta vista antes de inicializar,
+      // para evitar problemas si el usuario navegó rápido antes de que el import terminara.
+      let currentHash = window.location.hash.slice(1) || 'index';
+      let currentViewName = currentHash;
+      const qIndex2 = currentHash.indexOf('?');
+      if (qIndex2 !== -1) {
+        currentViewName = currentHash.slice(0, qIndex2);
+      }
+      
+      if (currentViewName === viewName && module && module.initView) {
         await module.initView();
       }
     }
