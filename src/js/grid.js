@@ -30,7 +30,7 @@ export async function initView() {
     document.getElementById("btn-add-cart").addEventListener("click", handleAddToCart);
     document.getElementById("btn-checkout").addEventListener("click", handleCheckout);
     document.getElementById("scan-btn").addEventListener("click", () => {
-        window.location.href = '/scan.html';
+        window.location.href = '/scan.html?return=%23grid';
     });
 
     document.getElementById("clear-db-btn").addEventListener("click", async () => {

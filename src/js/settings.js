@@ -24,7 +24,8 @@ async function handleShareSystem() {
     
     const jsonString = await BackupStore.exportData();
     const dateStr = new Date().toISOString().split('T')[0];
-    const file = new File([jsonString], `nutriagenda_backup_${dateStr}.json`, { type: 'application/json' });
+    // Web Share API in Chrome requires specific MIME types. application/json is not allowed, so we use text/plain.
+    const file = new File([jsonString], `nutriagenda_backup_${dateStr}.txt`, { type: 'text/plain' });
     
     if (navigator.canShare({ files: [file] })) {
       await navigator.share({
@@ -86,7 +87,7 @@ async function handleImport() {
   const file = fileInput.files[0];
   
   if (!file) {
-    showToast('Por favor, selecciona un archivo .json para restaurar.', 'warning');
+    showToast('Por favor, selecciona un archivo de backup para restaurar.', 'warning');
     return;
   }
 

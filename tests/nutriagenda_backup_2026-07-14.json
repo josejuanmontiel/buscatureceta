@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "timestamp": "2026-07-14T21:49:33.886Z",
+  "data": {
+    "recipes": [
+      {
+        "description": "Arroz blanco con tomate, huevos y salchichas",
+        "instructions": "",
+        "notes": "",
+        "source": "local",
+        "externalId": null,
+        "tags": [],
+        "ingredients": [],
+        "nutritionPerServing": null,
+        "photoBlob": {},
+        "version": 2,
+        "name": "Arroyo y huevos",
+        "servings": 1,
+        "createdAt": "2026-07-14T13:16:46.930Z",
+        "updatedAt": "2026-07-14T13:30:09.604Z",
+        "id": 1
+      }
+    ],
+    "recipeVersions": [
+      {
+        "recipeId": 1,
+        "savedAt": "2026-07-14T13:30:09.599Z",
+        "versionNumber": 1,
+        "snapshot": {
+          "description": "Arroz blanco con tomate, huevos y salchichas",
+          "instructions": "",
+          "notes": "",
+          "source": "local",
+          "externalId": null,
+          "tags": [],
+          "ingredients": [],
+          "nutritionPerServing": null,
+          "photoBlob": null,
+          "version": 1,
+          "name": "Arroyo y huevos",
+          "servings": 1,
+          "createdAt": "2026-07-14T13:16:46.930Z",
+          "updatedAt": "2026-07-14T13:16:46.930Z",
+          "id": 1
+        },
+        "id": 1
+      }
+    ],
+    "diary": [
+      {
+        "date": "2026-07-14",
+        "mealType": "dinner",
+        "items": [
+          {
+            "type": "product",
+            "recipeId": null,
+            "productCode": "8420878609075",
+            "name": "Tortilla patatas y calabacín",
+            "servings": 1,
+            "nutrition": {
+              "kcal": 152,
+              "proteins_g": 4.8,
+              "carbs_g": 10,
+              "fat_g": 9.9,
+              "fiber_g": 1.7,
+              "sugars_g": 1.1,
+              "salt_g": 1.7,
+              "saturated_fat_g": 0
+            }
+          },
+          {
+            "type": "product",
+            "recipeId": null,
+            "productCode": "0035408038140",
+            "name": "Pizza 4 Fromages",
+            "servings": 1,
+            "nutrition": {
+              "kcal": 0,
+              "proteins_g": 0,
+              "carbs_g": 0,
+              "fat_g": 0,
+              "fiber_g": 0,
+              "sugars_g": 0,
+              "salt_g": 0,
+              "saturated_fat_g": 0
+            }
+          },
+          {
+            "type": "product",
+            "recipeId": null,
+            "productCode": "0606110943307",
+            "name": "Hummus crema de garbanzo",
+            "servings": 0.5,
+            "nutrition": {
+              "kcal": 83,
+              "proteins_g": 3.5,
+              "carbs_g": 5,
+              "fat_g": 5.4,
+              "fiber_g": 0,
+              "sugars_g": 0.6,
+              "salt_g": 0.7,
+              "saturated_fat_g": 0
+            }
+          }
+        ],
+        "context": {
+          "hunger_before": 5,
+          "fullness_after": null,
+          "mood": null,
+          "notes": ""
+        },
+        "createdAt": "2026-07-14T21:45:40.270Z",
+        "updatedAt": "2026-07-14T21:48:33.599Z",
+        "id": 2
+      },
+      {
+        "date": "2026-07-14",
+        "mealType": "lunch",
+        "items": [
+          {
+            "type": "photo",
+            "photoId": 1,
+            "name": "### Identificación del Plato\n\nBasado en la imagen `17840387095595849576271556384367.jpg`, este plato es una versión muy popular y casera del **Arroz a la cubana**, una receta muy tradicional en España. Aunque la versión más clásica suele ir acompañada de un plátano frito, es sumamente común en los hogares españoles servirlo con trozos de salchicha, tal y como se ve en la fotografía.\n\n---\n\n### Ingredientes\n\nLos elementos que componen este plato son muy sencillos y reconocibles:\n\n* **Arroz blanco:** Hervido y escurrido.\n* **Salsa de tomate:** Por la textura y el color, se trata de *tomate frito* (salsa de tomate cocinada con aceite, sal y, a veces, un toque de azúcar).\n* **Huevo frito:** Cocinado en aceite, con la yema aún líquida.\n* **Salchichas:** Rodajas de salchicha tipo Frankfurt o Viena, ligeramente pasadas por la sartén.\n* **Aceite y sal:** Utilizados en la preparación y fritura de los alimentos.\n\n---\n\n### Valor Nutricional Estimado\n\nEl valor nutricional exacto puede variar dependiendo de las cantidades de cada ingrediente y de la cantidad de aceite utilizado para freír el huevo y las salchichas. A continuación, se presenta una estimación basada en una ración promedio (similar a la porción visualizada en el plato):\n\n| Ingrediente (Porción estimada) | Calorías (kcal) | Carbohidratos (g) | Proteínas (g) | Grasas (g) |\n| --- | --- | --- | --- | --- |\n| **Arroz blanco** (aprox. 1 taza) | 200 | 45 | 4 | 0.5 |\n| **Huevo frito** (1 unidad grande) | 100 | 0 | 6 | 8.0 |\n| **Tomate frito** (aprox. 1/4 taza) | 60 | 8 | 1 | 3.0 |\n| **Salchicha** (aprox. media unidad) | 75 | 1 | 3 | 6.0 |\n| **Total Aproximado** | **435** | **54** | **14** | **17.5** |\n\n**Notas nutricionales adicionales:**\n\n* Es un plato con un alto contenido en **carbohidratos simples** (procedentes del arroz blanco), lo que proporciona energía de rápida absorción.\n* Las **proteínas** son de alto valor biológico gracias al huevo y la carne de la salchicha.\n* El contenido de **grasas** dependerá en gran medida de si el huevo se ha frito en abundante aceite o a la plancha, pero el tomate frito comercial y las salchichas ya aportan una base de lípidos al plato.",
+            "servings": 1,
+            "nutrition": {
+              "kcal": 0,
+              "proteins_g": 0,
+              "carbs_g": 0,
+              "fat_g": 0
+            }
+          }
+        ],
+        "context": null,
+        "createdAt": "2026-07-14T21:48:45.023Z",
+        "updatedAt": "2026-07-14T21:48:45.023Z",
+        "id": 4
+      }
+    ],
+    "goals": [],
+    "pantry": [
+      {
+        "productCode": "8480000171313",
+        "amount": 1,
+        "unit": "unidad",
+        "id": 1
+      },
+      {
+        "productCode": "8429518001033",
+        "amount": 1,
+        "unit": "unidad",
+        "id": 2
+      },
+      {
+        "productCode": "8437015354040",
+        "amount": 1,
+        "unit": "unidad",
+        "id": 3
+      },
+      {
+        "productCode": "8410764050500",
+        "amount": 1,
+        "unit": "unidad",
+        "id": 4
+      }
+    ],
+    "pantryLog": [
+      {
+        "pantryId": 1,
+        "productCode": "8480000171313",
+        "delta": 1,
+        "reason": "purchase",
+        "date": "2026-07-14T13:14:40.044Z",
+        "id": 1
+      },
+      {
+        "pantryId": 2,
+        "productCode": "8429518001033",
+        "delta": 1,
+        "reason": "purchase",
+        "date": "2026-07-14T13:14:40.056Z",
+        "id": 2
+      },
+      {
+        "pantryId": 3,
+        "productCode": "8437015354040",
+        "delta": 1,
+        "reason": "purchase",
+        "date": "2026-07-14T13:14:40.062Z",
+        "id": 3
+      },
+      {
+        "pantryId": 4,
+        "productCode": "8410764050500",
+        "delta": 1,
+        "reason": "purchase",
+        "date": "2026-07-14T13:14:40.069Z",
+        "id": 4
+      }
+    ],
+    "cart": [],
+    "priceHistory": [],
+    "pendingUploads": [],
+    "mealPhotos": [
+      {
+        "date": "2026-07-14",
+        "mealType": "lunch",
+        "blob": {},
+        "thumbnailBlob": {},
+        "status": "logged",
+        "notes": "### Identificación del Plato\n\nBasado en la imagen `17840387095595849576271556384367.jpg`, este plato es una versión muy popular y casera del **Arroz a la cubana**, una receta muy tradicional en España. Aunque la versión más clásica suele ir acompañada de un plátano frito, es sumamente común en los hogares españoles servirlo con trozos de salchicha, tal y como se ve en la fotografía.\n\n---\n\n### Ingredientes\n\nLos elementos que componen este plato son muy sencillos y reconocibles:\n\n* **Arroz blanco:** Hervido y escurrido.\n* **Salsa de tomate:** Por la textura y el color, se trata de *tomate frito* (salsa de tomate cocinada con aceite, sal y, a veces, un toque de azúcar).\n* **Huevo frito:** Cocinado en aceite, con la yema aún líquida.\n* **Salchichas:** Rodajas de salchicha tipo Frankfurt o Viena, ligeramente pasadas por la sartén.\n* **Aceite y sal:** Utilizados en la preparación y fritura de los alimentos.\n\n---\n\n### Valor Nutricional Estimado\n\nEl valor nutricional exacto puede variar dependiendo de las cantidades de cada ingrediente y de la cantidad de aceite utilizado para freír el huevo y las salchichas. A continuación, se presenta una estimación basada en una ración promedio (similar a la porción visualizada en el plato):\n\n| Ingrediente (Porción estimada) | Calorías (kcal) | Carbohidratos (g) | Proteínas (g) | Grasas (g) |\n| --- | --- | --- | --- | --- |\n| **Arroz blanco** (aprox. 1 taza) | 200 | 45 | 4 | 0.5 |\n| **Huevo frito** (1 unidad grande) | 100 | 0 | 6 | 8.0 |\n| **Tomate frito** (aprox. 1/4 taza) | 60 | 8 | 1 | 3.0 |\n| **Salchicha** (aprox. media unidad) | 75 | 1 | 3 | 6.0 |\n| **Total Aproximado** | **435** | **54** | **14** | **17.5** |\n\n**Notas nutricionales adicionales:**\n\n* Es un plato con un alto contenido en **carbohidratos simples** (procedentes del arroz blanco), lo que proporciona energía de rápida absorción.\n* Las **proteínas** son de alto valor biológico gracias al huevo y la carne de la salchicha.\n* El contenido de **grasas** dependerá en gran medida de si el huevo se ha frito en abundante aceite o a la plancha, pero el tomate frito comercial y las salchichas ya aportan una base de lípidos al plato.",
+        "diaryEntryId": 4,
+        "capturedAt": "2026-07-14T13:29:39.191Z",
+        "id": 1
+      }
+    ]
+  }
+}

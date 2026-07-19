@@ -54,7 +54,7 @@ export async function initView() {
   document.getElementById('btn-save-meal').addEventListener('click', saveMeal);
   document.getElementById('btn-search-meal-product').addEventListener('click', searchProduct);
   document.getElementById('btn-scan-meal')?.addEventListener('click', () => {
-    window.location.href = "/scan.html?return=diary.html&action=addMeal";
+    window.location.href = "/scan.html?return=%23diary&action=addMeal";
   });
   
   // Eventos para recalcular ingredientes de la receta

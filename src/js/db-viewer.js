@@ -1,5 +1,6 @@
 import { db } from './db/schema.js';
 import * as ProductStore from './modules/products/ProductStore.js';
+import {TabulatorFull as Tabulator} from 'tabulator-tables';
 
 let table;
 let currentDb = 'official'; // 'official' o 'custom'

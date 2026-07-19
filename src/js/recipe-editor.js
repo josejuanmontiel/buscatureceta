@@ -50,6 +50,8 @@ async function loadPantryQuickAdd() {
   const items = await PantryStore.getPantryInventory();
   const container = document.getElementById('pantry-quick-add-list');
   
+  if (!container) return;
+
   if (!items || items.length === 0) {
     container.innerHTML = '<span class="text-muted small">Tu despensa está vacía.</span>';
     return;
