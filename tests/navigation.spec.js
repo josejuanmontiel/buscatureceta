@@ -51,8 +51,27 @@ test.describe('Navigation Tests', () => {
     await expect(page.locator('body')).toBeVisible();
   });
 
-  test('should load db-viewer.html', async ({ page }) => {
+  test('should load db-viewer.html and display data', async ({ page }) => {
+    // Navigate to index to initialize DB connection
+    await page.goto('/#index');
+    await page.waitForFunction(() => typeof window.db !== 'undefined');
+
+    // Insert a fake product
+    await page.evaluate(async () => {
+      await window.db.products.put({
+        code: "123456789",
+        product_name: "Test Product Grid",
+        brands: "TestBrand",
+        nutriscore_grade: "a"
+      });
+    });
+
     await page.goto('/#db-viewer');
     await expect(page.locator('#db-table')).toBeVisible();
+    await expect(page.locator('#db-table.tabulator')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.tabulator-header')).toBeVisible();
+    
+    // Verify that the data row is rendered
+    await expect(page.locator('.tabulator-row', { hasText: 'Test Product Grid' })).toBeVisible({ timeout: 10000 });
   });
 });

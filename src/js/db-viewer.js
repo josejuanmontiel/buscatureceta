@@ -9,6 +9,7 @@ export async function initView() {
 
     // Configuración de columnas base
     const columns = [
+        {formatter:"responsiveCollapse", width:30, minWidth:30, hozAlign:"center", resizable:false, headerSort:false},
         { title: "Código", field: "code", width: 150, headerFilter: "input", editable: false },
         { title: "Nombre", field: "product_name", headerFilter: "input", editable: false },
         { title: "Marcas", field: "brands", width: 150, headerFilter: "input", editable: false },
