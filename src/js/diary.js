@@ -123,8 +123,8 @@ async function renderWeek(date) {
         ${renderMealSlot('Merienda', 'snack', byMeal.snack, day)}
         ${renderMealSlot('Cena', 'dinner', byMeal.dinner, day)}
       </div>
-      <div class="d-flex gap-1 mt-2">
-        <button class="btn btn-sm btn-outline-success flex-grow-1" onclick="window.openMealModal('${day}')">+ Añadir</button>
+      <div class="d-flex gap-1 mt-auto pt-2 border-top border-secondary">
+        <button class="btn btn-sm btn-outline-success flex-grow-1 fw-bold" onclick="window.openMealModal('${day}')">+ Añadir</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="window.openDiaryPhotoModal('${day}')" title="Foto de lo que comí">📷</button>
       </div>
     `;
@@ -270,7 +270,7 @@ window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId,
 };
 
 window.removeMealItem = async function(entryId) {
-  if (confirm('¿Eliminar este registro?')) {
+  if (await confirmModal('¿Eliminar este registro?')) {
     // Para simplificar, si hay varios items en la misma entry, se borra toda la entry en este MVP.
     await DiaryStore.deleteDiaryEntry(entryId);
     await renderWeek(currentDate);

@@ -96,14 +96,22 @@ export async function initView() {
                     if (exact) results = [exact];
                 }
                 
-                // 2. Búsqueda por texto (escanea la BD, puede tardar un par de segundos)
+                // 2. Búsqueda por texto (limitado para no congelar)
                 if (results.length === 0) {
-                    results = await targetDb.filter(p => {
-                        const name = (p.product_name || '').toLowerCase();
-                        const brand = (p.brands || '').toLowerCase();
-                        const code = (p.code || '').toLowerCase();
-                        return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
-                    }).limit(150).toArray();
+                    let scanned = 0;
+                    results = await targetDb.toCollection()
+                        .until(() => {
+                            scanned++;
+                            return scanned > 15000;
+                        })
+                        .filter(p => {
+                            const name = (p.product_name || '').toLowerCase();
+                            const brand = (p.brands || '').toLowerCase();
+                            const code = (p.code || '').toLowerCase();
+                            return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
+                        })
+                        .limit(150)
+                        .toArray();
                 }
             }
 

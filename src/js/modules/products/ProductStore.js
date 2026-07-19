@@ -56,10 +56,17 @@ export async function searchProducts(query, limit = 500) {
   
   // Excluimos de officialResults aquellos que ya hayamos encontrado en customProducts
   // por si tuvieran el mismo código, para dar preferencia al custom
-  const officialResults = await db.products.filter(p => {
-    if (customCodes.includes(p.code)) return false;
-    return filterFunc(p);
-  }).limit(limit).toArray();
+  // Limitamos el escaneo a 10000 registros para evitar que la app se congele si no hay resultados
+  let scanned = 0;
+  const officialResults = await db.products.toCollection()
+    .until(() => {
+      scanned++;
+      return scanned > 10000;
+    })
+    .filter(p => {
+      return !customCodes.includes(p.code) && filterFunc(p);
+    })
+    .toArray();
   
   const allResults = [...customResults, ...officialResults];
   

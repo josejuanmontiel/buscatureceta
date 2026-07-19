@@ -222,10 +222,16 @@ async function handleCheckout() {
         const modal = Modal.getOrCreateInstance(modalEl);
         modal.show();
 
-        document.getElementById('btn-skip-missing-weights').onclick = async () => {
+        // Evitar que Enter recargue la página
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            document.getElementById('btn-save-missing-weights').click();
+        };
+
+        document.getElementById('btn-skip-missing-weights')?.addEventListener('click', async () => {
             modal.hide();
             await performCheckout(items.length);
-        };
+        });
 
         document.getElementById('btn-save-missing-weights').onclick = async () => {
             const inputs = form.querySelectorAll('.missing-weight-input');
