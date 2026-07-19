@@ -9,7 +9,6 @@ export async function initView() {
 
     // Configuración de columnas base
     const columns = [
-        {formatter:"responsiveCollapse", width:30, minWidth:30, hozAlign:"center", resizable:false, headerSort:false},
         { title: "Código", field: "code", width: 150, headerFilter: "input", editable: false },
         { title: "Nombre", field: "product_name", headerFilter: "input", editable: false },
         { title: "Marcas", field: "brands", width: 150, headerFilter: "input", editable: false },
@@ -23,8 +22,6 @@ export async function initView() {
     // Inicializar Tabulator
     table = new Tabulator("#db-table", {
         data: [], // Se carga luego
-        layout: "fitColumns",
-        responsiveLayout: "collapse",
         pagination: "local",
         paginationSize: 50,
         placeholder: "No hay datos disponibles",
