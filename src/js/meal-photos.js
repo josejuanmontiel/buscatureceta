@@ -75,6 +75,7 @@ function bindEvents() {
   document.getElementById('btn-send-to-agenda').addEventListener('click', sendPhotoToAgendaEmpty);
   document.getElementById('btn-save-annotation').addEventListener('click', saveAnnotation);
   document.getElementById('btn-discard-photo').addEventListener('click', discardCurrentPhoto);
+  document.getElementById('btn-save-as-recipe').addEventListener('click', saveAsDraftRecipe);
 }
 
 // ─── Cámara rápida ────────────────────────────────────────────────────────────
@@ -442,6 +443,51 @@ window._discardPhoto = async function(id) {
   await renderGallery();
   await updatePendingBadge();
 };
+
+async function saveAsDraftRecipe() {
+  if (!currentAnnotateId) return;
+  const notes = document.getElementById('annotate-notes').value.trim();
+  const jsonStr = document.getElementById('ai-json-input').value.trim();
+  
+  let data = null;
+  if (jsonStr) {
+    try {
+      const match = jsonStr.match(/\{[\s\S]*\}/);
+      if (match) data = JSON.parse(match[0]);
+    } catch (err) {
+      console.warn("JSON parse error", err);
+    }
+  }
+
+  const recipeName = (data && data.name) ? data.name : (notes || 'Nueva Receta de Foto');
+  
+  const { createRecipe } = await import('./modules/recipes/RecipeStore.js');
+  
+  const recipeData = {
+    name: recipeName,
+    status: 'draft',
+    source: 'local',
+    servings: 1,
+    description: notes || '',
+    ingredients: [],
+    photoBlob: currentAnnotateBlob || null
+  };
+  
+  try {
+    const newId = await createRecipe(recipeData);
+    annotateModal.hide();
+    
+    // Log the photo so it's not pending anymore
+    await MealPhotoStore.logPhoto(currentAnnotateId, `Convertido a receta: ${recipeName}`);
+    
+    showToast('Receta borrador creada. Redirigiendo...');
+    setTimeout(() => {
+      window.location.hash = `#recipe-editor?id=${newId}`;
+    }, 800);
+  } catch (err) {
+    showToast('Error al crear receta: ' + err.message, true);
+  }
+}
 
 // ─── Badge de pendientes ───────────────────────────────────────────────────────
 async function updatePendingBadge() {

@@ -23,10 +23,21 @@ let currentPhotoBlob = null;   // Blob | null
 let cameraStream = null;
 let pendingRestoreVersionId = null;
 let restoreModal = null;
+let aiImportModal = null;
+let smartMatchModal = null;
+let changeIngredientModal = null;
+let mergeConflictModal = null;
+let aiImportedRecipeData = null;
+let aiImportedIngredients = [];
+let currentChangeIngredientIndex = null;
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
 export async function initView() {
   restoreModal = new Modal(document.getElementById('restoreModal'));
+  aiImportModal = new Modal(document.getElementById('aiImportModal'));
+  smartMatchModal = new Modal(document.getElementById('smartMatchModal'));
+  changeIngredientModal = new Modal(document.getElementById('changeIngredientModal'));
+  mergeConflictModal = new Modal(document.getElementById('mergeConflictModal'));
 
   const params = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const idParam = params.get('id');
@@ -107,6 +118,32 @@ async function loadRecipe(id) {
 function bindEvents() {
   // Guardar
   document.getElementById('btn-save-recipe').addEventListener('click', saveRecipe);
+
+  // IA Import
+  document.getElementById('btn-import-ai').addEventListener('click', () => aiImportModal.show());
+  document.getElementById('btn-copy-recipe-prompt').addEventListener('click', async () => {
+    const prompt = `Analiza esta receta. Devuelve ÚNICAMENTE un bloque JSON válido con este formato:
+{
+  "name": "Nombre de la receta",
+  "servings": 2,
+  "description": "Breve descripción",
+  "instructions": "Paso 1...\\nPaso 2...",
+  "ingredients": [
+    { "name": "Tomate frito", "amount": 200, "unit": "g" }
+  ]
+}`;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      showToast('Prompt copiado al portapapeles ✓');
+    } catch (err) {
+      showToast('Error copiando el prompt', true);
+    }
+  });
+  document.getElementById('btn-process-recipe-ai').addEventListener('click', processRecipeAI);
+  document.getElementById('btn-confirm-smart-match').addEventListener('click', confirmSmartMatch);
+  document.getElementById('change-ingredient-search').addEventListener('input', debounce(searchChangeIngredient, 300));
+  document.getElementById('btn-merge-replace').addEventListener('click', () => mergeIngredients('replace'));
+  document.getElementById('btn-merge-append').addEventListener('click', () => mergeIngredients('append'));
 
   // Eliminar
   document.getElementById('btn-delete-recipe').addEventListener('click', async () => {
@@ -510,3 +547,164 @@ function removePhoto() {
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer = null;
+
+// ─── IA Import & Smart Match ───────────────────────────────────────────────────
+
+async function processRecipeAI() {
+  const jsonStr = document.getElementById('recipe-ai-json').value.trim();
+  if (!jsonStr) { showToast('Pega el JSON primero', true); return; }
+  
+  let data;
+  try {
+    const match = jsonStr.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No se encontraron llaves {}");
+    data = JSON.parse(match[0]);
+  } catch (err) {
+    showToast('JSON inválido: ' + err.message, true);
+    return;
+  }
+  
+  aiImportedRecipeData = data;
+  aiImportModal.hide();
+  
+  if (data.ingredients && data.ingredients.length > 0) {
+    await runSmartMatch(data.ingredients);
+  } else {
+    applyImportedRecipeData();
+  }
+}
+
+async function runSmartMatch(ingredients) {
+  aiImportedIngredients = [];
+  const listEl = document.getElementById('smart-match-list');
+  listEl.innerHTML = '<div class="text-center p-4">Buscando equivalencias en la base de datos...</div>';
+  smartMatchModal.show();
+  
+  const results = [];
+  
+  for (let i = 0; i < ingredients.length; i++) {
+    const ing = ingredients[i];
+    const q = ing.name.toLowerCase();
+    const searchRes = await ProductStore.searchProducts(q, 5);
+    let bestMatch = searchRes.length > 0 ? searchRes[0] : null;
+    
+    results.push({
+      original: ing,
+      match: bestMatch,
+      alternatives: searchRes.slice(1)
+    });
+  }
+  
+  aiImportedIngredients = results;
+  renderSmartMatchList();
+}
+
+function renderSmartMatchList() {
+  const listEl = document.getElementById('smart-match-list');
+  listEl.innerHTML = aiImportedIngredients.map((item, idx) => `
+    <div class="list-group-item d-flex align-items-center justify-content-between">
+      <div style="flex:1;">
+        <div class="fw-bold small text-muted">Receta pide: ${item.original.amount}${item.original.unit} ${item.original.name}</div>
+        ${item.match ? 
+          `<div>✅ <span class="fw-bold text-success">${item.match.product_name}</span></div>` : 
+          `<div>❌ <span class="text-danger">No encontrado automáticamente</span></div>`
+        }
+      </div>
+      <button class="btn btn-sm btn-outline-info" onclick="window._openChangeIngredient(${idx})">Cambiar</button>
+      <button class="btn btn-sm btn-outline-danger ms-1" onclick="window._removeSmartMatch(${idx})">Ignorar</button>
+    </div>
+  `).join('');
+}
+
+window._removeSmartMatch = function(idx) {
+  aiImportedIngredients[idx].match = null;
+  renderSmartMatchList();
+}
+
+window._openChangeIngredient = async function(idx) {
+  currentChangeIngredientIndex = idx;
+  const item = aiImportedIngredients[idx];
+  document.getElementById('change-ingredient-search').value = item.original.name;
+  changeIngredientModal.show();
+  await searchChangeIngredient();
+}
+
+async function searchChangeIngredient() {
+  const q = document.getElementById('change-ingredient-search').value.trim().toLowerCase();
+  const res = await ProductStore.searchProducts(q, 20);
+  const container = document.getElementById('change-ingredient-results');
+  container.innerHTML = res.map(p => `
+    <button type="button" class="list-group-item list-group-item-action py-2" onclick="window._selectChangeIngredient('${p.code}', '${(p.product_name || '').replace(/'/g,"\\'")}')">
+      <span class="small">${p.product_name}</span> <span class="badge bg-secondary">${p.code}</span>
+    </button>
+  `).join('');
+}
+
+window._selectChangeIngredient = function(code, name) {
+  aiImportedIngredients[currentChangeIngredientIndex].match = { code, product_name: name };
+  changeIngredientModal.hide();
+  renderSmartMatchList();
+}
+
+function confirmSmartMatch() {
+  smartMatchModal.hide();
+  
+  if (currentIngredients.length > 0) {
+    mergeConflictModal.show();
+  } else {
+    applyImportedRecipeData();
+  }
+}
+
+function mergeIngredients(action) {
+  mergeConflictModal.hide();
+  if (action === 'replace') {
+    currentIngredients = [];
+  }
+  applyImportedRecipeData();
+}
+
+function applyImportedRecipeData() {
+  if (aiImportedRecipeData.name && !document.getElementById('recipe-name').value) {
+    document.getElementById('recipe-name').value = aiImportedRecipeData.name;
+  }
+  if (aiImportedRecipeData.description && !document.getElementById('recipe-description').value) {
+    document.getElementById('recipe-description').value = aiImportedRecipeData.description;
+  }
+  if (aiImportedRecipeData.instructions && !document.getElementById('recipe-instructions').value) {
+    document.getElementById('recipe-instructions').value = aiImportedRecipeData.instructions;
+  }
+  if (aiImportedRecipeData.servings) {
+    document.getElementById('recipe-servings').value = aiImportedRecipeData.servings;
+  }
+  
+  if (aiImportedIngredients) {
+    for (const item of aiImportedIngredients) {
+      if (item.match) {
+        currentIngredients.push({
+          productCode: item.match.code,
+          productName: item.match.product_name || item.original.name,
+          amount: parseFloat(item.original.amount) || 100,
+          unit: item.original.unit || 'g'
+        });
+      }
+    }
+  }
+  
+  renderIngredients();
+  updateNutrition();
+  
+  aiImportedRecipeData = null;
+  aiImportedIngredients = [];
+  
+  showToast('Receta importada correctamente', 'success');
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => { clearTimeout(timeout); func(...args); };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}

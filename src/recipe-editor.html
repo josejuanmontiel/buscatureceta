@@ -49,6 +49,7 @@
         <span class="version-badge" id="version-badge" style="display:none;"></span>
       </div>
       <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-warning" id="btn-import-ai">✨ Importar con IA</button>
         <button class="btn btn-sm btn-outline-info" id="btn-duplicate-recipe" style="display:none;" title="Duplicar receta">📋</button>
         <button class="btn btn-sm btn-outline-danger" id="btn-delete-recipe" style="display:none;" title="Eliminar receta">🗑</button>
         <button class="btn btn-sm btn-success px-3" id="btn-save-recipe">💾 Guardar</button>
@@ -206,6 +207,85 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-warning btn-sm" id="btn-ignore-warning">Añadir de todos modos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal IA Import -->
+  <div class="modal fade" id="aiImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">✨ Importar con IA</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-outline-info btn-sm flex-grow-1" id="btn-copy-recipe-prompt">
+              📝 Copiar Prompt para IA
+            </button>
+          </div>
+          <div class="mb-3 p-2 border border-secondary rounded">
+            <label class="form-label small text-warning">🤖 Pegar resultado (JSON)</label>
+            <textarea class="form-control form-control-sm font-monospace bg-dark text-info border-secondary" id="recipe-ai-json" rows="6" placeholder='Pega el JSON de la IA aquí...'></textarea>
+            <button class="btn btn-sm btn-warning w-100 mt-2" id="btn-process-recipe-ai">Procesar Ingredientes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Smart Match -->
+  <div class="modal fade" id="smartMatchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">🔍 Emparejamiento Inteligente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-2">Hemos buscado los productos más parecidos en tu base de datos local.</p>
+          <div id="smart-match-list" class="list-group mb-3" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-confirm-smart-match">Confirmar e Importar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Change Ingredient -->
+  <div class="modal fade" id="changeIngredientModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 class="modal-title">🔄 Cambiar producto</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" id="change-ingredient-search" class="form-control form-control-sm mb-2" placeholder="Buscar otro producto...">
+          <div id="change-ingredient-results" class="list-group" style="max-height:200px;overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Merge Conflict -->
+  <div class="modal fade" id="mergeConflictModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">⚠️ Sobrescribir Receta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small">Esta receta ya tiene ingredientes. ¿Qué quieres hacer con los ingredientes importados por IA?</p>
+          <div class="d-grid gap-2">
+            <button class="btn btn-outline-danger" id="btn-merge-replace">Reemplazar ingredientes existentes</button>
+            <button class="btn btn-outline-primary" id="btn-merge-append">Añadirlos a los existentes</button>
+          </div>
         </div>
       </div>
     </div>

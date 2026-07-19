@@ -41,7 +41,10 @@ async function loadRecipes(query = '') {
     <div class="col-md-6 col-lg-4 mb-4">
       <div class="card bg-secondary text-white recipe-card h-100">
         <div class="card-body" onclick="window.location.hash = '#recipe-editor?id=${recipe.id}'" style="cursor:pointer;">
-          <h5 class="card-title">${recipe.name}</h5>
+          <h5 class="card-title">
+            ${recipe.name}
+            ${recipe.status === 'draft' ? '<span class="badge bg-warning text-dark ms-2" style="font-size:0.7rem;">Borrador</span>' : ''}
+          </h5>
           <h6 class="card-subtitle mb-2 text-light">${recipe.servings} raciones · v${recipe.version || 1}</h6>
           <p class="card-text nutrition-summary">
             ${recipe.nutritionPerServing ?
