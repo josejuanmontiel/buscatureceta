@@ -39,7 +39,9 @@ async function checkSharedFiles() {
       });
 
       if (file) {
+        console.log('[Share] File found in IDB:', file);
         setTimeout(async () => {
+          console.log('[Share] Showing confirm dialog');
           const confirmMerge = confirm(`Has recibido un archivo de sincronización: ${file.name}.\n\n¿Deseas fusionar (merge) estos datos con tu base de datos actual?\n\n(Las recetas y despensa se actualizarán, tu agenda personal se mantendrá intacta)`);
           
           if (confirmMerge) {
