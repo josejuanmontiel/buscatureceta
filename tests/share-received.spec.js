@@ -52,4 +52,96 @@ test.describe('Share Received (Merge) Flow', () => {
     await page.goto('/#recipes');
     await expect(page.locator('text=Receta Simulada Merge')).toBeVisible();
   });
+
+  test('should process shared file via IDB and URL parameter (UI Flow)', async ({ page }) => {
+    // Navigate to root to ensure origin is set up for IDB
+    await page.goto('/');
+
+    // 1. Mock shared file in IndexedDB
+    await page.evaluate(async () => {
+      const mockBackup = {
+        data: {
+          recipes: [{ id: 8887, name: "Receta de Prueba UI", servings: 2, ingredients: [], instructions: "Test UI", updated_at: Date.now() }],
+          diary: []
+        }
+      };
+      const jsonStr = JSON.stringify(mockBackup);
+      // Let's use a Blob with name property to simulate a File, or just a File since File inherits Blob
+      const mockFile = new File([jsonStr], "sync_test.json", { type: "application/json" });
+
+      // First delete to avoid version issues
+      await new Promise((resolve) => {
+        const req = indexedDB.deleteDatabase('nutriagenda-share');
+        req.onsuccess = resolve;
+        req.onerror = resolve; // Ignore errors on delete
+      });
+
+      await new Promise((resolve, reject) => {
+        const req = indexedDB.open('nutriagenda-share', 1);
+        req.onupgradeneeded = (e) => {
+          e.target.result.createObjectStore('files');
+        };
+        req.onsuccess = (e) => {
+          const db = e.target.result;
+          const tx = db.transaction('files', 'readwrite');
+          tx.objectStore('files').put(mockFile, 'shared-file');
+          tx.oncomplete = () => {
+            db.close();
+            console.log('IDB Mock complete');
+            resolve();
+          };
+          tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+          };
+        };
+        req.onerror = () => reject(req.error);
+      });
+    });
+
+    const hasFile = await page.evaluate(async () => {
+      return new Promise((resolve) => {
+        const req = indexedDB.open('nutriagenda-share', 1);
+        req.onsuccess = (e) => {
+          const db = e.target.result;
+          const tx = db.transaction('files', 'readonly');
+          const getReq = tx.objectStore('files').get('shared-file');
+          getReq.onsuccess = () => {
+            const exists = !!getReq.result;
+            db.close();
+            resolve(exists);
+          };
+        };
+      });
+    });
+    console.log('IDB HAS FILE:', hasFile);
+
+    // 2. Setup dialog handlers (for confirm and alert)
+    let dialogsHandled = 0;
+    page.on('dialog', async dialog => {
+      console.log('DIALOG OPENED:', dialog.message());
+      dialogsHandled++;
+      await dialog.accept();
+    });
+
+    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
+
+    // Wait for page to reload after the alert is accepted.
+    // We can do this by listening to the load event or just waiting for the URL to lose the query parameter
+    // because window.history.replaceState removes it, then reload happens.
+    
+    // 3. Trigger the share_received flow
+    await page.goto('/?action=share_received');
+
+    // Wait a bit for checkSharedFiles to run and trigger the prompt
+    await page.waitForTimeout(1500);
+    
+    // 4. Navigate to recipes to verify
+    await page.goto('/#recipes');
+    await expect(page.locator('text=Receta de Prueba UI')).toBeVisible({ timeout: 5000 });
+    
+    // Ensure dialogs were shown (1 confirm, 1 alert)
+    expect(dialogsHandled).toBeGreaterThanOrEqual(2);
+  });
 });

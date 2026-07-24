@@ -16,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'cart-history': { init: () => import('./cart-history.js') }
   });
 
-  router.start();
   checkSharedFiles();
+  router.start();
 });
 
 async function checkSharedFiles() {
