@@ -33,11 +33,14 @@ export async function initView() {
         window.location.href = '/scan.html?return=%23grid';
     });
 
-    document.getElementById("clear-db-btn").addEventListener("click", async () => {
-        await db.delete();
-        await db.open();
-        console.log("Base de datos borrada con éxito.");
-    });
+    const clearDbBtn = document.getElementById("clear-db-btn");
+    if (clearDbBtn) {
+        clearDbBtn.addEventListener("click", async () => {
+            await db.delete();
+            await db.open();
+            console.log("Base de datos borrada con éxito.");
+        });
+    }
 
     // Botones del panel de captura de foto
     document.getElementById('btn-capture-photo').addEventListener('click', startCapture);

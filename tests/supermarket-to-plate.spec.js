@@ -67,7 +67,10 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     page.on('pageerror', err => console.log('BROWSER_ERR: ' + (err.stack || err.message)));
     page.on('dialog', dialog => dialog.accept());
 
-    await page.fill('#filters', 'E250');
+    await page.goto('/#settings');
+  await page.fill('#additive-filters', 'E250');
+  await page.click('#btn-save-filters');
+  await page.goto('/#index');
     await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
 
@@ -83,7 +86,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.goto('/#grid?code=2087569003329');
     await page.waitForTimeout(500);
 
-    await expect(page.locator('#scanned-product-name')).toContainText(/Costilla Adobada/i);
+    await expect(page.locator('#cart-list')).toContainText(/Costilla Adobada/i);
     await expect(page.locator('#assistant-alert')).toBeVisible();
     await expect(page.locator('#assistant-warning-text')).toContainText('E250');
   });
@@ -98,14 +101,14 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
       window.currentScannedProduct && /Salchichas/i.test(window.currentScannedProduct.product_name)
     , { timeout: 10000 });
 
-    await expect(page.locator('#scanned-product-name')).toContainText(/Salchichas de Pollo/i);
+    await expect(page.locator('#cart-list')).toContainText(/Salchichas de Pollo/i);
     await expect(page.locator('#assistant-alert')).toHaveClass(/d-none/);
   });
 
   await test.step('💰 Add Salchicha Buena to cart (2 units × 2.50€ = 5.00€)', async () => {
-    await page.fill('#scanned-price', '2.50');
-    await page.fill('#scanned-amount', '2');
-    await page.click('#btn-add-cart');
+    await page.waitForSelector('#cart-list .cart-price-input');
+    await page.fill('#cart-list .cart-price-input', '2.50');
+    await page.fill('#cart-list .cart-amount-input', '2');
 
     await expect(page.locator('#cart-total')).toContainText('5.00 €');
     await expect(page.locator('#add-to-cart-panel')).toHaveClass(/d-none/);
@@ -116,14 +119,13 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.goto('/#grid?code=01472165');
     await page.waitForTimeout(500);
 
-    await expect(page.locator('#scanned-product-name')).toContainText(/Pan de Molde Blanco/i);
+    await expect(page.locator('#cart-list')).toContainText(/Pan de Molde Blanco/i);
     // Sin E250 → no debe disparar alerta
     await expect(page.locator('#assistant-alert')).toHaveClass(/d-none/);
 
     // Añadir: 1 unidad a 1.80€
-    await page.fill('#scanned-price', '1.80');
-    await page.fill('#scanned-amount', '1');
-    await page.click('#btn-add-cart');
+    await page.locator('#cart-list .cart-price-input').last().fill('1.80');
+    await page.locator('#cart-list .cart-amount-input').last().fill('1');
 
     // Total acumulado: 5.00 + 1.80 = 6.80€ (dentro del presupuesto de 10€)
     await expect(page.locator('#cart-total')).toContainText('6.80 €');
@@ -134,13 +136,12 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.goto('/#grid?code=04295181');
     await page.waitForTimeout(500);
 
-    await expect(page.locator('#scanned-product-name')).toContainText('Leche entera');
+    await expect(page.locator('#cart-list')).toContainText('Leche entera');
     await expect(page.locator('#assistant-alert')).toHaveClass(/d-none/);
 
     // Añadir: 1 unidad a 0.90€
-    await page.fill('#scanned-price', '0.90');
-    await page.fill('#scanned-amount', '1');
-    await page.click('#btn-add-cart');
+    await page.locator('#cart-list .cart-price-input').last().fill('0.90');
+    await page.locator('#cart-list .cart-amount-input').last().fill('1');
 
     // Total acumulado: 6.80 + 0.90 = 7.70€
     await expect(page.locator('#cart-total')).toContainText('7.70 €');

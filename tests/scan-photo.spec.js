@@ -4,8 +4,11 @@ import path from 'path';
 test.describe('Scanner UI Flow', () => {
   test('should scan from gallery and redirect to cart correctly', async ({ page }) => {
     // 1. Ir a inicio y configurar DB para que al escanear devuelva algo
+    await page.goto('/#settings');
+    await page.waitForSelector('#additive-filters', { state: 'visible', timeout: 10000 });
+    await page.fill('#additive-filters', 'E250');
+    await page.click('#btn-save-filters');
     await page.goto('/#index');
-    await page.waitForSelector('#filters', { state: 'visible', timeout: 10000 });
     await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
     await page.waitForURL('**/#grid');
@@ -29,6 +32,6 @@ test.describe('Scanner UI Flow', () => {
     await page.waitForURL('**/#grid?code=2087569003329', { timeout: 10000 });
 
     // 6. Verificar que la pantalla de la compra ha buscado y mostrado el producto (Costilla Adobada)
-    await expect(page.locator('#scanned-product-name')).toContainText(/Costilla Adobada/i, { timeout: 10000 });
+    await expect(page.locator('#cart-list')).toContainText(/Costilla Adobada/i, { timeout: 10000 });
   });
 });

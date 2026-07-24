@@ -9,7 +9,10 @@ test('debug purchase flow generic', async ({ page }) => {
     await dialog.accept();
   });
   
-  await page.fill('#filters', 'E250');
+  await page.goto('/#settings');
+  await page.fill('#additive-filters', 'E250');
+  await page.click('#btn-save-filters');
+  await page.goto('/#index');
   await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
   await page.waitForURL('**/#grid');
@@ -17,6 +20,6 @@ test('debug purchase flow generic', async ({ page }) => {
   await page.fill('#code-input', 'Producto Raro');
   await page.click('#query-btn');
   
-  await page.waitForSelector('#add-to-cart-panel:not(.d-none)', { timeout: 3000 });
-  await page.fill('#scanned-amount', '2');
+  await page.waitForSelector('#cart-list .cart-amount-input', { timeout: 3000 });
+  await page.fill('#cart-list .cart-amount-input', '2');
 });

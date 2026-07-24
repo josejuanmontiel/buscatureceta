@@ -13,7 +13,10 @@ async function loadTestDB(page) {
 
   await page.goto('/#index');
   page.on('dialog', dialog => dialog.accept());
-  await page.fill('#filters', 'E250');
+  await page.goto('/#settings');
+  await page.fill('#additive-filters', 'E250');
+  await page.click('#btn-save-filters');
+  await page.goto('/#index');
   await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
   await page.waitForURL('**/#grid');

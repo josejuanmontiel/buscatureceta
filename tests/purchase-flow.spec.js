@@ -27,11 +27,13 @@ test.describe('Purchase Flow E2E', () => {
     });
 
     // 1. Ir a inicio y configurar filtros y BD
-    await page.goto('/#index');
-    await page.waitForSelector('#filters', { state: 'visible', timeout: 10000 });
+    await page.goto('/#settings');
+    await page.waitForSelector('#additive-filters', { state: 'visible', timeout: 10000 });
     
     // Configurar el filtro a "E250"
-    await page.fill('#filters', 'E250');
+    await page.fill('#additive-filters', 'E250');
+    await page.click('#btn-save-filters');
+    await page.goto('/#index');
     
     // Poner el dataset de prueba
     await page.fill('#database', '/test_products.tsv.zz');
@@ -49,7 +51,7 @@ test.describe('Purchase Flow E2E', () => {
     await page.waitForTimeout(500);
 
     // Comprobar que carga la Costilla Adobada El Pradal y sale la alerta
-    await expect(page.locator('#scanned-product-name')).toContainText(/Costilla Adobada/i);
+    await expect(page.locator('#cart-list')).toContainText(/Costilla Adobada/i);
     
     const alertDiv = page.locator('#assistant-alert');
     await expect(alertDiv).toBeVisible();
@@ -68,15 +70,15 @@ test.describe('Purchase Flow E2E', () => {
     , { timeout: 10000 });
     
     // Esperar a que cambie el producto actual a Salchichas de Pollo
-    await expect(page.locator('#scanned-product-name')).toContainText(/Salchichas de Pollo/i);
+    await expect(page.locator('#cart-list')).toContainText(/Salchichas de Pollo/i);
     
     // Verificar que la alerta ya no está visible
     await expect(alertDiv).toHaveClass(/d-none/);
 
     // 4. Añadir al carrito ajustando precio
-    await page.fill('#scanned-price', '2.50');
-    await page.fill('#scanned-amount', '2');
-    await page.click('#btn-add-cart');
+    await page.waitForSelector('#cart-list .cart-price-input');
+    await page.fill('#cart-list .cart-price-input', '2.50');
+    await page.fill('#cart-list .cart-amount-input', '2');
 
     // Verificar que se actualizó el total en la UI (2.50 * 2 = 5.00)
     await expect(page.locator('#cart-total')).toContainText('5.00 €');
@@ -129,9 +131,10 @@ test.describe('Purchase Flow E2E', () => {
       route.fulfill({ status: 200, contentType: 'application/octet-stream', body: buffer });
     });
 
+    await page.goto('/#settings');
+    await page.fill('#additive-filters', 'E250');
+    await page.click('#btn-save-filters');
     await page.goto('/#index');
-    page.on('dialog', dialog => dialog.accept());
-    await page.fill('#filters', 'E250');
     await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
     await page.waitForURL('**/#grid');
@@ -144,8 +147,7 @@ test.describe('Purchase Flow E2E', () => {
     // y se añade como genérico directamente.
     
     // Now it's loaded as current
-    await page.fill('#scanned-amount', '2');
-    await page.click('#btn-add-cart');
+    await page.locator('#cart-list .cart-amount-input').last().fill('2');
 
     // Checkout
     await page.click('#btn-checkout');
