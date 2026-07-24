@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historial de Compras - NutriAgenda</title>
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+</head>
+
+<body class="d-flex flex-column h-100 text-center">
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <app-menu current-page="cart-history.html"></app-menu>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1 text-start">
+      <h2 class="mb-4 text-center">Historial de Compras</h2>
+      
+      <!-- Gráfica de gastos -->
+      <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+          <canvas id="cart-chart" style="max-height: 250px;"></canvas>
+        </div>
+      </div>
+
+      <div id="cart-history-list" class="accordion mb-5">
+        <!-- Rellenado por JS -->
+      </div>
+    </main>
+  </div>
+  
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/cart-history.js"></script>
+</body>
+</html>

@@ -45,15 +45,8 @@ async function saveToDatabase(data) {
 }
 
 export async function initView() {
-    const valores = localStorage.getItem("filters");
-    if (valores!=null && valores.length>0) {
-        document.getElementById("filters").textContent = valores;
-    }
-
     // Event listener para el botón
     function goToGrid() {
-        var filters = document.getElementById('filters').value;
-        localStorage.setItem("filters", filters);
         window.location.hash = "#grid";
     }
 

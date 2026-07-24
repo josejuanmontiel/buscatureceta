@@ -51,9 +51,6 @@ export async function initView() {
     // Mostrar badge inicial
     await updateSyncBadge();
 
-    // ── Modal de Credenciales OFF ─────────────────────────────────────────────
-    initCredentialsModal();
-
     // Leer parámetro URL si venimos del scanner
     const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
     const codeFromUrl = urlParams.get('code');
@@ -67,14 +64,20 @@ async function handleSearch() {
     let query = document.getElementById("code-input").value.trim();
     if (!query) return;
 
-    // Si no es un número (código), buscar por nombre en local
-    if (!/^\d+$/.test(query)) {
-        const res = await ProductStore.searchProducts(query, 1);
-        const p = res.length > 0 ? res[0] : null;
-        if (p) {
-            query = p.code;
-        } else {
-            if (confirm(`No se encontró "${query}" en la base de datos local.\n¿Quieres añadirlo como producto genérico sin código de barras al carrito?`)) {
+    const btn = document.getElementById("query-btn");
+    const spinner = document.getElementById("search-spinner");
+    btn.disabled = true;
+    spinner.classList.remove("d-none");
+
+    try {
+        // Si no es un número (código), buscar por nombre en local
+        if (!/^\d+$/.test(query)) {
+            const res = await ProductStore.searchProducts(query, 1);
+            const p = res.length > 0 ? res[0] : null;
+            if (p) {
+                query = p.code;
+            } else {
+                // Producto desconocido por texto, añadir como genérico al instante
                 const genericCode = 'GENERIC_' + Date.now();
                 await ProductStore.addCustomProduct({
                     code: genericCode,
@@ -83,38 +86,45 @@ async function handleSearch() {
                     nutriscore_grade: 'unknown'
                 });
                 query = genericCode;
-            } else {
-                return;
             }
         }
-    }
 
-    const result = await ShoppingAssistant.analyzeProductForCart(query);
-    
-    if (result.status === 'not_found') {
-        // Producto no encontrado: mostrar panel de captura
-        unknownBarcode = query;
-        capturedImageBlob = null;
-        showUnknownProductPanel(query);
-        return;
-    }
+        const result = await ShoppingAssistant.analyzeProductForCart(query);
+        
+        if (result.status === 'not_found') {
+            // Producto no encontrado por código, añadir como genérico al instante
+            const genericCode = 'GENERIC_' + Date.now();
+            await ProductStore.addCustomProduct({
+                code: genericCode,
+                product_name: 'Producto ' + query, // Usar el query escaneado
+                ingredients_text: '',
+                nutriscore_grade: 'unknown'
+            });
+            // Añadir al carro directamente
+            await CartStore.addToCart(genericCode, 1, 0, 'unidad');
+            document.getElementById('code-input').value = '';
+            await updateCartUI();
+            return;
+        }
 
-    currentScannedProduct = result.product;
-    showProductPanel(result);
+        // Si se encuentra, añadir directamente al carro
+        currentScannedProduct = result.product;
+        await CartStore.addToCart(result.product.code, 1, result.lastPrice || 0, 'unidad');
+        RecentStore.markAsUsed(result.product.code);
+
+        // Limpiar input y refrescar UI
+        document.getElementById('code-input').value = '';
+        await updateCartUI();
+
+        // Mostrar advertencias del asistente si las hay (pero el producto ya está en el carro)
+        showProductWarnings(result);
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add("d-none");
+    }
 }
 
-function showProductPanel(analysis) {
-    const p = analysis.product;
-    document.getElementById('scanned-product-name').innerText = p.product_name || `Producto ${p.code}`;
-    
-    // Precio
-    const priceInput = document.getElementById('scanned-price');
-    if (analysis.lastPrice > 0) {
-        priceInput.value = analysis.lastPrice;
-    } else {
-        priceInput.value = '';
-    }
-
+function showProductWarnings(analysis) {
     // Alertas
     const alertDiv = document.getElementById('assistant-alert');
     const warningText = document.getElementById('assistant-warning-text');
@@ -137,8 +147,6 @@ function showProductPanel(analysis) {
     } else {
         alertDiv.classList.add('d-none');
     }
-
-    document.getElementById('add-to-cart-panel').classList.remove('d-none');
 }
 
 window.selectAlternative = async function(code) {
@@ -146,24 +154,9 @@ window.selectAlternative = async function(code) {
     await handleSearch();
 };
 
+// El panel ya no se usa para rellenar datos, el producto va directo al carro
 async function handleAddToCart() {
-    if (!currentScannedProduct) return;
-
-    const amount = parseFloat(document.getElementById('scanned-amount').value) || 1;
-    const price = parseFloat(document.getElementById('scanned-price').value) || 0;
-
-    // Asumimos unit='unidad' si compramos paquetes, o si sabemos que es 500g podríamos guardar gramos. 
-    // Por defecto en la lista de la compra metemos "unidades" o paquetes.
-    await CartStore.addToCart(currentScannedProduct.code, amount, price, 'unidad');
-    RecentStore.markAsUsed(currentScannedProduct.code);
-    
-    // Limpiar UI
     document.getElementById('add-to-cart-panel').classList.add('d-none');
-    document.getElementById('assistant-alert').classList.add('d-none');
-    document.getElementById('code-input').value = '';
-    currentScannedProduct = null;
-
-    await updateCartUI();
 }
 
 async function updateCartUI() {
@@ -171,21 +164,57 @@ async function updateCartUI() {
     
     document.getElementById('cart-total').innerText = `${total.toFixed(2)} €`;
 
+    const hasOFF = localStorage.getItem('off_user') && localStorage.getItem('off_user') !== 'off';
+
     const list = document.getElementById('cart-list');
     if (items.length === 0) {
         list.innerHTML = '<div class="list-group-item bg-dark text-muted border-secondary text-center">Carro vacío</div>';
     } else {
-        list.innerHTML = items.map(item => `
-            <div class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-0">${item.productName}</h6>
-                    <small class="text-muted">${item.amount} ${item.unit} | ${item.price.toFixed(2)}€</small>
+        list.innerHTML = items.map(item => {
+            const isGeneric = item.productCode.startsWith('GENERIC_');
+            const showOFFButton = isGeneric && hasOFF;
+            return `
+            <div class="list-group-item bg-dark text-white border-secondary d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-truncate me-2">${item.productName}</h6>
+                    <div class="d-flex gap-2">
+                        ${showOFFButton ? `<button class="btn btn-sm btn-outline-info" onclick="window.triggerOFFUpload('${item.productCode}')" title="Subir foto a OpenFoodFacts"><i class="bi bi-camera"></i> OFF</button>` : ''}
+                        <button class="btn btn-sm btn-outline-danger" onclick="window.removeFromCart(${item.id})"><i class="bi bi-trash"></i></button>
+                    </div>
                 </div>
-                <button class="btn btn-sm btn-outline-danger" onclick="window.removeFromCart(${item.id})"><i class="bi bi-trash"></i></button>
+                <div class="d-flex align-items-center w-100 gap-2" id="cart-item-${item.id}">
+                    <div class="input-group input-group-sm w-50">
+                        <input type="number" class="form-control bg-dark text-white border-secondary cart-amount-input" value="${item.amount}" min="0" step="0.1" onchange="window.updateCartItem(${item.id})">
+                        <span class="input-group-text bg-secondary text-white border-secondary">${item.unit}</span>
+                    </div>
+                    <div class="input-group input-group-sm w-50">
+                        <input type="number" class="form-control bg-dark text-white border-secondary cart-price-input" value="${item.price}" min="0" step="0.01" onchange="window.updateCartItem(${item.id})">
+                        <span class="input-group-text bg-secondary text-white border-secondary">€</span>
+                    </div>
+                </div>
             </div>
-        `).join('');
+        `}).join('');
     }
 }
+
+window.triggerOFFUpload = function(code) {
+    unknownBarcode = code;
+    capturedImageBlob = null;
+    showUnknownProductPanel(code);
+    // Rellenamos el nombre del producto de lo que el usuario haya tecleado
+    ProductStore.getProductByCode(code).then(p => {
+        if (p) document.getElementById('unknown-product-name').value = p.product_name.replace(/^Producto /, '');
+    });
+};
+
+window.updateCartItem = async function(id) {
+    const container = document.getElementById(`cart-item-${id}`);
+    if (!container) return;
+    const amount = container.querySelector('.cart-amount-input').value;
+    const price = container.querySelector('.cart-price-input').value;
+    await CartStore.updateCartItem(id, amount, price);
+    await updateCartUI();
+};
 
 window.removeFromCart = async function(id) {
     await CartStore.removeFromCart(id);
@@ -212,7 +241,7 @@ async function handleCheckout() {
             <div class="mb-3">
                 <label class="form-label small">${mw.product?.product_name || mw.item.productName || mw.item.productCode}</label>
                 <div class="input-group input-group-sm">
-                    <input type="number" class="form-control missing-weight-input" data-code="${mw.item.productCode}" placeholder="Ej: 500" min="1" required>
+                    <input type="number" class="form-control missing-weight-input" data-code="${mw.item.productCode}" placeholder="Ej: 500" min="1">
                     <span class="input-group-text">g/ml</span>
                 </div>
             </div>
@@ -228,16 +257,29 @@ async function handleCheckout() {
             document.getElementById('btn-save-missing-weights').click();
         };
 
-        document.getElementById('btn-skip-missing-weights')?.addEventListener('click', async () => {
-            modal.hide();
-            await performCheckout(items.length);
-        });
+        // Botón Omitir: continuar sin guardar los pesos
+        const btnSkip = document.getElementById('btn-skip-missing-weights');
+        if (btnSkip) {
+            // Clonar para eliminar listeners anteriores
+            const newSkip = btnSkip.cloneNode(true);
+            btnSkip.parentNode.replaceChild(newSkip, btnSkip);
+            newSkip.addEventListener('click', async () => {
+                modal.hide();
+                await performCheckout(items.length);
+            });
+        }
 
-        document.getElementById('btn-save-missing-weights').onclick = async () => {
+        // Clonar botón guardar para limpiar listeners previos
+        const btnSaveOld = document.getElementById('btn-save-missing-weights');
+        const btnSave = btnSaveOld.cloneNode(true);
+        btnSaveOld.parentNode.replaceChild(btnSave, btnSaveOld);
+
+        btnSave.addEventListener('click', async () => {
             const inputs = form.querySelectorAll('.missing-weight-input');
             let allValid = true;
             for (const input of inputs) {
-                if (!input.value || parseFloat(input.value) <= 0) {
+                const val = parseFloat(input.value);
+                if (!input.value.trim() || isNaN(val) || val <= 0) {
                     allValid = false;
                     input.classList.add('is-invalid');
                 } else {
@@ -245,28 +287,35 @@ async function handleCheckout() {
                 }
             }
 
-            if (!allValid) return;
+            if (!allValid) {
+                return;
+            }
 
-            // Save weights to db.products
+            // Guardar pesos en la BD
             for (const input of inputs) {
                 const code = input.dataset.code;
-                const weightStr = parseFloat(input.value).toString();
-                const p = await ProductStore.getProductByCode(code);
-                if (p) {
-                    if (p.is_custom) {
-                        await db.customProducts.update(code, { product_quantity: weightStr });
+                const weight = parseFloat(input.value);
+                const weightStr = weight.toString();
+                try {
+                    const p = await ProductStore.getProductByCode(code);
+                    if (p) {
+                        if (p.is_custom) {
+                            await db.customProducts.update(code, { product_quantity: weightStr });
+                        } else {
+                            // Para productos OFF, actualizamos solo ese campo
+                            await db.products.where('code').equals(code).modify({ product_quantity: weightStr });
+                        }
                     } else {
-                        await db.products.update(code, { product_quantity: weightStr });
+                        await ProductStore.addCustomProduct({ code, product_name: 'Producto ' + code, product_quantity: weightStr });
                     }
-                } else {
-                    // Create minimal entry if it doesn't exist
-                    await ProductStore.addCustomProduct({ code: code, product_name: 'Producto ' + code, product_quantity: weightStr });
+                } catch(err) {
+                    console.error('Error guardando peso para', code, err);
                 }
             }
 
             modal.hide();
             await performCheckout(items.length);
-        };
+        });
     } else {
         await performCheckout(items.length);
     }
@@ -398,129 +447,4 @@ async function updateSyncBadge() {
     } else {
         badge.classList.add('d-none');
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Gestión de credenciales de OpenFoodFacts
-// ─────────────────────────────────────────────────────────────────────────────
-
-function initCredentialsModal() {
-    const btnOpen   = document.getElementById('btn-open-credentials');
-    const btnSave   = document.getElementById('btn-save-credentials');
-    const btnClear  = document.getElementById('btn-clear-credentials');
-    const btnVerify = document.getElementById('btn-verify-credentials');
-    const btnToggle = document.getElementById('btn-toggle-password');
-    const modalEl   = document.getElementById('modal-credentials');
-
-    // Abrir modal → rellenar campos y estado actual
-    btnOpen.addEventListener('click', () => {
-        populateCredentialsForm();
-        // Bootstrap 5 Modal
-        const bsModal = Modal.getOrCreateInstance(modalEl);
-        bsModal.show();
-    });
-
-    // Toggle contraseña visible
-    btnToggle.addEventListener('click', () => {
-        const pwd = document.getElementById('cred-password');
-        pwd.type = pwd.type === 'password' ? 'text' : 'password';
-        btnToggle.textContent = pwd.type === 'password' ? '👁' : '🙈';
-    });
-
-    // Guardar credenciales
-    btnSave.addEventListener('click', () => {
-        const user = document.getElementById('cred-username').value.trim();
-        const pass = document.getElementById('cred-password').value;
-
-        if (!user || !pass) {
-            showCredStatus('warning', '⚠️ Debes introducir usuario y contraseña.');
-            return;
-        }
-        localStorage.setItem('off_user', user);
-        localStorage.setItem('off_password', pass);
-        showCredStatus('success', `✅ Credenciales guardadas para el usuario <strong>${user}</strong>.`);
-    });
-
-    // Borrar credenciales
-    btnClear.addEventListener('click', () => {
-        if (!confirm('¿Seguro que quieres borrar las credenciales de OpenFoodFacts?')) return;
-        localStorage.removeItem('off_user');
-        localStorage.removeItem('off_password');
-        document.getElementById('cred-username').value = '';
-        document.getElementById('cred-password').value = '';
-        showCredStatus('secondary', '🗑 Credenciales eliminadas. Se usará el entorno de test (off/off).');
-    });
-
-    // Verificar credenciales contra la API de test
-    btnVerify.addEventListener('click', async () => {
-        const user = document.getElementById('cred-username').value.trim();
-        const pass = document.getElementById('cred-password').value;
-
-        if (!user || !pass) {
-            showVerifyResult('warning', '⚠️ Introduce usuario y contraseña antes de verificar.');
-            return;
-        }
-
-        btnVerify.disabled = true;
-        btnVerify.textContent = 'Verificando...';
-        showVerifyResult('secondary', '⏳ Comprobando credenciales contra OpenFoodFacts...');
-
-        try {
-            // La API de OFF no tiene endpoint de login explícito; usamos
-            // el endpoint de preferencias del usuario que requiere auth.
-            const resp = await fetch(
-                `https://world.openfoodfacts.net/api/v2/preferences`,
-                {
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(user + ':' + pass),
-                        'Accept': 'application/json',
-                    }
-                }
-            );
-
-            if (resp.ok || resp.status === 200) {
-                showVerifyResult('success', `✅ Credenciales correctas para <strong>${user}</strong> en el entorno de test.`);
-            } else if (resp.status === 401) {
-                showVerifyResult('danger', '❌ Credenciales incorrectas. Comprueba usuario y contraseña.');
-            } else {
-                showVerifyResult('warning', `⚠️ Respuesta inesperada (HTTP ${resp.status}). Las credenciales podrían ser válidas igualmente.`);
-            }
-        } catch (err) {
-            showVerifyResult('danger', `❌ Error de conexión: ${err.message}`);
-        } finally {
-            btnVerify.disabled = false;
-            btnVerify.textContent = '🔍 Verificar credenciales';
-        }
-    });
-}
-
-function populateCredentialsForm() {
-    const user = localStorage.getItem('off_user');
-    const pass = localStorage.getItem('off_password');
-
-    document.getElementById('cred-username').value = user || '';
-    document.getElementById('cred-password').value = pass || '';
-
-    if (user && user !== 'off') {
-        showCredStatus('success', `✅ Cuenta configurada: <strong>${user}</strong>`);
-    } else {
-        showCredStatus('warning',
-            '⚠️ Sin cuenta configurada. Usando credenciales de <strong>test</strong> (off/off). ' +
-            'Las fotos se subirán al entorno de pruebas, no a la BD real.'
-        );
-    }
-    document.getElementById('cred-verify-result').classList.add('d-none');
-}
-
-function showCredStatus(type, html) {
-    const el = document.getElementById('cred-status');
-    el.className = `alert alert-${type} py-2 mb-3 small`;
-    el.innerHTML = html;
-}
-
-function showVerifyResult(type, html) {
-    const el = document.getElementById('cred-verify-result');
-    el.className = `alert alert-${type} py-2 small`;
-    el.innerHTML = html;
-    el.classList.remove('d-none');
 }

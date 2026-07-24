@@ -24,9 +24,6 @@
         <!-- Botones de sincronización y configuración -->
         <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
           <button class="btn btn-outline-danger btn-sm" id="clear-db-btn">Borrar BD Local</button>
-          <button class="btn btn-outline-secondary btn-sm" id="btn-open-credentials" title="Configurar cuenta OpenFoodFacts">
-            ⚙️ Cuenta OFF
-          </button>
           <button class="btn btn-outline-warning btn-sm position-relative" id="btn-sync-off">
             ☁️ Sincronizar OFF
             <span id="sync-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"></span>
@@ -44,7 +41,10 @@
     <!-- Escáner / Búsqueda -->
     <div class="input-group mb-4 justify-content-center">
       <input type="text" id="code-input" class="form-control" style="max-width: 300px;" placeholder="Código o Nombre" />
-      <button class="btn btn-primary" id="query-btn">Buscar</button>
+      <button class="btn btn-primary" id="query-btn">
+        <span class="spinner-border spinner-border-sm d-none" id="search-spinner" role="status" aria-hidden="true"></span>
+        <span id="query-btn-text">Buscar</span>
+      </button>
       <button class="btn btn-outline-light" id="scan-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
     </div>
     
@@ -137,63 +137,6 @@
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/table.js"></script>
 
-  <!-- Modal: Credenciales OpenFoodFacts -->
-  <div class="modal fade" id="modal-credentials" tabindex="-1" aria-labelledby="modal-credentials-label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-white border-secondary">
-        <div class="modal-header border-secondary">
-          <h5 class="modal-title" id="modal-credentials-label">&#9881;&#65039; Cuenta OpenFoodFacts</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body text-start">
-
-          <!-- Estado actual -->
-          <div id="cred-status" class="alert alert-secondary py-2 mb-3 small">
-            Cargando estado...
-          </div>
-
-          <!-- No tienes cuenta? -->
-          <div class="card bg-dark border-info mb-3">
-            <div class="card-body py-2">
-              <p class="mb-1 small"><strong>No tienes cuenta en OpenFoodFacts?</strong></p>
-              <p class="mb-2 small text-muted">El registro es gratuito y abierto. Tu cuenta permite contribuir fotos de productos que aun no estan en la base de datos mundial.</p>
-              <a href="https://world.openfoodfacts.org/cgi/user.pl" target="_blank" rel="noopener"
-                 class="btn btn-info btn-sm w-100">
-                &#127757; Crear cuenta gratis en OpenFoodFacts.org
-              </a>
-            </div>
-          </div>
-
-          <!-- Formulario -->
-          <div class="mb-3">
-            <label for="cred-username" class="form-label form-label-sm">Usuario de OpenFoodFacts</label>
-            <input type="text" id="cred-username" class="form-control form-control-sm bg-secondary text-white border-secondary"
-                   placeholder="tu_usuario" autocomplete="username">
-          </div>
-          <div class="mb-3">
-            <label for="cred-password" class="form-label form-label-sm">Contrasena</label>
-            <div class="input-group input-group-sm">
-              <input type="password" id="cred-password" class="form-control bg-secondary text-white border-secondary"
-                     placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password">
-              <button class="btn btn-outline-secondary" type="button" id="btn-toggle-password" title="Mostrar/ocultar">
-                &#128065;
-              </button>
-            </div>
-            <div class="form-text text-muted">Las credenciales se guardan solo en este navegador (localStorage). Nunca se envian a nuestros servidores.</div>
-          </div>
-
-          <!-- Resultado de la verificacion -->
-          <div id="cred-verify-result" class="d-none small mt-2"></div>
-        </div>
-        <div class="modal-footer border-secondary flex-wrap gap-2">
-          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">&#128269; Verificar credenciales</button>
-          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">&#128465; Borrar credenciales</button>
-          <button class="btn btn-success btn-sm ms-auto" id="btn-save-credentials">&#128190; Guardar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Modal: Missing Weights -->
   <div class="modal fade" id="modal-missing-weights" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -210,6 +153,7 @@
         </div>
         <div class="modal-footer border-secondary">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-outline-warning btn-sm" id="btn-skip-missing-weights">Omitir pesos y continuar</button>
           <button type="button" class="btn btn-success btn-sm" id="btn-save-missing-weights">Guardar y Continuar</button>
         </div>
       </div>

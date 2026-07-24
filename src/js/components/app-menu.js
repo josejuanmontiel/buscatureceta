@@ -10,6 +10,7 @@ class AppMenu extends HTMLElement {
       { id: "meal-photos", text: "Fotos <span class=\"badge bg-warning text-dark ms-1\" id=\"nav-photo-badge\" style=\"display:none;\"></span>" },
       { id: "dashboard", text: "Dashboard" },
       { id: "db-viewer", text: "Visor BD" },
+      { id: "cart-history", text: "Historial Compras" },
       { id: "settings", text: "Ajustes" }
     ];
 

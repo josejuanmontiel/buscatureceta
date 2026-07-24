@@ -288,19 +288,27 @@ async function searchIngredient() {
   
   let results = [];
   try {
-    if (searchPantryOnly) {
+  if (searchPantryOnly) {
     const pantryItems = await db.pantry.toArray();
     const pantryCodes = Array.from(new Set(pantryItems.map(item => item.productCode)));
     
-    if (/^\d+$/.test(query)) {
+    if (pantryCodes.length === 0) {
+      results = [];
+    } else if (/^\d+$/.test(query)) {
+      // Búsqueda por código: solo comprobar si está en la despensa
       if (pantryCodes.includes(query)) {
         const p = await ProductStore.getProductByCode(query);
         if (p) results = [p];
       }
     } else {
+      // Búsqueda por nombre: recuperar TODOS los productos de la despensa
+      // y filtrar por nombre localmente, sin depender del límite de 10k
+      const pantryProducts = await ProductStore.getProductsByCodes(pantryCodes);
       const q = query.toLowerCase();
-      const searchRes = await ProductStore.searchProducts(q, 50);
-      results = searchRes.filter(p => pantryCodes.includes(p.code));
+      results = pantryProducts.filter(p =>
+        (p.product_name || '').toLowerCase().includes(q) ||
+        (p.brands || '').toLowerCase().includes(q)
+      );
     }
   } else {
     if (/^\d+$/.test(query)) {
@@ -577,41 +585,102 @@ async function processRecipeAI() {
 async function runSmartMatch(ingredients) {
   aiImportedIngredients = [];
   const listEl = document.getElementById('smart-match-list');
-  listEl.innerHTML = '<div class="text-center p-4">Buscando equivalencias en la base de datos...</div>';
   smartMatchModal.show();
-  
+
   const results = [];
-  
+
   for (let i = 0; i < ingredients.length; i++) {
     const ing = ingredients[i];
     const q = ing.name.toLowerCase();
-    const searchRes = await ProductStore.searchProducts(q, 5);
+
+    // Progreso en tiempo real
+    listEl.innerHTML = `
+      <div class="text-center p-4">
+        <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+        <span>Buscando ${i + 1} de ${ingredients.length}: <strong>${ing.name}</strong></span>
+        <div class="progress mt-3" style="height: 6px;">
+          <div class="progress-bar bg-info" style="width: ${Math.round(((i) / ingredients.length) * 100)}%"></div>
+        </div>
+        ${results.length > 0 ? `<div class="mt-3 text-start small">
+          ${results.map(r => `<div>${r.match ? '✅' : '⚠️'} ${r.original.name} → ${r.match ? r.match.product_name : '<em class="text-warning">Pendiente...</em>'}</div>`).join('')}
+        </div>` : ''}
+      </div>`;
+
+    // Ceder el hilo para que el DOM se actualice
+    await new Promise(r => setTimeout(r, 0));
+
+    // 1º: buscar primero en Mis Productos (rápido, siempre exacto)
+    let searchRes = await searchInCustomFirst(q);
     let bestMatch = searchRes.length > 0 ? searchRes[0] : null;
-    
+
+    // 2º: si no hay nada, buscar en BD oficial con límite pequeño para no atascar
+    if (!bestMatch) {
+      const officialRes = await searchInOfficial(q, 5);
+      if (officialRes.length > 0) {
+        bestMatch = officialRes[0];
+        searchRes = officialRes;
+      }
+    }
+
+    console.log(`[SmartMatch] ${i + 1}/${ingredients.length} "${ing.name}" → ${bestMatch ? bestMatch.product_name : 'NO ENCONTRADO'}`);
+
     results.push({
       original: ing,
       match: bestMatch,
       alternatives: searchRes.slice(1)
     });
   }
-  
+
   aiImportedIngredients = results;
   renderSmartMatchList();
+}
+
+/**
+ * Busca primero en customProducts (siempre pequeño, rápido)
+ */
+async function searchInCustomFirst(q) {
+  const terms = q.split(' ').filter(t => t.length > 0);
+  const all = await db.customProducts.toArray();
+  return all.filter(p => {
+    const name = (p.product_name || '').toLowerCase();
+    return terms.every(t => name.includes(t));
+  }).slice(0, 5);
+}
+
+/**
+ * Busca en la BD oficial con un límite estricto para no atascar
+ */
+async function searchInOfficial(q, limit = 5) {
+  const terms = q.split(' ').filter(t => t.length > 0);
+  let scanned = 0;
+  const MAX_SCAN = 5000; // Máximo reducido para no bloquear en smartmatch
+  return db.products.toCollection()
+    .until(() => { scanned++; return scanned > MAX_SCAN; })
+    .filter(p => {
+      const name = (p.product_name || '').toLowerCase();
+      const brand = (p.brands || '').toLowerCase();
+      return terms.every(t => name.includes(t) || brand.includes(t));
+    })
+    .limit(limit)
+    .toArray();
 }
 
 function renderSmartMatchList() {
   const listEl = document.getElementById('smart-match-list');
   listEl.innerHTML = aiImportedIngredients.map((item, idx) => `
-    <div class="list-group-item d-flex align-items-center justify-content-between">
-      <div style="flex:1;">
-        <div class="fw-bold small text-muted">Receta pide: ${item.original.amount}${item.original.unit} ${item.original.name}</div>
-        ${item.match ? 
-          `<div>✅ <span class="fw-bold text-success">${item.match.product_name}</span></div>` : 
-          `<div>❌ <span class="text-danger">No encontrado automáticamente</span></div>`
+    <div class="list-group-item d-flex align-items-center justify-content-between gap-2" id="smart-match-row-${idx}">
+      <div style="flex:1; min-width:0;">
+        <div class="fw-bold small text-muted text-truncate">${item.original.amount}${item.original.unit} ${item.original.name}</div>
+        ${item.match 
+          ? `<div class="small mt-1">✅ <span class="fw-bold text-success">${item.match.product_name}</span>
+             <span class="badge bg-secondary ms-1">${item.match.code}</span></div>`
+          : `<div class="small mt-1">❌ <span class="text-warning">Sin match — pulsa "Buscar" para asignar uno</span></div>`
         }
       </div>
-      <button class="btn btn-sm btn-outline-info" onclick="window._openChangeIngredient(${idx})">Cambiar</button>
-      <button class="btn btn-sm btn-outline-danger ms-1" onclick="window._removeSmartMatch(${idx})">Ignorar</button>
+      <div class="d-flex gap-1 flex-shrink-0">
+        <button class="btn btn-sm btn-outline-info" onclick="window._openChangeIngredient(${idx})">Buscar</button>
+        ${item.match ? `<button class="btn btn-sm btn-outline-danger" onclick="window._removeSmartMatch(${idx})">✕</button>` : ''}
+      </div>
     </div>
   `).join('');
 }
@@ -631,20 +700,58 @@ window._openChangeIngredient = async function(idx) {
 
 async function searchChangeIngredient() {
   const q = document.getElementById('change-ingredient-search').value.trim().toLowerCase();
-  const res = await ProductStore.searchProducts(q, 20);
+  if (!q) return;
+
   const container = document.getElementById('change-ingredient-results');
-  container.innerHTML = res.map(p => `
-    <button type="button" class="list-group-item list-group-item-action py-2" onclick="window._selectChangeIngredient('${p.code}', '${(p.product_name || '').replace(/'/g,"\\'")}')">
-      <span class="small">${p.product_name}</span> <span class="badge bg-secondary">${p.code}</span>
-    </button>
-  `).join('');
+  container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-info"></span></div>';
+
+  // Buscar primero en custom (siempre visible arriba)
+  const customRes = await searchInCustomFirst(q);
+  // Luego en oficial
+  const officialRes = await searchInOfficial(q, 20);
+
+  // Combinar: custom primero, sin duplicados
+  const customCodes = new Set(customRes.map(p => p.code));
+  const all = [
+    ...customRes.map(p => ({ ...p, _isCustom: true })),
+    ...officialRes.filter(p => !customCodes.has(p.code))
+  ];
+
+  if (all.length === 0) {
+    container.innerHTML = '<div class="list-group-item text-muted small">Sin resultados.</div>';
+    return;
+  }
+
+  container.innerHTML = all.map(p => `
+    <button type="button" class="list-group-item list-group-item-action py-2 d-flex justify-content-between align-items-center"
+            onclick="window._selectChangeIngredient('${p.code}', '${(p.product_name || '').replace(/'/g, "\\'")}')">
+      <span class="small">${p.product_name || 'Sin nombre'}</span>
+      <span>
+        ${p._isCustom ? '<span class="badge bg-info text-dark me-1">Mi lista</span>' : ''}
+        <span class="badge bg-secondary">${p.code}</span>
+      </span>
+    </button>`).join('');
 }
 
 window._selectChangeIngredient = function(code, name) {
   aiImportedIngredients[currentChangeIngredientIndex].match = { code, product_name: name };
   changeIngredientModal.hide();
-  renderSmartMatchList();
+
+  // Actualizar solo la fila afectada sin re-renderizar toda la lista
+  const idx = currentChangeIngredientIndex;
+  const row = document.getElementById(`smart-match-row-${idx}`);
+  if (row) {
+    const item = aiImportedIngredients[idx];
+    row.querySelector('div[style]').innerHTML = `
+      <div class="fw-bold small text-muted text-truncate">${item.original.amount}${item.original.unit} ${item.original.name}</div>
+      <div class="small mt-1">✅ <span class="fw-bold text-success">${name}</span>
+       <span class="badge bg-secondary ms-1">${code}</span></div>`;
+    row.querySelector('.d-flex.gap-1').innerHTML = `
+      <button class="btn btn-sm btn-outline-info" onclick="window._openChangeIngredient(${idx})">Buscar</button>
+      <button class="btn btn-sm btn-outline-danger" onclick="window._removeSmartMatch(${idx})">✕</button>`;
+  }
 }
+
 
 function confirmSmartMatch() {
   smartMatchModal.hide();

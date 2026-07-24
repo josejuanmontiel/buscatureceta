@@ -212,6 +212,24 @@ db.version(8).stores({
   recentProducts: 'productCode, timestamp'
 });
 
+// ── v9: Historial de Carritos de la Compra ─────────────────────────────────────
+db.version(9).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

@@ -14,7 +14,8 @@ const pages = [
   'meal-photos',
   'dashboard',
   'db-viewer',
-  'settings'
+  'settings',
+  'cart-history'
 ];
 
 // Always read from the clean base template to avoid accumulating nested templates

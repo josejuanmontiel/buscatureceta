@@ -53,6 +53,68 @@
           <button class="btn btn-outline-warning" type="button" id="btn-import">Restaurar</button>
         </div>
       </div>
+      <div class="settings-section">
+        <h4 class="mb-3">&#9881;&#65039; Cuenta OpenFoodFacts</h4>
+        
+        <!-- Estado actual -->
+        <div id="cred-status" class="alert alert-secondary py-2 mb-3 small">
+          Cargando estado...
+        </div>
+
+        <!-- No tienes cuenta? -->
+        <div class="card bg-dark border-info mb-3">
+          <div class="card-body py-2">
+            <p class="mb-1 small"><strong>¿No tienes cuenta en OpenFoodFacts?</strong></p>
+            <p class="mb-2 small text-muted">El registro es gratuito y abierto. Tu cuenta permite contribuir fotos de productos que aun no estan en la base de datos mundial.</p>
+            <a href="https://world.openfoodfacts.org/cgi/user.pl" target="_blank" rel="noopener"
+               class="btn btn-info btn-sm w-100">
+              &#127757; Crear cuenta gratis en OpenFoodFacts.org
+            </a>
+          </div>
+        </div>
+
+        <!-- Formulario -->
+        <div class="mb-3">
+          <label for="cred-username" class="form-label form-label-sm">Usuario de OpenFoodFacts</label>
+          <input type="text" id="cred-username" class="form-control form-control-sm bg-secondary text-white border-secondary"
+                 placeholder="tu_usuario" autocomplete="username">
+        </div>
+        <div class="mb-3">
+          <label for="cred-password" class="form-label form-label-sm">Contraseña</label>
+          <div class="input-group input-group-sm">
+            <input type="password" id="cred-password" class="form-control bg-secondary text-white border-secondary"
+                   placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password">
+            <button class="btn btn-outline-secondary" type="button" id="btn-toggle-password" title="Mostrar/ocultar">
+              &#128065;
+            </button>
+          </div>
+          <div class="form-text text-muted">Las credenciales se guardan solo en este navegador (localStorage). Nunca se envían a nuestros servidores.</div>
+        </div>
+
+        <!-- Resultado de la verificacion -->
+        <div id="cred-verify-result" class="d-none small mt-2"></div>
+        
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">&#128269; Verificar credenciales</button>
+          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">&#128465; Borrar credenciales</button>
+          <button class="btn btn-success btn-sm ms-auto" id="btn-save-credentials">&#128190; Guardar</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="mb-3">🚫 Filtro de Aditivos e Ingredientes</h4>
+        <p class="text-muted small mb-3">
+          Configura aquí los ingredientes o aditivos (separados por <code>|</code>) que quieres evitar en tus compras. El Asistente de Compras te avisará si un producto contiene alguno.
+        </p>
+        <div class="mb-3">
+          <textarea class="form-control bg-secondary text-white border-secondary" id="additive-filters" rows="3" placeholder="Ej: E249 | E250 | aceite de palma"></textarea>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-warning btn-sm" id="btn-default-additives">Rellenar Aditivos Comunes</button>
+          <button class="btn btn-success btn-sm ms-auto" id="btn-save-filters">💾 Guardar Filtros</button>
+        </div>
+      </div>
+
       <div class="settings-section border-danger border border-2">
         <h4 class="mb-3 text-danger">Zona Peligrosa</h4>
         <p class="text-muted small mb-3">

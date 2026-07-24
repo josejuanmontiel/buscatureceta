@@ -35,6 +35,18 @@ export async function addToCart(productCode, amount, price, unit = 'g') {
 }
 
 /**
+ * Actualiza cantidad y precio de un producto en el carrito
+ */
+export async function updateCartItem(id, amount, price) {
+  const numericPrice = parseFloat(price) || 0;
+  const numericAmount = parseFloat(amount) || 1;
+  await db.cart.update(id, {
+    amount: numericAmount,
+    price: numericPrice
+  });
+}
+
+/**
  * Borrar del carrito
  */
 export async function removeFromCart(id) {
@@ -89,11 +101,22 @@ export async function getLastKnownPrice(productCode) {
 
 /**
  * Pasar por caja (Checkout)
- * Mueve todo lo del carrito a la despensa y lo borra
+ * Mueve todo lo del carrito a la despensa, lo guarda en el historial y lo borra.
  */
-export async function checkout() {
-  const { items } = await getCart();
+export async function checkout(supermarket = '', notes = '') {
+  const { items, total } = await getCart();
   const warnings = [];
+  
+  if (items.length === 0) return warnings;
+
+  // Guardar en el historial
+  await db.cartHistory.add({
+    date: new Date().toISOString(),
+    total: total,
+    items: items,
+    supermarket: supermarket,
+    notes: notes
+  });
   
   for (const item of items) {
     let stockAmount = item.amount;

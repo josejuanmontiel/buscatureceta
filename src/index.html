@@ -95,13 +95,8 @@
       <p>Basicamente, descargara la base de datos de codigos de barras y te avisara de los valores que no quieras que tus alimentos tengan.</p>
 
       <div class="container text-center">
-        <div class="row">
-          <textarea class="form-control" placeholder="Leave a comment here" id="filters" style="height: 100px">Ingrediente 1 |
-Ingrediente 2 |
-Ingrediente 3</textarea>
-        </div>
-        <div class="row">
-          &nbsp;
+        <div class="row mb-4">
+          <a href="#settings" class="btn btn-outline-info">Configurar Filtros de Aditivos e Ingredientes</a>
         </div>
         <div class="row">
           <!-- Input group -->
@@ -128,9 +123,6 @@ Ingrediente 3</textarea>
         <!-- Botones de sincronización y configuración -->
         <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
           <button class="btn btn-outline-danger btn-sm" id="clear-db-btn">Borrar BD Local</button>
-          <button class="btn btn-outline-secondary btn-sm" id="btn-open-credentials" title="Configurar cuenta OpenFoodFacts">
-            ⚙️ Cuenta OFF
-          </button>
           <button class="btn btn-outline-warning btn-sm position-relative" id="btn-sync-off">
             ☁️ Sincronizar OFF
             <span id="sync-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"></span>
@@ -148,7 +140,10 @@ Ingrediente 3</textarea>
     <!-- Escáner / Búsqueda -->
     <div class="input-group mb-4 justify-content-center">
       <input type="text" id="code-input" class="form-control" style="max-width: 300px;" placeholder="Código o Nombre">
-      <button class="btn btn-primary" id="query-btn">Buscar</button>
+      <button class="btn btn-primary" id="query-btn">
+        <span class="spinner-border spinner-border-sm d-none" id="search-spinner" role="status" aria-hidden="true"></span>
+        <span id="query-btn-text">Buscar</span>
+      </button>
       <button class="btn btn-outline-light" id="scan-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
     </div>
     
@@ -235,59 +230,7 @@ Ingrediente 3</textarea>
     <script type="module" src="./js/grid.js"></script>
   </div>
       
-      <div class="modal fade" id="modal-credentials" tabindex="-1" aria-labelledby="modal-credentials-label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-white border-secondary">
-        <div class="modal-header border-secondary">
-          <h5 class="modal-title" id="modal-credentials-label">⚙️ Cuenta OpenFoodFacts</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body text-start">
-
-          <!-- Estado actual -->
-          <div id="cred-status" class="alert alert-secondary py-2 mb-3 small">
-            Cargando estado...
-          </div>
-
-          <!-- No tienes cuenta? -->
-          <div class="card bg-dark border-info mb-3">
-            <div class="card-body py-2">
-              <p class="mb-1 small"><strong>No tienes cuenta en OpenFoodFacts?</strong></p>
-              <p class="mb-2 small text-muted">El registro es gratuito y abierto. Tu cuenta permite contribuir fotos de productos que aun no estan en la base de datos mundial.</p>
-              <a href="https://world.openfoodfacts.org/cgi/user.pl" target="_blank" rel="noopener" class="btn btn-info btn-sm w-100">
-                🌍 Crear cuenta gratis en OpenFoodFacts.org
-              </a>
-            </div>
-          </div>
-
-          <!-- Formulario -->
-          <div class="mb-3">
-            <label for="cred-username" class="form-label form-label-sm">Usuario de OpenFoodFacts</label>
-            <input type="text" id="cred-username" class="form-control form-control-sm bg-secondary text-white border-secondary" placeholder="tu_usuario" autocomplete="username">
-          </div>
-          <div class="mb-3">
-            <label for="cred-password" class="form-label form-label-sm">Contrasena</label>
-            <div class="input-group input-group-sm">
-              <input type="password" id="cred-password" class="form-control bg-secondary text-white border-secondary" placeholder="••••••••" autocomplete="current-password">
-              <button class="btn btn-outline-secondary" type="button" id="btn-toggle-password" title="Mostrar/ocultar">
-                👁
-              </button>
-            </div>
-            <div class="form-text text-muted">Las credenciales se guardan solo en este navegador (localStorage). Nunca se envian a nuestros servidores.</div>
-          </div>
-
-          <!-- Resultado de la verificacion -->
-          <div id="cred-verify-result" class="d-none small mt-2"></div>
-        </div>
-        <div class="modal-footer border-secondary flex-wrap gap-2">
-          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">🔍 Verificar credenciales</button>
-          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">🗑 Borrar credenciales</button>
-          <button class="btn btn-success btn-sm ms-auto" id="btn-save-credentials">💾 Guardar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-<div class="modal fade" id="modal-missing-weights" tabindex="-1" aria-hidden="true">
+      <div class="modal fade" id="modal-missing-weights" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-dark text-white border-secondary">
         <div class="modal-header border-secondary">
@@ -302,6 +245,7 @@ Ingrediente 3</textarea>
         </div>
         <div class="modal-footer border-secondary">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-outline-warning btn-sm" id="btn-skip-missing-weights">Omitir pesos y continuar</button>
           <button type="button" class="btn btn-success btn-sm" id="btn-save-missing-weights">Guardar y Continuar</button>
         </div>
       </div>
@@ -1222,6 +1166,65 @@ Ingrediente 3</textarea>
           <button class="btn btn-outline-warning" type="button" id="btn-import">Restaurar</button>
         </div>
       </div>
+      <div class="settings-section">
+        <h4 class="mb-3">⚙️ Cuenta OpenFoodFacts</h4>
+        
+        <!-- Estado actual -->
+        <div id="cred-status" class="alert alert-secondary py-2 mb-3 small">
+          Cargando estado...
+        </div>
+
+        <!-- No tienes cuenta? -->
+        <div class="card bg-dark border-info mb-3">
+          <div class="card-body py-2">
+            <p class="mb-1 small"><strong>¿No tienes cuenta en OpenFoodFacts?</strong></p>
+            <p class="mb-2 small text-muted">El registro es gratuito y abierto. Tu cuenta permite contribuir fotos de productos que aun no estan en la base de datos mundial.</p>
+            <a href="https://world.openfoodfacts.org/cgi/user.pl" target="_blank" rel="noopener" class="btn btn-info btn-sm w-100">
+              🌍 Crear cuenta gratis en OpenFoodFacts.org
+            </a>
+          </div>
+        </div>
+
+        <!-- Formulario -->
+        <div class="mb-3">
+          <label for="cred-username" class="form-label form-label-sm">Usuario de OpenFoodFacts</label>
+          <input type="text" id="cred-username" class="form-control form-control-sm bg-secondary text-white border-secondary" placeholder="tu_usuario" autocomplete="username">
+        </div>
+        <div class="mb-3">
+          <label for="cred-password" class="form-label form-label-sm">Contraseña</label>
+          <div class="input-group input-group-sm">
+            <input type="password" id="cred-password" class="form-control bg-secondary text-white border-secondary" placeholder="••••••••" autocomplete="current-password">
+            <button class="btn btn-outline-secondary" type="button" id="btn-toggle-password" title="Mostrar/ocultar">
+              👁
+            </button>
+          </div>
+          <div class="form-text text-muted">Las credenciales se guardan solo en este navegador (localStorage). Nunca se envían a nuestros servidores.</div>
+        </div>
+
+        <!-- Resultado de la verificacion -->
+        <div id="cred-verify-result" class="d-none small mt-2"></div>
+        
+        <div class="d-flex flex-wrap gap-2 mt-3">
+          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">🔍 Verificar credenciales</button>
+          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">🗑 Borrar credenciales</button>
+          <button class="btn btn-success btn-sm ms-auto" id="btn-save-credentials">💾 Guardar</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="mb-3">🚫 Filtro de Aditivos e Ingredientes</h4>
+        <p class="text-muted small mb-3">
+          Configura aquí los ingredientes o aditivos (separados por <code>|</code>) que quieres evitar en tus compras. El Asistente de Compras te avisará si un producto contiene alguno.
+        </p>
+        <div class="mb-3">
+          <textarea class="form-control bg-secondary text-white border-secondary" id="additive-filters" rows="3" placeholder="Ej: E249 | E250 | aceite de palma"></textarea>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-warning btn-sm" id="btn-default-additives">Rellenar Aditivos Comunes</button>
+          <button class="btn btn-success btn-sm ms-auto" id="btn-save-filters">💾 Guardar Filtros</button>
+        </div>
+      </div>
+
       <div class="settings-section border-danger border border-2">
         <h4 class="mb-3 text-danger">Zona Peligrosa</h4>
         <p class="text-muted small mb-3">
@@ -1229,6 +1232,26 @@ Ingrediente 3</textarea>
           <strong>Nota:</strong> Esto NO borrará la base de datos de ingredientes importada.
         </p>
         <button class="btn btn-outline-danger" id="btn-clear-data">🗑️ Borrar Todos los Datos Personales</button>
+      </div>
+    
+      
+    </div>
+  </template>
+  
+  <template id="view-cart-history">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <h2 class="mb-4 text-center">Historial de Compras</h2>
+      
+      <!-- Gráfica de gastos -->
+      <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+          <canvas id="cart-chart" style="max-height: 250px;"></canvas>
+        </div>
+      </div>
+
+      <div id="cart-history-list" class="accordion mb-5">
+        <!-- Rellenado por JS -->
       </div>
     
       
