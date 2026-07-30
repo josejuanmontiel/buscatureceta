@@ -5,13 +5,19 @@ import { db } from './db/schema.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
 import { showToast } from './modules/ui/UI.js';
 
-let addStockModal, consumeStockModal, productDetailModal;
+let addStockModal, consumeStockModal, productDetailModal, moveZoneModal;
+let currentZone = 'food'; // zona activa por defecto
 
 export async function initView() {
   addStockModal = new Modal(document.getElementById('addStockModal'));
   consumeStockModal = new Modal(document.getElementById('consumeStockModal'));
   productDetailModal = new Modal(document.getElementById('productDetailModal'));
-  
+
+  const moveZoneEl = document.getElementById('moveZoneModal');
+  if (moveZoneEl) {
+    moveZoneModal = new Modal(moveZoneEl);
+  }
+
   const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const codeFromUrl = urlParams.get('code');
   const actionFromUrl = urlParams.get('action');
@@ -28,10 +34,12 @@ export async function initView() {
     setTimeout(searchProduct, 500);
   }
 
+  // Buscador filtro despensa
   document.getElementById('pantry-search').addEventListener('input', (e) => {
     loadPantry(e.target.value);
   });
 
+  // Escáner
   const scanPantryBtn = document.getElementById('scan-pantry-btn');
   if (scanPantryBtn) {
     scanPantryBtn.addEventListener('click', () => {
@@ -43,13 +51,50 @@ export async function initView() {
     window.location.href = '/scan.html?return=%23pantry&action=addStock';
   });
 
+  // Buscador del modal Añadir Stock (tiempo real + Enter)
   document.getElementById('btn-search-stock-product').addEventListener('click', searchProduct);
+  let stockSearchTimeout;
+  const stockInput = document.getElementById('stock-product-search');
+  stockInput.addEventListener('input', () => {
+    clearTimeout(stockSearchTimeout);
+    stockSearchTimeout = setTimeout(searchProduct, 400);
+  });
+  stockInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); searchProduct(); }
+  });
+
   document.getElementById('btn-save-stock').addEventListener('click', saveStock);
   document.getElementById('btn-confirm-consume').addEventListener('click', confirmConsume);
+
+  // Pestañas de zona
+  document.querySelectorAll('#pantry-zone-tabs button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.querySelectorAll('#pantry-zone-tabs button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentZone = btn.dataset.zone;
+      await loadPantry(document.getElementById('pantry-search').value.trim());
+    });
+  });
+
+  // Modal mover zona
+  if (moveZoneEl) {
+    document.getElementById('btn-move-to-food')?.addEventListener('click', async () => {
+      const code = document.getElementById('move-zone-product-code').value;
+      await PantryStore.moveToZone(code, 'food');
+      moveZoneModal.hide();
+      await loadPantry(document.getElementById('pantry-search').value.trim());
+    });
+    document.getElementById('btn-move-to-nonfood')?.addEventListener('click', async () => {
+      const code = document.getElementById('move-zone-product-code').value;
+      await PantryStore.moveToZone(code, 'nonfood');
+      moveZoneModal.hide();
+      await loadPantry(document.getElementById('pantry-search').value.trim());
+    });
+  }
 }
 
 async function loadPantry(query = '') {
-  const items = await PantryStore.getPantryInventory();
+  const items = await PantryStore.getPantryInventory(currentZone);
   const container = document.getElementById('pantry-list');
   
   const filtered = query 
@@ -57,7 +102,8 @@ async function loadPantry(query = '') {
     : items;
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="col-12 text-center mt-5"><p class="text-muted">La despensa está vacía.</p></div>`;
+    const zoneLabel = currentZone === 'food' ? 'alimentos' : 'artículos no alimentarios';
+    container.innerHTML = `<div class="col-12 text-center mt-5"><p class="text-muted">Sin ${zoneLabel} en la despensa.</p></div>`;
     return;
   }
 
@@ -74,7 +120,10 @@ async function loadPantry(query = '') {
             <h4 class="mb-0 text-success">${item.amount} <small class="fs-6">${item.unit}</small></h4>
             <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="+100g / +1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', 1, '${item.unit}')">+</button>
           </div>
-          <button class="btn btn-sm btn-outline-warning mt-2" onclick="event.stopPropagation(); window.openConsumeModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}', ${item.amount}, '${item.unit}')">Detalles / Retirar</button>
+          <div class="d-flex gap-2 mt-2 justify-content-end">
+            <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window.openMoveModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}')">↔ Zona</button>
+            <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); window.openConsumeModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}', ${item.amount}, '${item.unit}')">Detalles / Retirar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -112,7 +161,8 @@ async function saveStock() {
   if (!code) return showToast('Selecciona un producto primero', 'warning');
   if (!amount || amount <= 0) return showToast('Cantidad inválida', 'warning');
 
-  await PantryStore.addStock(code, amount, unit);
+  // El stock añadido manualmente respeta la zona activa
+  await PantryStore.addStock(code, amount, unit, currentZone);
   
   addStockModal.hide();
   document.getElementById('add-stock-form').reset();
@@ -129,6 +179,13 @@ window.openConsumeModal = function(code, name, maxAmount, unit) {
   amountInput.value = maxAmount;
 
   consumeStockModal.show();
+};
+
+window.openMoveModal = function(code, name) {
+  if (!moveZoneModal) return;
+  document.getElementById('move-zone-product-code').value = code;
+  document.getElementById('move-zone-product-name').textContent = name;
+  moveZoneModal.show();
 };
 
 async function confirmConsume() {
@@ -218,7 +275,7 @@ window.quickAdjust = async function(code, direction, unit) {
   delta *= direction;
   
   if (delta > 0) {
-    await PantryStore.addStock(code, delta, unit);
+    await PantryStore.addStock(code, delta, unit, currentZone);
   } else {
     // Para consumo silencioso rápido
     await PantryStore.consumeStock(code, Math.abs(delta), 'consumed_me');

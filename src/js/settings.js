@@ -1,5 +1,7 @@
 import * as BackupStore from './modules/backup/BackupStore.js';
 import { showToast, confirmModal } from './modules/ui/UI.js';
+import { getPendingUploads, deletePendingUpload, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
+import { db } from './db/schema.js';
 
 export async function initView() {
   document.getElementById('btn-export').addEventListener('click', handleExport);
@@ -15,6 +17,13 @@ export async function initView() {
 
   // Inicializar configuración de OpenFoodFacts
   initCredentialsConfig();
+  
+  // Inicializar sección de subidas pendientes
+  // initPendingUploadsUI();
+
+  // Inicializar Carga de Base de Datos
+  const dlBtn = document.getElementById('download-btn');
+  if (dlBtn) dlBtn.addEventListener('click', downloadAndLoadCSV);
   
   // Inicializar configuración de Filtros de Aditivos
   initFiltersConfig();
@@ -300,4 +309,122 @@ function initFiltersConfig() {
         localStorage.setItem('filters', defaultAdditives);
         showToast('Aditivos comunes aplicados.');
     });
+}
+
+// Función para descargar y cargar el CSV usando Streams para evitar falta de memoria
+async function downloadAndLoadCSV() {
+    const btn = document.getElementById("download-btn");
+    try {
+        btn.disabled = true;
+        btn.textContent = "Descargando BD...";
+
+        var database = document.getElementById("database").value;
+        if (database == null || database == "") {
+            database = 'spain_products.tsv.zz';
+        }
+
+        const response = await fetch(database);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        btn.textContent = "Procesando... (0 guardados)";
+
+        const originalReader = response.body.getReader();
+        const { value: firstChunk, done: firstDone } = await originalReader.read();
+        
+        if (firstDone) throw new Error("El archivo está vacío");
+
+        const isGzip = firstChunk[0] === 0x1f && firstChunk[1] === 0x8b;
+        const isDeflate = firstChunk[0] === 0x78 && (firstChunk[1] === 0x9c || firstChunk[1] === 0xda || firstChunk[1] === 0x01);
+
+        let stream = new ReadableStream({
+            start(controller) { controller.enqueue(firstChunk); },
+            async pull(controller) {
+                const { value, done } = await originalReader.read();
+                if (done) controller.close();
+                else controller.enqueue(value);
+            },
+            cancel() { originalReader.cancel(); }
+        });
+
+        if (isGzip) {
+            stream = stream.pipeThrough(new DecompressionStream('gzip'));
+        } else if (isDeflate) {
+            stream = stream.pipeThrough(new DecompressionStream('deflate'));
+        }
+        
+        stream = stream.pipeThrough(new TextDecoderStream());
+        const reader = stream.getReader();
+
+        let buffer = '';
+        let headers = null;
+        let chunk = [];
+        const CHUNK_SIZE = 5000;
+        let totalSaved = 0;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (value) {
+                buffer += value;
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const cols = line.split('\t');
+                    if (!headers) {
+                        headers = cols.map(h => h.trim());
+                        continue;
+                    }
+
+                    const obj = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        if (cols[j]) obj[headers[j]] = cols[j].replace(/^"|"$/g, '');
+                    }
+                    
+                    obj.code = obj.code || obj.id;
+                    if (obj.code) chunk.push(obj);
+
+                    if (chunk.length >= CHUNK_SIZE) {
+                        await db.products.bulkPut(chunk);
+                        totalSaved += chunk.length;
+                        chunk = [];
+                        btn.textContent = `Procesando... (${totalSaved} guardados)`;
+                    }
+                }
+            }
+            if (done) break;
+        }
+
+        if (buffer.trim()) {
+            const cols = buffer.trim().split('\t');
+            const obj = {};
+            for (let j = 0; j < headers.length; j++) {
+                if (cols[j]) obj[headers[j]] = cols[j].replace(/^"|"$/g, '');
+            }
+            obj.code = obj.code || obj.id;
+            if (obj.code) chunk.push(obj);
+        }
+
+        if (chunk.length > 0) {
+            await db.products.bulkPut(chunk);
+            totalSaved += chunk.length;
+        }
+
+        console.log(`Guardados ${totalSaved} productos exitosamente.`);
+        btn.textContent = `¡Carga Completada! (${totalSaved} productos)`;
+        // Redirigir al escáner para empezar a usarlo
+        setTimeout(() => {
+            window.location.hash = '#grid';
+        }, 1000);
+
+    } catch (error) {
+        console.error("Error en la descarga o carga del CSV: ", error);
+        btn.textContent = "Error al cargar";
+        btn.classList.add("btn-danger");
+        btn.classList.remove("btn-primary");
+    } finally {
+        btn.disabled = false;
+    }
 }

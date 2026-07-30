@@ -98,7 +98,7 @@ async function renderWeek(date) {
     const dayDate = new Date(day);
     
     // Agrupar items por mealType
-    const byMeal = { breakfast: [], lunch: [], snack: [], dinner: [] };
+    const byMeal = { breakfast: [], midmorning: [], lunch: [], snack: [], dinner: [] };
     let dayKcal = 0;
 
     entries.forEach(entry => {
@@ -119,6 +119,7 @@ async function renderWeek(date) {
       </div>
       <div class="flex-grow-1">
         ${renderMealSlot('Desayuno', 'breakfast', byMeal.breakfast, day)}
+        ${renderMealSlot('Almuerzo', 'midmorning', byMeal.midmorning, day)}
         ${renderMealSlot('Comida', 'lunch', byMeal.lunch, day)}
         ${renderMealSlot('Merienda', 'snack', byMeal.snack, day)}
         ${renderMealSlot('Cena', 'dinner', byMeal.dinner, day)}
@@ -583,8 +584,9 @@ async function updateDiaryPhotoBadge() {
 
 function getDefaultMealType() {
   const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return 'breakfast';
-  if (hour >= 12 && hour < 16) return 'lunch';
-  if (hour >= 16 && hour < 20) return 'snack';
+  if (hour >= 6 && hour < 10.5) return 'breakfast';
+  if (hour >= 10.5 && hour < 13.5) return 'midmorning';
+  if (hour >= 13.5 && hour < 17) return 'lunch';
+  if (hour >= 17 && hour < 20) return 'snack';
   return 'dinner';
 }

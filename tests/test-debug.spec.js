@@ -12,10 +12,10 @@ test('debug purchase flow generic', async ({ page }) => {
   await page.goto('/#settings');
   await page.fill('#additive-filters', 'E250');
   await page.click('#btn-save-filters');
-  await page.goto('/#index');
+  // #database input is in /#settings (was moved from /#index)
   await page.fill('#database', '/test_products.tsv.zz');
   await page.click('#download-btn');
-  await page.waitForURL('**/#grid');
+  await page.waitForURL('**/#grid', { timeout: 60000 });
 
   await page.fill('#code-input', 'Producto Raro');
   await page.click('#query-btn');

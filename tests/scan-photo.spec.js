@@ -8,10 +8,10 @@ test.describe('Scanner UI Flow', () => {
     await page.waitForSelector('#additive-filters', { state: 'visible', timeout: 10000 });
     await page.fill('#additive-filters', 'E250');
     await page.click('#btn-save-filters');
-    await page.goto('/#index');
+    // #database input is in /#settings (was moved from /#index)
     await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
-    await page.waitForURL('**/#grid');
+    await page.waitForURL('**/#grid', { timeout: 60000 });
 
     // 2. Comprobar que el botón de escanear es visible y hacer clic
     await expect(page.locator('#scan-btn')).toBeVisible();

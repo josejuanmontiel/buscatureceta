@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'dashboard': { init: () => import('./dashboard.js') },
     'db-viewer': { init: () => import('./db-viewer.js') },
     'settings': { init: () => import('./settings.js') },
-    'cart-history': { init: () => import('./cart-history.js') }
+    'cart-history': { init: () => import('./cart-history.js') },
+    'additives': { init: () => import('./additives.js') }
   });
 
   checkSharedFiles();

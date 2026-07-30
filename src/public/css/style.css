@@ -21,23 +21,101 @@ body {
   box-shadow: inset 0 0 5rem rgba(0, 0, 0, .5);
 }
 
-.cover-container {
-  max-width: 42em;
-}
-
-
 /*
- * Header
+ * Header / Topbar
  */
-
-.nav-masthead .nav-link {
-  color: rgba(255, 255, 255, .85);
-  border-bottom: .25rem solid transparent;
+.app-topbar {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: rgba(33, 37, 41, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
 }
 
-.nav-masthead .nav-link:hover,
-.nav-masthead .nav-link:focus {
-  border-bottom-color: rgba(255, 255, 255, .5);
+.app-topbar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-left: 1rem;
+  color: #fff;
+}
+
+.hamburger-btn {
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+}
+
+.hamburger-bar {
+  width: 1.5rem;
+  height: 0.2rem;
+  background-color: #fff;
+  border-radius: 2px;
+}
+
+.offcanvas-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+}
+
+.offcanvas-nav-link, .offcanvas-nav-sublink {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 1.05rem;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.offcanvas-nav-sublink {
+  padding: 0.5rem 1.5rem 0.5rem 3rem;
+  font-size: 0.95rem;
+}
+
+.offcanvas-nav-link:hover, .offcanvas-nav-sublink:hover,
+.offcanvas-nav-link:focus, .offcanvas-nav-sublink:focus {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.offcanvas-nav-link.active, .offcanvas-nav-sublink.active {
+  color: #fff;
+  background-color: rgba(110, 168, 254, 0.15);
+  border-left: 4px solid #6ea8fe;
+}
+
+.nav-icon {
+  margin-right: 0.75rem;
+  font-size: 1.2rem;
+}
+
+.offcanvas-nav-group-label {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.offcanvas-footer {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
 }
 
 /* Fix Tabulator for dark mode in SPA */
@@ -100,21 +178,6 @@ body {
   background: rgba(110,168,254,0.2) !important;
 }
 
-.nav-masthead .nav-link + .nav-link {
-  margin-left: 1rem;
-}
-
-.nav-masthead .active {
-  color: #fff;
-  border-bottom-color: #fff;
-}
-
-header > div::after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
 app-menu {
   display: block;
 }
@@ -149,3 +212,39 @@ app-menu {
 .version-badge { font-size:.72rem; background:rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.3); color:#6ea8fe; border-radius:20px; padding:2px 9px; }
 #recipe-instructions { min-height:260px; resize:vertical; line-height:1.6; }
 
+/* ─── Dashboard ─────────────────────────────────────────────────────── */
+.dashboard-card {
+  background: rgba(42, 42, 42, 0.8);
+  border-radius: 8px;
+  padding: 15px;
+  height: 100%;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.macro-progress {
+  height: 10px;
+  margin-top: 5px;
+}
+.chart-container {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+.variety-list {
+  max-height: 250px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.variety-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.variety-status-ok { color: #198754; font-weight: bold; }
+.variety-status-warn { color: #ffc107; font-weight: bold; }

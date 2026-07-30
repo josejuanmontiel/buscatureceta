@@ -23,6 +23,7 @@ export async function initView() {
     // Inicializar Tabulator
     table = new Tabulator("#db-table", {
         data: [], // Se carga luego
+        layout: "fitColumns",
         pagination: "local",
         paginationSize: 50,
         placeholder: "No hay datos disponibles",
@@ -44,8 +45,11 @@ export async function initView() {
         }
     });
 
-    // Cargar datos iniciales
+    // Cargar datos iniciales y forzar redibujado (necesario en SPA donde el contenedor
+    // puede no tener dimensiones definitivas en el momento de la inicialización)
     await loadTableData();
+    // Esperar al siguiente ciclo para que el DOM termine de renderizar
+    setTimeout(() => { if (table) table.redraw(true); }, 0);
 
     // Toggle de BD
     document.querySelectorAll('input[name="dbtype"]').forEach(radio => {

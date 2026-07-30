@@ -1,6 +1,10 @@
 import * as ProductStore from "../products/ProductStore.js";
 /**
  * PantryStore — Control de Despensa (Stock e Historial de Movimientos)
+ *
+ * Zonas (pantryZone):
+ *   'food'    — Alimentos. Afecta al diario nutricional.
+ *   'nonfood' — Artículos no alimentarios (limpieza, higiene, etc.)
  */
 import { db } from '../../db/schema.js';
 
@@ -9,8 +13,9 @@ import { db } from '../../db/schema.js';
  * @param {string} productCode
  * @param {number} amount
  * @param {string} unit
+ * @param {string} zone - 'food' | 'nonfood' (default: 'food')
  */
-export async function addStock(productCode, amount, unit = 'g') {
+export async function addStock(productCode, amount, unit = 'g', zone = 'food') {
   if (!productCode || amount <= 0) return;
 
   const now = new Date().toISOString();
@@ -23,7 +28,7 @@ export async function addStock(productCode, amount, unit = 'g') {
     // Simplificación: asume misma unidad o fuerza actualización
     await db.pantry.update(item.id, { amount: item.amount + amount });
   } else {
-    const newItemId = await db.pantry.add({ productCode, amount, unit });
+    const newItemId = await db.pantry.add({ productCode, amount, unit, pantryZone: zone });
     item = { id: newItemId };
   }
 
@@ -95,12 +100,32 @@ export async function consumeRecipeIngredients(recipeId, servings, reason) {
 }
 
 /**
- * Obtener todo el inventario actual
- * Se hace JOIN manual con "products" para sacar el nombre.
+ * Mover un producto a otra zona de despensa.
+ * @param {string} productCode
+ * @param {'food'|'nonfood'} newZone
  */
-export async function getPantryInventory() {
-  const pantryItems = await db.pantry.filter(i => i.amount > 0).toArray();
-  const codes = pantryItems.map(i => i.productCode);
+export async function moveToZone(productCode, newZone) {
+  const item = await db.pantry.where({ productCode }).first();
+  if (!item) return;
+  await db.pantry.update(item.id, { pantryZone: newZone });
+}
+
+/**
+ * Obtener todo el inventario actual, opcionalmente filtrado por zona.
+ * Los registros sin pantryZone (legacy) se tratan como 'food'.
+ * @param {string|null} zone - 'food' | 'nonfood' | null (todos)
+ */
+export async function getPantryInventory(zone = null) {
+  const allItems = await db.pantry.filter(i => i.amount > 0).toArray();
+
+  const filteredItems = zone === null
+    ? allItems
+    : allItems.filter(i => {
+        const itemZone = i.pantryZone || 'food';
+        return itemZone === zone;
+      });
+
+  const codes = filteredItems.map(i => i.productCode);
   
   // Buscar nombres y cantidades
   const products = await ProductStore.getProductsByCodes(codes);
@@ -111,9 +136,12 @@ export async function getPantryInventory() {
     quantityMap[p.code] = p.quantity || (p.product_quantity ? p.product_quantity + 'g' : '');
   });
 
-  return pantryItems.map(item => ({
+  return filteredItems.map(item => ({
     ...item,
+    pantryZone: item.pantryZone || 'food',
     productName: productMap[item.productCode] || 'Producto Desconocido',
     productQuantity: quantityMap[item.productCode] || ''
   }));
 }
+
+

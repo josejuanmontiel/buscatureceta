@@ -12,6 +12,7 @@ import * as PantryStore from './modules/pantry/PantryStore.js';
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
+import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
 import { showToast, confirmModal, compressImage } from './modules/ui/UI.js';
 
@@ -107,6 +108,7 @@ async function loadRecipe(id) {
 
   document.getElementById('btn-delete-recipe').style.display = 'inline-block';
   document.getElementById('btn-duplicate-recipe').style.display = 'inline-block';
+  document.getElementById('btn-create-list-recipe').style.display = 'inline-block';
 
   renderIngredients();
   renderTags();
@@ -176,6 +178,29 @@ function bindEvents() {
       setTimeout(() => { window.location.hash = `#recipe-editor?id=${newId}`; }, 800);
     } catch (err) {
       showToast('Error al duplicar: ' + err.message, true);
+    }
+  });
+
+  // Crear Lista de Compra
+  document.getElementById('btn-create-list-recipe').addEventListener('click', async () => {
+    if (!recipeId) return;
+    if (currentIngredients.length === 0) {
+      showToast('La receta no tiene ingredientes para comprar.', 'warning');
+      return;
+    }
+    const name = document.getElementById('recipe-name').value || 'Receta ' + recipeId;
+    const items = currentIngredients.map(ing => ({
+      name: ing.productName,
+      code: ing.productCode,
+      amount: ing.amount,
+      unit: ing.unit
+    }));
+    try {
+      await ShoppingStore.createList(name, items);
+      showToast('Lista de compra creada. Ve al carro para verla.', 'success');
+      setTimeout(() => { window.location.hash = '#grid'; }, 1000);
+    } catch (e) {
+      showToast('Error al crear la lista: ' + e.message, 'danger');
     }
   });
 

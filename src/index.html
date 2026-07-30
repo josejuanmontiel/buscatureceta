@@ -62,20 +62,16 @@
 
 </head>
 
-<body class="d-flex h-100 text-center">
+<body class="d-flex h-100 flex-column">
 
-  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
-    <header class="mb-auto">
-      <div>
-        <h3 class="float-md-start mb-0">NutriAgenda</h3>
-        <app-menu current-page=""></app-menu>
-      </div>
-    </header>
+  <!-- Top bar -->
+  <header class="app-topbar">
+    <app-menu current-page=""></app-menu>
+    <span class="app-topbar-title">🥦 NutriAgenda</span>
+  </header>
 
-    <main class="px-3 flex-grow-1" id="app-view"></main>
-    <footer class="mt-auto text-white-50">
-    </footer>
-  </div>
+  <main class="px-3 flex-grow-1 overflow-auto" id="app-view"></main>
+  <footer class="mt-auto text-white-50"></footer>
   
   <script type="module" src="./js/app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -86,27 +82,40 @@
   <template id="view-index">
     <div class="view-content d-flex flex-column h-100">
       
-      <h1>¿Como funciona? <button type="button" class="btn btn-success" id="ya-se">Ya se como va</button></h1>
-      
-      <p class="lead">Esta aplicacion se ha inspirada en la charla <a href="https://www.youtube.com/watch?v=j5dUzDTQ3mc">Taller de Nutrición: Etiquetado Nutricional</a>
-        de la fundacion <a href="https://www.fundacionuapo.org/">UAPO</a></p> 
-
-      <p>El codigo y mas informacion tecnica la puedes encontrar <a href="https://github.com/josejuanmontiel/OpenFoodFacts">aqui.</a></p>
-      <p>Basicamente, descargara la base de datos de codigos de barras y te avisara de los valores que no quieras que tus alimentos tengan.</p>
-
-      <div class="container text-center">
-        <div class="row mb-4">
-          <a href="#settings" class="btn btn-outline-info">Configurar Filtros de Aditivos e Ingredientes</a>
-        </div>
-        <div class="row">
-          <!-- Input group -->
-          <div class="d-flex justify-content-center">
-            <div class="input-group w-auto">
-                <input type="text" class="form-control" id="database" aria-describedby="button-addon1" size="50" value="/spain_products.tsv.zz">
-                <button data-mdb-button-init="" data-mdb-ripple-init="" class="btn btn-primary" type="button" id="download-btn" data-mdb-ripple-color="dark">
-                    Empezar
-                </button>
-            </div>
+      <div class="container text-center py-4">
+        <h1 class="mb-4">Bienvenido a NutriAgenda</h1>
+        <p class="lead mb-4">Gestiona tu despensa, recetas y objetivos nutricionales.</p>
+        
+        <div class="row g-3 justify-content-center">
+          <div class="col-12 col-md-6">
+            <button class="btn btn-primary btn-lg w-100 py-3" onclick="window.location.hash='#grid'">
+              <i class="bi bi-upc-scan fs-4 d-block mb-2"></i>
+              Escanear Producto / Comprar
+            </button>
+          </div>
+          <div class="col-12 col-md-6">
+            <button class="btn btn-success btn-lg w-100 py-3" onclick="window.location.hash='#diary'">
+              <i class="bi bi-journal-text fs-4 d-block mb-2"></i>
+              Mi Agenda Diaria
+            </button>
+          </div>
+          <div class="col-6 col-md-4">
+            <button class="btn btn-outline-info w-100 py-3" onclick="window.location.hash='#pantry'">
+              <i class="bi bi-box-seam fs-4 d-block mb-2"></i>
+              Despensa
+            </button>
+          </div>
+          <div class="col-6 col-md-4">
+            <button class="btn btn-outline-warning w-100 py-3" onclick="window.location.hash='#recipes'">
+              <i class="bi bi-egg-fried fs-4 d-block mb-2"></i>
+              Recetas
+            </button>
+          </div>
+          <div class="col-12 col-md-4">
+            <button class="btn btn-outline-light w-100 py-3" onclick="window.location.hash='#dashboard'">
+              <i class="bi bi-graph-up fs-4 d-block mb-2"></i>
+              Estadísticas
+            </button>
           </div>
         </div>
       </div>
@@ -120,19 +129,31 @@
       
       <div class="container py-4 px-3 mx-auto">
         
-        <!-- Botones de sincronización y configuración -->
-        <div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
-          <button class="btn btn-outline-warning btn-sm position-relative" id="btn-sync-off">
-            ☁️ Sincronizar OFF
-            <span id="sync-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"></span>
-          </button>
-        </div>
 
     <!-- Cabecera Presupuesto -->
     <div class="card bg-dark text-white mb-4 border-info">
       <div class="card-body d-flex justify-content-between align-items-center">
         <h4 class="mb-0">Total Carro</h4>
         <h2 class="mb-0 text-info" id="cart-total">0.00 €</h2>
+      </div>
+    </div>
+
+    <!-- Lista de la Compra Activa (Oculta por defecto) -->
+    <div id="active-shopping-list-container" class="card bg-dark text-white mb-4 border-success d-none">
+      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0" id="shopping-list-title">🛒 Lista Activa</h5>
+        <button class="btn btn-sm btn-outline-light" id="btn-close-shopping-list" title="Cerrar Lista">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush bg-dark" id="shopping-list-pending">
+          <!-- Pendientes irán aquí -->
+        </div>
+        <div class="bg-secondary text-light px-3 py-1 small fw-bold">Escaneados</div>
+        <div class="list-group list-group-flush bg-dark" id="shopping-list-checked">
+          <!-- Escaneados irán aquí -->
+        </div>
       </div>
     </div>
 
@@ -265,15 +286,30 @@
       </div>
 
       <!-- Buscador -->
-      <div class="input-group mb-4">
+      <div class="input-group mb-3">
         <input type="text" id="pantry-search" class="form-control" placeholder="Buscar en mi despensa...">
         <button class="btn btn-outline-light" id="scan-pantry-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
       </div>
+
+      <!-- Pestañas de zona -->
+      <ul class="nav nav-tabs mb-3" id="pantry-zone-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-zone-food" data-zone="food" type="button" role="tab">
+            🍎 Alimentos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-zone-nonfood" data-zone="nonfood" type="button" role="tab">
+            🧹 Otros
+          </button>
+        </li>
+      </ul>
 
       <!-- Lista de inventario -->
       <div class="row" id="pantry-list">
         <!-- Inyectado vía JS -->
       </div>
+
     
       <div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -382,6 +418,26 @@
     </div>
   </template>
   
+  <!-- Modal: Mover producto a otra zona -->
+  <div class="modal fade" id="moveZoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title">Mover a otra zona</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-center">
+          <input type="hidden" id="move-zone-product-code">
+          <p class="small text-muted mb-3" id="move-zone-product-name"></p>
+          <div class="d-grid gap-2">
+            <button class="btn btn-outline-success" id="btn-move-to-food">🍎 Mover a Alimentos</button>
+            <button class="btn btn-outline-secondary" id="btn-move-to-nonfood">🧹 Mover a Otros</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <template id="view-recipes">
     <div class="view-content d-flex flex-column h-100">
       
@@ -472,6 +528,7 @@
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-warning" id="btn-import-ai">✨ Importar con IA</button>
         <button class="btn btn-sm btn-outline-info" id="btn-duplicate-recipe" style="display:none;" title="Duplicar receta">📋</button>
+        <button class="btn btn-sm btn-outline-success" id="btn-create-list-recipe" style="display:none;" title="Crear lista de compra">🛒 Lista</button>
         <button class="btn btn-sm btn-outline-danger" id="btn-delete-recipe" style="display:none;" title="Eliminar receta">🗑</button>
         <button class="btn btn-sm btn-success px-3" id="btn-save-recipe">💾 Guardar</button>
       </div>
@@ -737,6 +794,7 @@
               <label for="meal-type" class="form-label">Tipo de comida</label>
               <select class="form-select" id="meal-type">
                 <option value="breakfast">Desayuno</option>
+                <option value="midmorning">Almuerzo</option>
                 <option value="lunch" selected="">Comida</option>
                 <option value="snack">Merienda</option>
                 <option value="dinner">Cena</option>
@@ -846,6 +904,7 @@
               <select class="form-select form-select-sm" id="diary-photo-meal-type">
                 <option value="">-- Sin especificar --</option>
                 <option value="breakfast">Desayuno</option>
+                <option value="midmorning">Almuerzo</option>
                 <option value="lunch">Comida</option>
                 <option value="snack">Merienda</option>
                 <option value="dinner">Cena</option>
@@ -927,6 +986,7 @@
             <select class="form-select form-select-sm" id="quick-meal-type">
               <option value="">-- Tipo de comida --</option>
               <option value="breakfast">Desayuno</option>
+              <option value="midmorning">Almuerzo</option>
               <option value="lunch">Comida</option>
               <option value="snack">Merienda</option>
               <option value="dinner">Cena</option>
@@ -998,6 +1058,7 @@
               <select class="form-select form-select-sm" id="annotate-meal-type">
                 <option value="">-- Sin especificar --</option>
                 <option value="breakfast">Desayuno</option>
+                <option value="midmorning">Almuerzo</option>
                 <option value="lunch">Comida</option>
                 <option value="snack">Merienda</option>
                 <option value="dinner">Cena</option>
@@ -1144,12 +1205,25 @@
       <h1 class="mb-4">⚙️ Ajustes y Copias de Seguridad</h1>
 
       <div class="settings-section">
+        <h4 class="mb-3">📥 Base de Datos de Productos</h4>
+        <p class="text-muted small mb-3">
+          Descarga la base de datos oficial de OpenFoodFacts para buscar productos por código de barras sin conexión.
+        </p>
+        <div class="input-group">
+            <input type="text" class="form-control" id="database" aria-describedby="button-addon1" value="/spain_products.tsv.zz">
+            <button class="btn btn-primary" type="button" id="download-btn">
+                Cargar BD
+            </button>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h4 class="mb-3">Exportar Datos</h4>
         <p class="text-muted small mb-3">
           Descarga una copia de seguridad de toda tu base de datos (recetas, agenda, inventario, fotos). 
           <strong>Nota:</strong> La base de datos maestra de productos (OpenFoodFacts) no se exporta porque se puede volver a descargar y ocuparía demasiado espacio.
         </p>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-column flex-sm-row gap-2">
           <button class="btn btn-primary" id="btn-export">💾 Descargar Backup (.json)</button>
           <button class="btn btn-info" id="btn-share-sys" style="display:none;">📤 Sincronizar (vía Pingo u otras apps)</button>
         </div>
@@ -1165,6 +1239,36 @@
           <button class="btn btn-outline-warning" type="button" id="btn-import">Restaurar</button>
         </div>
       </div>
+      <div class="settings-section">
+        <h4 class="mb-3">Sincronización Pendiente (OpenFoodFacts)</h4>
+        <p class="text-muted small mb-3">
+          Aquí aparecen las fotos que has tomado de productos desconocidos. Revisa la lista y sincroniza cuando estés listo.
+        </p>
+        <div id="pending-uploads-list" class="list-group mb-3 text-start" style="max-height: 200px; overflow-y: auto;">
+          <div class="list-group-item bg-dark text-muted border-secondary text-center">Cargando...</div>
+        </div>
+        <button class="btn btn-warning w-100 position-relative" id="btn-sync-off-settings">
+          ☁️ Sincronizar Ahora
+          <span id="sync-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"></span>
+        </button>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="mb-3">🛒 Preferencias de Compra</h4>
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="setting-health-warnings" checked>
+          <label class="form-check-label small" for="setting-health-warnings">
+            Analizar productos no sanos y buscar alternativas
+          </label>
+        </div>
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" id="setting-ask-weights" checked>
+          <label class="form-check-label small" for="setting-ask-weights">
+            Preguntar pesos faltantes al finalizar la compra
+          </label>
+        </div>
+      </div>
+
       <div class="settings-section">
         <h4 class="mb-3">⚙️ Cuenta OpenFoodFacts</h4>
         
@@ -1203,10 +1307,10 @@
         <!-- Resultado de la verificacion -->
         <div id="cred-verify-result" class="d-none small mt-2"></div>
         
-        <div class="d-flex flex-wrap gap-2 mt-3">
-          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">🔍 Verificar credenciales</button>
-          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">🗑 Borrar credenciales</button>
-          <button class="btn btn-success btn-sm ms-auto" id="btn-save-credentials">💾 Guardar</button>
+        <div class="d-flex flex-column flex-sm-row gap-2 mt-3">
+          <button class="btn btn-outline-info btn-sm" id="btn-verify-credentials">🔍 Verificar</button>
+          <button class="btn btn-outline-danger btn-sm" id="btn-clear-credentials">🗑 Borrar</button>
+          <button class="btn btn-success btn-sm ms-sm-auto" id="btn-save-credentials">💾 Guardar</button>
         </div>
       </div>
 
@@ -1218,9 +1322,12 @@
         <div class="mb-3">
           <textarea class="form-control bg-secondary text-white border-secondary" id="additive-filters" rows="3" placeholder="Ej: E249 | E250 | aceite de palma"></textarea>
         </div>
-        <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-column flex-sm-row gap-2">
           <button class="btn btn-outline-warning btn-sm" id="btn-default-additives">Rellenar Aditivos Comunes</button>
-          <button class="btn btn-success btn-sm ms-auto" id="btn-save-filters">💾 Guardar Filtros</button>
+          <button class="btn btn-success btn-sm ms-sm-auto" id="btn-save-filters">💾 Guardar Filtros</button>
+        </div>
+        <div class="mt-3">
+          <button class="btn btn-outline-info w-100" onclick="window.location.hash='#additives'">📚 Ver Diccionario de Aditivos</button>
         </div>
       </div>
 
@@ -1230,7 +1337,7 @@
           Borra todas tus recetas, diario, inventario y configuración. 
           <strong>Nota:</strong> Esto NO borrará la base de datos de ingredientes importada.
         </p>
-        <button class="btn btn-outline-danger" id="btn-clear-data">🗑️ Borrar Todos los Datos Personales</button>
+        <button class="btn btn-outline-danger w-100 d-sm-inline-block" style="max-width: fit-content;" id="btn-clear-data">🗑️ Borrar Todos los Datos Personales</button>
       </div>
     
       
@@ -1253,6 +1360,31 @@
         <!-- Rellenado por JS -->
       </div>
     
+      
+    </div>
+  </template>
+
+  <template id="view-additives">
+    <div class="view-content d-flex flex-column h-100">
+      
+      <div class="d-flex align-items-center gap-2 mb-4">
+        <button class="btn btn-sm btn-outline-secondary me-1" onclick="window.history.back()">←</button>
+        <h1 class="h4 mb-0">📚 Diccionario de Aditivos</h1>
+      </div>
+      
+      <p class="text-muted small mb-3">
+        Consulta información sobre los aditivos alimentarios (E-xxx). Puedes buscar por nombre o por código.
+      </p>
+
+      <div class="input-group mb-4">
+        <span class="input-group-text bg-dark text-white border-secondary"><i class="bi bi-search"></i></span>
+        <input type="text" id="additives-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Ej: E250 o Nitrito...">
+        <button class="btn btn-outline-info" type="button" id="btn-search-additives">Buscar</button>
+      </div>
+
+      <div id="additives-list" class="flex-grow-1 overflow-auto pb-5">
+        <!-- Rellenado por JS -->
+      </div>
       
     </div>
   </template>

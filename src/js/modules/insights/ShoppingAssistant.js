@@ -10,6 +10,20 @@ export async function analyzeProductForCart(productCode) {
   const product = await ProductStore.getProductByCode(productCode);
   if (!product) return { status: 'not_found' };
 
+  const lastPrice = await CartStore.getLastKnownPrice(productCode);
+
+  // Comprobar preferencia del usuario
+  const checkHealth = localStorage.getItem('setting_health_warnings') !== 'false';
+  if (!checkHealth) {
+    return {
+      status: 'ok',
+      product,
+      warnings: [],
+      lastPrice,
+      alternatives: []
+    };
+  }
+
   const rawFilters = localStorage.getItem("filters");
   let warnings = [];
 
@@ -26,7 +40,6 @@ export async function analyzeProductForCart(productCode) {
     warnings.push(`NutriScore muy bajo (${product.nutriscore_grade.toUpperCase()})`);
   }
 
-  const lastPrice = await CartStore.getLastKnownPrice(productCode);
 
   let alternatives = [];
   if (warnings.length > 0) {

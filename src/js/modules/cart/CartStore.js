@@ -151,7 +151,11 @@ export async function checkout(supermarket = '', notes = '') {
       }
     }
 
-    await PantryStore.addStock(item.productCode, stockAmount, stockUnit);
+    const zone = (item.productCode.startsWith('GENERIC_') || (product && product._localOnly))
+      ? 'nonfood'
+      : 'food';
+
+    await PantryStore.addStock(item.productCode, stockAmount, stockUnit, zone);
   }
   
   await emptyCart();

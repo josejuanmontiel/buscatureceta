@@ -4,11 +4,10 @@
  */
 import { db } from '../db/schema.js';
 
-// Cambia a .org para producción
-const API_BASE_URL = 'https://world.openfoodfacts.net/api/v3.3';
-// const API_BASE_URL = 'https://world.openfoodfacts.org/api/v3.3';
+// Usamos el entorno de producción (org) en lugar del de test (net)
+const API_BASE_URL = 'https://world.openfoodfacts.org';
 
-// Credenciales OFF: carga desde localStorage o usa el entorno de test.
+// Credenciales OFF: carga desde localStorage.
 export function getCredentials() {
   return {
     userId: localStorage.getItem('off_user') || 'off',
@@ -17,7 +16,7 @@ export function getCredentials() {
 }
 
 /**
- * Sube una imagen de un producto a OpenFoodFacts usando la API v3.3
+ * Sube una imagen de un producto a OpenFoodFacts usando product_image_upload.pl
  *
  * @param {string} barcode - Código de barras del producto
  * @param {Blob} imageBlob - El blob/archivo de la imagen
@@ -32,15 +31,14 @@ export async function uploadImage(barcode, imageBlob, type, userId, password) {
   }
 
   const formData = new FormData();
+  formData.append('code', barcode);
+  formData.append('user_id', userId);
+  formData.append('password', password);
   formData.append('imagefield', type);
   formData.append(`imgupload_${type}`, imageBlob, `${barcode}_${type}.jpg`);
 
-  const headers = new Headers();
-  headers.set('Authorization', 'Basic ' + btoa(userId + ':' + password));
-
-  const response = await fetch(`${API_BASE_URL}/${barcode}/images`, {
+  const response = await fetch(`${API_BASE_URL}/cgi/product_image_upload.pl`, {
     method: 'POST',
-    headers,
     body: formData
   });
 
@@ -131,4 +129,20 @@ export async function syncPendingUploads(onProgress) {
  */
 export async function countPendingUploads() {
   return db.pendingUploads.where('status').anyOf(['pending', 'failed']).count();
+}
+
+/**
+ * Obtiene la lista de fotos pendientes de subir.
+ * @returns {Promise<Array>}
+ */
+export async function getPendingUploads() {
+  return db.pendingUploads.where('status').anyOf(['pending', 'failed']).toArray();
+}
+
+/**
+ * Borra una foto pendiente de la cola por su ID.
+ * @param {number} id
+ */
+export async function deletePendingUpload(id) {
+  return db.pendingUploads.delete(id);
 }

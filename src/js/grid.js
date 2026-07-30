@@ -3,6 +3,7 @@ import * as ProductStore from "./modules/products/ProductStore.js";
 import { db, migrateFromLegacyDB } from './db/schema.js';
 import * as CartStore from './modules/cart/CartStore.js';
 import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
+import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import { saveImageToPendingUploads, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
 import { Modal } from 'bootstrap';
 import { showToast, confirmModal } from './modules/ui/UI.js';
@@ -21,6 +22,15 @@ Object.defineProperty(window, 'currentScannedProduct', {
 export async function initView() {
     await migrateFromLegacyDB().catch(console.error);
     await updateCartUI();
+    await updateShoppingListUI();
+
+    document.getElementById('btn-close-shopping-list').addEventListener('click', async () => {
+        const activeList = await ShoppingStore.getActiveList();
+        if (activeList) {
+            await ShoppingStore.archiveList(activeList.id);
+            await updateShoppingListUI();
+        }
+    });
 
     document.getElementById("query-btn").addEventListener("click", handleSearch);
     document.getElementById("code-input").addEventListener("keypress", (e) => {
@@ -48,10 +58,7 @@ export async function initView() {
     document.getElementById('btn-save-photo').addEventListener('click', handleSaveUnknownProduct);
     document.getElementById('btn-cancel-capture').addEventListener('click', hideUnknownPanel);
 
-    // Sincronizar cola de imágenes pendientes con OFF
-    document.getElementById('btn-sync-off').addEventListener('click', handleSync);
-
-    // Mostrar badge inicial
+    // Mostrar badge inicial si existe en esta vista
     await updateSyncBadge();
 
     // Leer parámetro URL si venimos del scanner
@@ -114,6 +121,14 @@ async function handleSearch() {
         currentScannedProduct = result.product;
         await CartStore.addToCart(result.product.code, 1, result.lastPrice || 0, 'unidad');
         RecentStore.markAsUsed(result.product.code);
+
+        // Marcar en la lista de compra activa
+        const activeList = await ShoppingStore.getActiveList();
+        if (activeList) {
+            const changed = await ShoppingStore.checkItem(activeList.id, result.product.code) || 
+                            await ShoppingStore.checkItem(activeList.id, result.product.product_name);
+            if (changed) await updateShoppingListUI();
+        }
 
         // Limpiar input y refrescar UI
         document.getElementById('code-input').value = '';
@@ -200,6 +215,48 @@ async function updateCartUI() {
     }
 }
 
+async function updateShoppingListUI() {
+    const activeList = await ShoppingStore.getActiveList();
+    const container = document.getElementById('active-shopping-list-container');
+    const pendingList = document.getElementById('shopping-list-pending');
+    const checkedList = document.getElementById('shopping-list-checked');
+    const title = document.getElementById('shopping-list-title');
+
+    if (!activeList) {
+        container.classList.add('d-none');
+        return;
+    }
+
+    container.classList.remove('d-none');
+    title.textContent = `🛒 ${activeList.name || 'Lista Activa'}`;
+
+    const pendingItems = activeList.items.filter(i => !i.checked);
+    const checkedItems = activeList.items.filter(i => i.checked);
+
+    pendingList.innerHTML = pendingItems.map((item, index) => `
+        <div class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-circle text-muted me-2" style="cursor:pointer;" onclick="window.toggleShoppingItem(${activeList.id}, '${item.code || item.name}')"></i>
+                ${item.name} <small class="text-muted">x${item.amount || 1} ${item.unit || ''}</small>
+            </span>
+        </div>
+    `).join('');
+
+    checkedList.innerHTML = checkedItems.map((item, index) => `
+        <div class="list-group-item bg-dark text-muted border-secondary d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <del>${item.name}</del> <small>x${item.amount || 1} ${item.unit || ''}</small>
+            </span>
+        </div>
+    `).join('');
+}
+
+window.toggleShoppingItem = async function(listId, codeOrName) {
+    await ShoppingStore.checkItem(listId, codeOrName);
+    await updateShoppingListUI();
+};
+
 window.triggerOFFUpload = function(code) {
     unknownBarcode = code;
     capturedImageBlob = null;
@@ -238,7 +295,9 @@ async function handleCheckout() {
         }
     }
 
-    if (missingWeights.length > 0) {
+    const askWeightsPref = localStorage.getItem('setting_ask_weights') !== 'false';
+
+    if (missingWeights.length > 0 && askWeightsPref) {
         const form = document.getElementById('missing-weights-form');
         form.innerHTML = missingWeights.map(mw => `
             <div class="mb-3">
@@ -422,28 +481,10 @@ async function handleSaveUnknownProduct() {
         alert('Error al guardar: ' + err.message);
     }
 }
-
-async function handleSync() {
-    const btn = document.getElementById('btn-sync-off');
-    btn.disabled = true;
-    btn.textContent = 'Sincronizando...';
-
-    try {
-        const { ok, failed } = await syncPendingUploads((processed, total) => {
-            btn.textContent = `Sincronizando ${processed}/${total}...`;
-        });
-        alert(`Sincronización completada: ${ok} éxitos, ${failed} errores.`);
-    } catch (err) {
-        alert('Error en la sincronización: ' + err.message);
-    } finally {
-        btn.disabled = false;
-        await updateSyncBadge();
-    }
-}
-
 async function updateSyncBadge() {
     const count = await countPendingUploads();
     const badge = document.getElementById('sync-badge');
+    if (!badge) return;
     if (count > 0) {
         badge.textContent = count;
         badge.classList.remove('d-none');

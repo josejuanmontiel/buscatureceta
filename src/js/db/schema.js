@@ -230,6 +230,49 @@ db.version(9).stores({
   cartHistory: '++id, date'
 });
 
+// ── v10: Zonas de Despensa (food / nonfood) ────────────────────────────────────
+db.version(10).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  /**
+   * pantry — Inventario físico con zona
+   *
+   * pantryZone: 'food' (alimentos) | 'nonfood' (limpieza, higiene, etc.)
+   * Los registros existentes sin zona se tratan como 'food' en la UI.
+   */
+  pantry: '++id, productCode, pantryZone',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date'
+});
+
+// ── v11: Listas de la Compra (Shopping Lists) ──────────────────────────────────
+db.version(11).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode, pantryZone',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date',
+  shoppingLists: '++id, status'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**
@@ -322,6 +365,7 @@ export const DEFAULT_GOALS = {
  */
 export const MEAL_TYPES = {
   breakfast: 'Desayuno',
+  midmorning: 'Almuerzo',
   lunch: 'Comida',
   dinner: 'Cena',
   snack: 'Merienda / Snack',

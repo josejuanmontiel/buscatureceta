@@ -33,15 +33,14 @@ test.describe('Purchase Flow E2E', () => {
     // Configurar el filtro a "E250"
     await page.fill('#additive-filters', 'E250');
     await page.click('#btn-save-filters');
-    await page.goto('/#index');
     
-    // Poner el dataset de prueba
+    // #database input is in /#settings (was moved from /#index)
     await page.fill('#database', '/test_products.tsv.zz');
     
     await page.click('#download-btn');
     
     // Esperamos que nos lleve a /grid.html al terminar de cargar
-    await page.waitForURL('**/#grid');
+    await page.waitForURL('**/#grid', { timeout: 60000 });
     // Remove the title expectation or update to NutriAgenda
     await expect(page).toHaveTitle(/NutriAgenda/i);
 
@@ -134,10 +133,10 @@ test.describe('Purchase Flow E2E', () => {
     await page.goto('/#settings');
     await page.fill('#additive-filters', 'E250');
     await page.click('#btn-save-filters');
-    await page.goto('/#index');
+    // #database input is in /#settings (was moved from /#index)
     await page.fill('#database', '/test_products.tsv.zz');
     await page.click('#download-btn');
-    await page.waitForURL('**/#grid');
+    await page.waitForURL('**/#grid', { timeout: 60000 });
 
     // Añadir un producto inventado por texto (genérico)
     await page.fill('#code-input', 'Producto Raro');

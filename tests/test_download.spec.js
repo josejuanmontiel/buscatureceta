@@ -12,7 +12,7 @@ test('Test DB download completely', async ({ page }) => {
     });
   });
 
-  await page.goto('/');
+  await page.goto('/#settings');
   await page.click('#download-btn');
   
   // Wait for either success or error state on the button

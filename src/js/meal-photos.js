@@ -16,7 +16,7 @@ let currentAnnotateId = null;   // id de la foto que se está anotando
 let currentAnnotateBlob = null; // blob completo para portapapeles
 
 const MEAL_LABELS = {
-  breakfast: 'Desayuno', lunch: 'Comida', snack: 'Merienda', dinner: 'Cena',
+  breakfast: 'Desayuno', midmorning: 'Almuerzo', lunch: 'Comida', snack: 'Merienda', dinner: 'Cena',
 };
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
