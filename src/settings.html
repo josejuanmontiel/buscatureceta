@@ -32,6 +32,19 @@
       <h1 class="mb-4">⚙️ Ajustes y Copias de Seguridad</h1>
 
       <div class="settings-section">
+        <h4 class="mb-3">📥 Base de Datos de Productos</h4>
+        <p class="text-muted small mb-3">
+          Descarga la base de datos oficial de OpenFoodFacts para buscar productos por código de barras sin conexión.
+        </p>
+        <div class="input-group">
+            <input type="text" class="form-control" id="database" aria-describedby="button-addon1" value="/spain_products.tsv.zz">
+            <button class="btn btn-primary" type="button" id="download-btn">
+                Cargar BD
+            </button>
+        </div>
+      </div>
+
+      <div class="settings-section">
         <h4 class="mb-3">Exportar Datos</h4>
         <p class="text-muted small mb-3">
           Descarga una copia de seguridad de toda tu base de datos (recetas, agenda, inventario, fotos). 
