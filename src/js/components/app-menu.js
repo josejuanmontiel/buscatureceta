@@ -24,10 +24,12 @@ class AppMenu extends HTMLElement {
     const isActive = (id) => current === `${id}.html` || current === id;
 
     const renderItem = (item) => {
+      const isSPA = document.getElementById('app-view') !== null;
       if (item.group) {
         const childrenHtml = item.children.map(child => {
           const active = isActive(child.id);
-          return `<a class="offcanvas-nav-sublink${active ? ' active' : ''}" href="#${child.id}" data-target="${child.id}" data-bs-dismiss="offcanvas">
+          const href = isSPA ? `#${child.id}` : `${child.id}.html`;
+          return `<a class="offcanvas-nav-sublink${active ? ' active' : ''}" href="${href}" data-target="${child.id}" data-bs-dismiss="offcanvas">
             <span class="nav-icon">${child.icon}</span>${child.text}
           </a>`;
         }).join('');
@@ -41,7 +43,8 @@ class AppMenu extends HTMLElement {
       const badge = item.badgeId
         ? `<span class="badge bg-warning text-dark ms-auto" id="${item.badgeId}" style="display:none;"></span>`
         : '';
-      return `<a class="offcanvas-nav-link${active ? ' active' : ''}" href="#${item.id}" data-target="${item.id}" data-bs-dismiss="offcanvas">
+      const href = isSPA ? `#${item.id}` : `${item.id}.html`;
+      return `<a class="offcanvas-nav-link${active ? ' active' : ''}" href="${href}" data-target="${item.id}" data-bs-dismiss="offcanvas">
         <span class="nav-icon">${item.icon}</span>${item.text}${badge}
       </a>`;
     };
@@ -74,6 +77,41 @@ class AppMenu extends HTMLElement {
         </div>
       </div>
     `;
+
+    // Ensure navigation when clicking links, as Bootstrap's data-bs-dismiss might prevent default navigation
+    this.addEventListener('click', (e) => {
+      const link = e.target.closest('a[data-target]');
+      if (link) {
+        e.preventDefault();
+        const target = link.getAttribute('data-target');
+        const isSPA = document.getElementById('app-view') !== null;
+        
+        // Timeout to allow offcanvas close animation to start smoothly
+        setTimeout(() => {
+          if (isSPA) {
+            window.location.hash = target;
+          } else {
+            window.location.href = `${target}.html`;
+          }
+        }, 150);
+      }
+    });
+
+    // PWA Install Button Logic
+    const installBtn = this.querySelector('#btn-install-app');
+    if (installBtn) {
+      if (window.deferredPrompt) {
+        installBtn.style.display = 'block';
+      }
+      installBtn.addEventListener('click', async () => {
+        if (!window.deferredPrompt) return;
+        installBtn.style.display = 'none';
+        window.deferredPrompt.prompt();
+        const { outcome } = await window.deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        window.deferredPrompt = null;
+      });
+    }
   }
 
   updateActiveLink() {
