@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <title>Diccionario de Aditivos</title>
+</head>
+<body>
+  <main>
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <button class="btn btn-sm btn-outline-secondary me-1" onclick="window.history.back()">←</button>
+      <h1 class="h4 mb-0">📚 Diccionario de Aditivos</h1>
+    </div>
+
+    <p class="text-muted small mb-3">
+      Consulta información sobre los aditivos alimentarios (E-xxx). Puedes buscar por nombre o por código.
+    </p>
+
+    <div class="input-group mb-4">
+      <span class="input-group-text bg-dark text-white border-secondary"><i class="bi bi-search"></i></span>
+      <input type="text" id="additives-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Ej: E250 o Nitrito...">
+      <button class="btn btn-outline-info" type="button" id="btn-search-additives">Buscar</button>
+    </div>
+
+    <div id="additives-list" class="flex-grow-1 overflow-auto pb-5">
+      <!-- Rellenado por JS -->
+    </div>
+  </main>
+  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/additives.js"></script>
+</body>
+</html>

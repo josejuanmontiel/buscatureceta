@@ -1,11 +1,16 @@
 import { db } from './db/schema.js';
 import * as ProductStore from './modules/products/ProductStore.js';
 import {TabulatorFull as Tabulator} from 'tabulator-tables';
+import 'tabulator-tables/dist/css/tabulator_midnight.min.css';
 
 let table;
 let currentDb = 'official'; // 'official' o 'custom'
 
 export async function initView() {
+    // Sincronizar estado con la UI por si venimos de otra vista (SPA)
+    const checkedRadio = document.querySelector('input[name="dbtype"]:checked');
+    if (checkedRadio) currentDb = checkedRadio.value;
+
     await updateCount();
 
     // Configuración de columnas base

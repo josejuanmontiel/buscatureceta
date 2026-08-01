@@ -30,6 +30,25 @@
       </div>
     </div>
 
+    <!-- Lista de la Compra Activa (Oculta por defecto) -->
+    <div id="active-shopping-list-container" class="card bg-dark text-white mb-4 border-success d-none">
+      <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0" id="shopping-list-title">🛒 Lista Activa</h5>
+        <button class="btn btn-sm btn-outline-light" id="btn-close-shopping-list" title="Cerrar Lista">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush bg-dark" id="shopping-list-pending">
+          <!-- Pendientes irán aquí -->
+        </div>
+        <div class="bg-secondary text-light px-3 py-1 small fw-bold">Escaneados</div>
+        <div class="list-group list-group-flush bg-dark" id="shopping-list-checked">
+          <!-- Escaneados irán aquí -->
+        </div>
+      </div>
+    </div>
+
     <!-- Escáner / Búsqueda -->
     <div class="input-group mb-4 justify-content-center">
       <input type="text" id="code-input" class="form-control" style="max-width: 300px;" placeholder="Código o Nombre" />

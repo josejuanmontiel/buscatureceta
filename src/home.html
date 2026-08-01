@@ -1,0 +1,65 @@
+<main class="px-3 flex-grow-1 overflow-auto" id="app-view">
+  <div class="container text-center py-4">
+    <h1 class="mb-4">Bienvenido a NutriAgenda</h1>
+    <p class="lead mb-4">Gestiona tu despensa, recetas y objetivos nutricionales.</p>
+
+    <div class="row g-3 justify-content-center">
+      <div class="col-12 col-md-6">
+        <button class="btn btn-primary btn-lg w-100 py-3" onclick="window.location.hash='#grid'">
+          <i class="bi bi-upc-scan fs-4 d-block mb-2"></i>
+          Escanear Producto / Comprar
+        </button>
+      </div>
+      <div class="col-12 col-md-6">
+        <button class="btn btn-success btn-lg w-100 py-3" onclick="window.location.hash='#diary'">
+          <i class="bi bi-journal-text fs-4 d-block mb-2"></i>
+          Mi Agenda Diaria
+        </button>
+      </div>
+      <div class="col-6 col-md-4">
+        <button class="btn btn-outline-info w-100 py-3" onclick="window.location.hash='#pantry'">
+          <i class="bi bi-box-seam fs-4 d-block mb-2"></i>
+          Despensa
+        </button>
+      </div>
+      <div class="col-6 col-md-4">
+        <button class="btn btn-outline-warning w-100 py-3" onclick="window.location.hash='#recipes'">
+          <i class="bi bi-egg-fried fs-4 d-block mb-2"></i>
+          Recetas
+        </button>
+      </div>
+      <div class="col-12 col-md-4">
+        <button class="btn btn-outline-light w-100 py-3" onclick="window.location.hash='#dashboard'">
+          <i class="bi bi-graph-up fs-4 d-block mb-2"></i>
+          Estadísticas
+        </button>
+      </div>
+    </div>
+
+    <!-- Sección informativa -->
+    <div class="container mt-5 text-start">
+      <div class="card bg-dark border-secondary">
+        <div class="card-body">
+          <h5 class="card-title text-info">¿Cómo funciona?</h5>
+          <p class="text-muted small mb-2">
+            Esta aplicación se ha inspirado en la charla
+            <a href="https://www.youtube.com/watch?v=j5dUzDTQ3mc" target="_blank" rel="noopener" class="text-info">
+              Taller de Nutrición: Etiquetado Nutricional
+            </a>
+            de la fundación <a href="https://www.fundacionuapo.org/" target="_blank" rel="noopener"
+              class="text-info">UAPO</a>.
+          </p>
+          <p class="text-muted small mb-2">
+            Básicamente, descarga la base de datos de códigos de barras y te avisa de los valores que no quieras que tus
+            alimentos tengan.
+          </p>
+          <p class="text-muted small mb-0">
+            El código y más información técnica la puedes encontrar
+            <a href="https://github.com/josejuanmontiel/OpenFoodFacts" target="_blank" rel="noopener"
+              class="text-info">aquí</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>

@@ -80,6 +80,7 @@ export async function initView() {
 
   // Limpiar cámara al cerrar modal
   document.getElementById('diaryPhotoModal').addEventListener('hidden.bs.modal', stopDiaryCamera);
+  window.addEventListener('hashchange', stopDiaryCamera);
 }
 
 async function renderWeek(date) {

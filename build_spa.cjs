@@ -15,7 +15,8 @@ const pages = [
   'dashboard',
   'db-viewer',
   'settings',
-  'cart-history'
+  'cart-history',
+  'additives'
 ];
 
 // Always read from the clean base template to avoid accumulating nested templates
@@ -36,7 +37,7 @@ $base('script[src="./js/main.js"]').before('<script type="module" src="./js/app.
 for (const page of pages) {
   // For index, use the clean base template to avoid reading nested templates from the output file
   const filePath = page === 'index'
-    ? path.join(srcDir, 'index.base.html')
+    ? path.join(srcDir, 'home.html')
     : path.join(srcDir, `${page}.html`);
   if (!fs.existsSync(filePath)) continue;
   
@@ -53,7 +54,7 @@ for (const page of pages) {
   // Construct template
   const templateHtml = `
   <template id="view-${page}">
-    <div class="view-content d-flex flex-column h-100">
+    <div class="view-content d-flex flex-column min-h-100">
       ${mainContent}
       ${modalsHtml}
     </div>

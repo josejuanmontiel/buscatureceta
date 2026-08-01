@@ -74,35 +74,7 @@
       </div>
     </header>
 
-    <main class="px-3">
-      <h1>¿Como funciona? <button type="button" class="btn btn-success" id="ya-se">Ya se como va</button></h1>
-      
-      <p class="lead">Esta aplicacion se ha inspirada en la charla <a href="https://www.youtube.com/watch?v=j5dUzDTQ3mc">Taller de Nutrición: Etiquetado Nutricional</a>
-        de la fundacion <a href="https://www.fundacionuapo.org/">UAPO</a></p> 
-
-      <p>El codigo y mas informacion tecnica la puedes encontrar <a href="https://github.com/josejuanmontiel/OpenFoodFacts">aqui.</a></p>
-      <p>Basicamente, descargara la base de datos de codigos de barras y te avisara de los valores que no quieras que tus alimentos tengan.</p>
-
-      <div class="container text-center">
-        <div class="row mb-4">
-          <a href="#settings" class="btn btn-outline-info">Configurar Filtros de Aditivos e Ingredientes</a>
-        </div>
-        <div class="row">
-          <!-- Input group -->
-          <div class="d-flex justify-content-center">
-            <div class="input-group w-auto">
-                <input
-                  type="text"
-                  class="form-control"
-                  id="database"
-                  aria-describedby="button-addon1" size="50" value="/spain_products.tsv.zz"></input>
-                <button data-mdb-button-init data-mdb-ripple-init class="btn btn-primary" type="button" id="download-btn" data-mdb-ripple-color="dark">
-                    Empezar
-                </button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <main class="px-3 flex-grow-1 overflow-auto" id="app-view">
     </main>
     <footer class="mt-auto text-white-50">
     </footer>
