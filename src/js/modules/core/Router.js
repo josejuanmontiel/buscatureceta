@@ -37,13 +37,61 @@ export class Router {
 
     const route = this.routes[viewName];
 
-    // 1. Ocultar todas las vistas
-    this.appView.innerHTML = '';
+    // 1. Limpiar contenedor principal
+    this.appView.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-info" role="status"></div></div>';
     
-    // 2. Cargar vista (si es de template)
-    const tpl = document.getElementById(`view-${viewName}`);
-    if (tpl) {
-      this.appView.appendChild(tpl.content.cloneNode(true));
+    // Cache de HTMLs cargados
+    if (!this.htmlCache) this.htmlCache = {};
+
+    // 2. Cargar HTML dinámicamente desde el archivo individual (.html)
+    try {
+      let htmlContent = this.htmlCache[viewName];
+      if (!htmlContent) {
+        const fileToFetch = viewName === 'index' ? '/home.html' : `/${viewName}.html`;
+        const res = await fetch(fileToFetch);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        htmlContent = await res.text();
+        this.htmlCache[viewName] = htmlContent;
+      }
+
+      // Extraer el contenido dentro de <main> y los modales asociados en el documento HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, 'text/html');
+      const mainContent = doc.querySelector('main');
+      
+      this.appView.innerHTML = '';
+      if (mainContent) {
+        // Clonar e inyectar todos los hijos de <main>
+        Array.from(mainContent.children).forEach(child => {
+          this.appView.appendChild(child.cloneNode(true));
+        });
+      } else if (doc.body) {
+        // Si no hay <main>, inyectar el body sin header ni scripts repetidos
+        const bodyContent = doc.body.cloneNode(true);
+        bodyContent.querySelectorAll('header, script, app-menu').forEach(el => el.remove());
+        Array.from(bodyContent.children).forEach(child => {
+          this.appView.appendChild(child);
+        });
+      }
+
+      // Inyectar modales específicos de la vista que estén fuera del contenedor <main> (ej: modal-missing-weights, addStockModal, etc.)
+      const modals = doc.querySelectorAll('.modal');
+      modals.forEach(modal => {
+        if (!modal.id || modal.id === 'quickDetailModal') return; // Salta el modal global
+        const existing = document.getElementById(modal.id);
+        if (existing) existing.remove();
+        this.appView.appendChild(modal.cloneNode(true));
+      });
+    } catch (err) {
+      console.error(`Error cargando la vista ${viewName}:`, err);
+      // Fallback: si falla el fetch, intentar buscar si existe template legacy
+      const tpl = document.getElementById(`view-${viewName}`);
+      this.appView.innerHTML = '';
+      if (tpl) {
+        this.appView.appendChild(tpl.content.cloneNode(true));
+      } else {
+        this.appView.innerHTML = `<div class="alert alert-danger m-3">Error al cargar la vista ${viewName}</div>`;
+      }
     }
 
     // 3. Actualizar menú
