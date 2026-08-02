@@ -198,7 +198,7 @@ async function updateCartUI() {
             return `
             <div class="list-group-item bg-dark text-white border-secondary d-flex flex-column gap-2">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 text-truncate me-2">${item.productName}</h6>
+                    <h6 class="mb-0 text-truncate me-2 text-info" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}')">${item.productName}</h6>
                     <div class="d-flex gap-2">
                         ${showOFFButton ? `<button class="btn btn-sm btn-outline-info" onclick="window.triggerOFFUpload('${item.productCode}')" title="Subir foto a OpenFoodFacts"><i class="bi bi-camera"></i> OFF</button>` : ''}
                         <button class="btn btn-sm btn-outline-danger" onclick="window.removeFromCart(${item.id})"><i class="bi bi-trash"></i></button>
@@ -536,7 +536,8 @@ window.showProductQuickDetail = async function(code, name) {
         document.getElementById('qd-nutrition').innerHTML = '<li class="list-group-item bg-dark text-muted">Datos nutricionales no disponibles</li>';
     }
 
-    const realCode = product?.real_code || (!code.startsWith('GENERIC_') ? code : null);
+    const extractedCode = code.startsWith('GENERIC_') ? code.replace(/^GENERIC_/, '') : code;
+    const realCode = product?.real_code || (/^\d+$/.test(extractedCode) ? extractedCode : null);
     const offLink = document.getElementById('qd-off-link');
     if (realCode && /^\d+$/.test(realCode)) {
         offLink.href = `https://world.openfoodfacts.org/product/${realCode}`;

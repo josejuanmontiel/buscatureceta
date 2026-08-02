@@ -147,7 +147,8 @@ window.showProductQuickDetail = async function(code, name) {
     }
 
     // Enlace OFF (solo si tiene código numérico real)
-    const realCode = product?.real_code || (!code.startsWith('GENERIC_') ? code : null);
+    const extractedCode = code.startsWith('GENERIC_') ? code.replace(/^GENERIC_/, '') : code;
+    const realCode = product?.real_code || (/^\d+$/.test(extractedCode) ? extractedCode : null);
     const offLink = document.getElementById('qd-off-link');
     if (realCode && /^\d+$/.test(realCode)) {
         offLink.href = `https://world.openfoodfacts.org/product/${realCode}`;
