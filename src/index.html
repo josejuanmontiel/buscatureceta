@@ -1348,4 +1348,26 @@
       
     </div>
   </template>
+
+  <!-- Modal Detalle Rápido de Producto (compartido en toda la SPA) -->
+  <div class="modal fade" id="quickDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="qd-product-name">Detalle del Producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-2" id="qd-product-code"></p>
+          <div id="qd-badges" class="mb-3"></div>
+          <h6>Información Nutricional (por 100g/ml)</h6>
+          <ul class="list-group list-group-flush mb-3" id="qd-nutrition"></ul>
+          <a id="qd-off-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm d-none">
+            🌍 Ver en OpenFoodFacts
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   </body></html>

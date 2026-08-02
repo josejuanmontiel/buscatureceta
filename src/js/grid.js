@@ -241,7 +241,10 @@ async function updateShoppingListUI() {
         <div class="list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
             <span>
                 <i class="bi bi-circle text-muted me-2" style="cursor:pointer;" onclick="window.toggleShoppingItem(${activeList.id}, '${item.code || item.name}')"></i>
-                ${item.name} <small class="text-muted">x${item.amount || 1} ${item.unit || ''}</small>
+                ${item.code
+                  ? `<span class="text-info" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.code}', '${item.name?.replace(/'/g, "\\'")}')"> ${item.name}</span>`
+                  : item.name
+                } <small class="text-muted">x${item.amount || 1} ${item.unit || ''}</small>
             </span>
         </div>
     `).join('');
@@ -250,7 +253,10 @@ async function updateShoppingListUI() {
         <div class="list-group-item bg-dark text-muted border-secondary d-flex justify-content-between align-items-center">
             <span>
                 <i class="bi bi-check-circle-fill text-success me-2"></i>
-                <del>${item.name}</del> <small>x${item.amount || 1} ${item.unit || ''}</small>
+                <del>${item.code
+                  ? `<span class="text-info" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.code}', '${item.name?.replace(/'/g, "\\'")}')"> ${item.name}</span>`
+                  : item.name
+                }</del> <small>x${item.amount || 1} ${item.unit || ''}</small>
             </span>
         </div>
     `).join('');
@@ -496,3 +502,48 @@ async function updateSyncBadge() {
         badge.classList.add('d-none');
     }
 }
+
+/**
+ * Muestra un modal rápido con info local del producto + enlace a OFF.
+ * Compartido con cart-history y lista de compra activa.
+ */
+window.showProductQuickDetail = async function(code, name) {
+    const product = await ProductStore.getProductByCode(code);
+    const modal = document.getElementById('quickDetailModal');
+    if (!modal) return;
+
+    document.getElementById('qd-product-name').textContent = product?.product_name || name;
+    document.getElementById('qd-product-code').textContent = code;
+
+    let badges = '';
+    if (product?.nutriscore_grade) {
+        const bg = ['a','b'].includes(product.nutriscore_grade.toLowerCase()) ? 'bg-success' : product.nutriscore_grade.toLowerCase() === 'e' ? 'bg-danger' : 'bg-warning text-dark';
+        badges += `<span class="badge ${bg} me-1">Nutriscore: ${product.nutriscore_grade.toUpperCase()}</span>`;
+    }
+    if (product?.nova_group) {
+        badges += `<span class="badge ${product.nova_group <= 2 ? 'bg-success' : 'bg-danger'}">Nova: ${product.nova_group}</span>`;
+    }
+    document.getElementById('qd-badges').innerHTML = badges || '<span class="text-muted small">Sin clasificación</span>';
+
+    if (product?.['energy-kcal_100g'] !== undefined) {
+        document.getElementById('qd-nutrition').innerHTML = `
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Calorías</span><span>${product['energy-kcal_100g']} kcal</span></li>
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Proteínas</span><span>${product['proteins_100g'] || 0} g</span></li>
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Carbohidratos</span><span>${product['carbohydrates_100g'] || 0} g</span></li>
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Grasas</span><span>${product['fat_100g'] || 0} g</span></li>
+        `;
+    } else {
+        document.getElementById('qd-nutrition').innerHTML = '<li class="list-group-item bg-dark text-muted">Datos nutricionales no disponibles</li>';
+    }
+
+    const realCode = product?.real_code || (!code.startsWith('GENERIC_') ? code : null);
+    const offLink = document.getElementById('qd-off-link');
+    if (realCode && /^\d+$/.test(realCode)) {
+        offLink.href = `https://world.openfoodfacts.org/product/${realCode}`;
+        offLink.classList.remove('d-none');
+    } else {
+        offLink.classList.add('d-none');
+    }
+
+    Modal.getOrCreateInstance(modal).show();
+};

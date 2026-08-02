@@ -1,6 +1,7 @@
 import { db } from './db/schema.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
 import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
+import * as ProductStore from './modules/products/ProductStore.js';
 import { showToast } from './modules/ui/UI.js';
 
 export async function initView() {
@@ -62,7 +63,7 @@ async function renderHistory() {
                             return `
                             <li class="list-group-item bg-dark text-white px-0 py-1 d-flex justify-content-between align-items-center small border-secondary">
                                 <div class="d-flex align-items-center gap-1 text-truncate" style="max-width: 55%;">
-                                  <span class="text-truncate">${item.productName || item.productCode}</span>
+                                  <span class="text-truncate text-info" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.productCode}', '${(item.productName || item.productCode).replace(/'/g, "\'")}')">${item.productName || item.productCode}</span>
                                   ${zoneBadge}
                                 </div>
                                 <div class="d-flex align-items-center gap-2" style="flex-shrink:0;">
@@ -109,6 +110,54 @@ window.moveItemZone = async function(code, name) {
         await PantryStore.moveToZone(code, targetZone);
         await renderHistory();
     }
+};
+
+/**
+ * Muestra un modal rápido con info local del producto + enlace a OFF.
+ */
+window.showProductQuickDetail = async function(code, name) {
+    const product = await ProductStore.getProductByCode(code);
+    const modal = document.getElementById('quickDetailModal');
+    if (!modal) return;
+
+    document.getElementById('qd-product-name').textContent = product?.product_name || name;
+    document.getElementById('qd-product-code').textContent = code;
+
+    // Badges nutriscore / nova
+    let badges = '';
+    if (product?.nutriscore_grade) {
+        const bg = ['a','b'].includes(product.nutriscore_grade.toLowerCase()) ? 'bg-success' : product.nutriscore_grade.toLowerCase() === 'e' ? 'bg-danger' : 'bg-warning text-dark';
+        badges += `<span class="badge ${bg} me-1">Nutriscore: ${product.nutriscore_grade.toUpperCase()}</span>`;
+    }
+    if (product?.nova_group) {
+        badges += `<span class="badge ${product.nova_group <= 2 ? 'bg-success' : 'bg-danger'}">Nova: ${product.nova_group}</span>`;
+    }
+    document.getElementById('qd-badges').innerHTML = badges || '<span class="text-muted small">Sin clasificación</span>';
+
+    // Nutrición
+    if (product?.['energy-kcal_100g'] !== undefined) {
+        document.getElementById('qd-nutrition').innerHTML = `
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Calorías</span><span>${product['energy-kcal_100g']} kcal</span></li>
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Proteínas</span><span>${product['proteins_100g'] || 0} g</span></li>
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Carbohidratos</span><span>${product['carbohydrates_100g'] || 0} g</span></li>
+            <li class="list-group-item bg-dark text-white d-flex justify-content-between"><span>Grasas</span><span>${product['fat_100g'] || 0} g</span></li>
+        `;
+    } else {
+        document.getElementById('qd-nutrition').innerHTML = '<li class="list-group-item bg-dark text-muted">Datos nutricionales no disponibles</li>';
+    }
+
+    // Enlace OFF (solo si tiene código numérico real)
+    const realCode = product?.real_code || (!code.startsWith('GENERIC_') ? code : null);
+    const offLink = document.getElementById('qd-off-link');
+    if (realCode && /^\d+$/.test(realCode)) {
+        offLink.href = `https://world.openfoodfacts.org/product/${realCode}`;
+        offLink.classList.remove('d-none');
+    } else {
+        offLink.classList.add('d-none');
+    }
+
+    const { Modal } = await import('bootstrap');
+    Modal.getOrCreateInstance(modal).show();
 };
 
 async function renderChart() {
