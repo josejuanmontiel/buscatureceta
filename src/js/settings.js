@@ -219,7 +219,7 @@ function initCredentialsConfig() {
             // La API de OFF no tiene endpoint de login explícito; usamos
             // el endpoint de preferencias del usuario que requiere auth.
             const resp = await fetch(
-                `https://world.openfoodfacts.net/api/v2/preferences`,
+                `https://world.openfoodfacts.org/api/v2/preferences`,
                 {
                     headers: {
                         'Authorization': 'Basic ' + btoa(user + ':' + pass),
@@ -229,7 +229,7 @@ function initCredentialsConfig() {
             );
 
             if (resp.ok || resp.status === 200) {
-                showVerifyResult('success', `✅ Credenciales correctas para <strong>${user}</strong> en el entorno de test.`);
+                showVerifyResult('success', `✅ Credenciales correctas para <strong>${user}</strong> en OpenFoodFacts (producción).`);
             } else if (resp.status === 401) {
                 showVerifyResult('danger', '❌ Credenciales incorrectas. Comprueba usuario y contraseña.');
             } else {

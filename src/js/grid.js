@@ -102,11 +102,15 @@ async function handleSearch() {
         const result = await ShoppingAssistant.analyzeProductForCart(query);
         
         if (result.status === 'not_found') {
-            // Producto no encontrado por código, añadir como genérico al instante
-            const genericCode = 'GENERIC_' + Date.now();
+            // Producto no encontrado por código, añadir como genérico conservando el código real si es numérico
+            const isNumeric = /^\d+$/.test(query);
+            const genericCode = isNumeric ? `GENERIC_${query}` : 'GENERIC_' + Date.now();
+            const realBarcode = isNumeric ? query : null;
+
             await ProductStore.addCustomProduct({
                 code: genericCode,
-                product_name: 'Producto ' + query, // Usar el query escaneado
+                real_code: realBarcode,
+                product_name: isNumeric ? 'Producto ' + query : query,
                 ingredients_text: '',
                 nutriscore_grade: 'unknown'
             });
@@ -258,11 +262,11 @@ window.toggleShoppingItem = async function(listId, codeOrName) {
 };
 
 window.triggerOFFUpload = function(code) {
-    unknownBarcode = code;
     capturedImageBlob = null;
-    showUnknownProductPanel(code);
-    // Rellenamos el nombre del producto de lo que el usuario haya tecleado
     ProductStore.getProductByCode(code).then(p => {
+        const barcodeToUse = p?.real_code || (code.startsWith('GENERIC_') ? code.replace(/^GENERIC_/, '') : code);
+        unknownBarcode = barcodeToUse;
+        showUnknownProductPanel(barcodeToUse);
         if (p) document.getElementById('unknown-product-name').value = p.product_name.replace(/^Producto /, '');
     });
 };
