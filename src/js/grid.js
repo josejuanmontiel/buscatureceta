@@ -291,7 +291,7 @@ async function handleCheckout() {
 
     const missingWeights = [];
     for (const item of items) {
-        if (item.unit === 'unidad') {
+        if (item.unit === 'unidad' && !item.productCode.startsWith('GENERIC_')) {
             const product = await ProductStore.getProductByCode(item.productCode);
             if (!product || !product.product_quantity || isNaN(parseFloat(product.product_quantity)) || parseFloat(product.product_quantity) <= 0) {
                 missingWeights.push({ item, product });

@@ -35,6 +35,16 @@
         </button>
       </div>
 
+      <!-- Pestañas food / nonfood -->
+      <ul class="nav nav-tabs mb-3" id="pantry-zone-tabs">
+        <li class="nav-item">
+          <button class="nav-link active" data-zone="food">🥦 Alimentos</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-zone="nonfood">🧴 No alimentarios</button>
+        </li>
+      </ul>
+
       <!-- Buscador -->
       <div class="input-group mb-4">
         <input type="text" id="pantry-search" class="form-control" placeholder="Buscar en mi despensa...">
@@ -158,6 +168,26 @@
     </div>
   </div>
 
+
+  <!-- Modal Mover Zona -->
+  <div class="modal fade" id="moveZoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Mover zona</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-center">
+          <input type="hidden" id="move-zone-product-code">
+          <p class="mb-3"><strong id="move-zone-product-name"></strong></p>
+          <div class="d-grid gap-2">
+            <button class="btn btn-success" id="btn-move-to-food">🥦 Mover a Alimentos</button>
+            <button class="btn btn-secondary" id="btn-move-to-nonfood">🧴 Mover a No alimentarios</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/pantry.js"></script>
