@@ -266,6 +266,19 @@ window.openProductDetail = async function(event, code, amount, unit) {
     movementsList.innerHTML = `<div class="list-group-item bg-dark text-white text-muted">Sin movimientos registrados</div>`;
   }
 
+  // Enlace a OpenFoodFacts
+  const extractedCode = code.startsWith('GENERIC_') ? code.replace(/^GENERIC_/, '') : code;
+  const realCode = product?.real_code || (/^\d+$/.test(extractedCode) ? extractedCode : null);
+  const offLink = document.getElementById('detail-off-link');
+  if (offLink) {
+    if (realCode && /^\d+$/.test(realCode)) {
+      offLink.href = `https://world.openfoodfacts.org/product/${realCode}`;
+      offLink.classList.remove('d-none');
+    } else {
+      offLink.classList.add('d-none');
+    }
+  }
+
   productDetailModal.show();
 };
 
