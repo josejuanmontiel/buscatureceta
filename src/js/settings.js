@@ -4,33 +4,50 @@ import { getPendingUploads, deletePendingUpload, syncPendingUploads, countPendin
 import { db } from './db/schema.js';
 
 export async function initView() {
-  document.getElementById('btn-export').addEventListener('click', handleExport);
-  document.getElementById('btn-import').addEventListener('click', handleImport);
-  document.getElementById('btn-clear-data').addEventListener('click', handleClearData);
+  const btnExport = document.getElementById('btn-export');
+  if (btnExport) btnExport.addEventListener('click', handleExport);
+  
+  const btnImport = document.getElementById('btn-import');
+  if (btnImport) btnImport.addEventListener('click', handleImport);
+  
+  const btnClearData = document.getElementById('btn-clear-data');
+  if (btnClearData) btnClearData.addEventListener('click', handleClearData);
 
   const shareBtn = document.getElementById('btn-share-sys');
-  // Check if Web Share API is available and supports files
-  if (navigator.canShare) {
-    shareBtn.style.display = 'inline-block';
-    shareBtn.addEventListener('click', handleShareSystem);
+  if (shareBtn && typeof navigator.canShare === 'function') {
+    try {
+      const testFile = new File([''], 'test.txt', { type: 'text/plain' });
+      if (navigator.canShare({ files: [testFile] })) {
+        shareBtn.style.display = 'inline-block';
+        shareBtn.addEventListener('click', handleShareSystem);
+      }
+    } catch (e) {
+      console.warn('Web Share API error:', e);
+    }
   }
 
   // Inicializar configuración de OpenFoodFacts
-  initCredentialsConfig();
+  try {
+    initCredentialsConfig();
+  } catch (err) {
+    console.error('Error inicializando credenciales OFF:', err);
+  }
   
-  // Inicializar sección de subidas pendientes
-  // initPendingUploadsUI();
-
   // Inicializar Carga de Base de Datos
   const dlBtn = document.getElementById('download-btn');
   if (dlBtn) dlBtn.addEventListener('click', downloadAndLoadCSV);
   
   // Inicializar configuración de Filtros de Aditivos
-  initFiltersConfig();
+  try {
+    initFiltersConfig();
+  } catch (err) {
+    console.error('Error inicializando filtros de aditivos:', err);
+  }
 }
 
 async function handleShareSystem() {
   const btn = document.getElementById('btn-share-sys');
+  if (!btn) return;
   const originalText = btn.textContent;
   
   try {
@@ -39,10 +56,9 @@ async function handleShareSystem() {
     
     const jsonString = await BackupStore.exportData();
     const dateStr = new Date().toISOString().split('T')[0];
-    // Web Share API in Chrome requires specific MIME types. application/json is not allowed, so we use text/plain.
     const file = new File([jsonString], `nutriagenda_backup_${dateStr}.txt`, { type: 'text/plain' });
     
-    if (navigator.canShare({ files: [file] })) {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
         title: 'Copia de NutriAgenda',
         text: 'Backup de NutriAgenda listo para enviar.',
@@ -65,6 +81,7 @@ async function handleShareSystem() {
 
 async function handleExport() {
   const btn = document.getElementById('btn-export');
+  if (!btn) return;
   const originalText = btn.textContent;
   
   try {
@@ -78,7 +95,6 @@ async function handleExport() {
     const a = document.createElement('a');
     a.href = url;
     
-    // Generar nombre de archivo con fecha
     const dateStr = new Date().toISOString().split('T')[0];
     a.download = `nutriagenda_backup_${dateStr}.json`;
     
@@ -99,6 +115,7 @@ async function handleExport() {
 
 async function handleImport() {
   const fileInput = document.getElementById('import-file');
+  if (!fileInput) return;
   const file = fileInput.files[0];
   
   if (!file) {
@@ -111,11 +128,13 @@ async function handleImport() {
   }
 
   const btn = document.getElementById('btn-import');
-  const originalText = btn.textContent;
+  const originalText = btn ? btn.textContent : '';
 
   try {
-    btn.disabled = true;
-    btn.textContent = 'Restaurando...';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Restaurando...';
+    }
 
     const text = await file.text();
     await BackupStore.importData(text);
@@ -126,8 +145,10 @@ async function handleImport() {
     console.error('Error al restaurar:', err);
     showToast('Error al restaurar la copia de seguridad.\nDetalles: ' + err.message, 'danger');
   } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
     fileInput.value = '';
   }
 }
@@ -138,11 +159,13 @@ async function handleClearData() {
   }
 
   const btn = document.getElementById('btn-clear-data');
-  const originalText = btn.textContent;
+  const originalText = btn ? btn.textContent : '';
 
   try {
-    btn.disabled = true;
-    btn.textContent = 'Borrando datos...';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Borrando datos...';
+    }
 
     await BackupStore.clearUserData();
     
@@ -152,8 +175,10 @@ async function handleClearData() {
     console.error('Error al borrar los datos:', err);
     showToast('Error al borrar los datos.\nDetalles: ' + err.message, 'danger');
   } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 }
 
@@ -171,85 +196,101 @@ function initCredentialsConfig() {
     populateCredentialsForm();
 
     // Toggle contraseña visible
-    btnToggle.addEventListener('click', () => {
-        const pwd = document.getElementById('cred-password');
-        pwd.type = pwd.type === 'password' ? 'text' : 'password';
-        btnToggle.textContent = pwd.type === 'password' ? '👁' : '🙈';
-    });
+    if (btnToggle) {
+      btnToggle.addEventListener('click', () => {
+          const pwd = document.getElementById('cred-password');
+          if (pwd) {
+            pwd.type = pwd.type === 'password' ? 'text' : 'password';
+            btnToggle.textContent = pwd.type === 'password' ? '👁' : '🙈';
+          }
+      });
+    }
 
     // Guardar credenciales
-    btnSave.addEventListener('click', () => {
-        const user = document.getElementById('cred-username').value.trim();
-        const pass = document.getElementById('cred-password').value;
+    if (btnSave) {
+      btnSave.addEventListener('click', () => {
+          const userInput = document.getElementById('cred-username');
+          const passInput = document.getElementById('cred-password');
+          const user = userInput ? userInput.value.trim() : '';
+          const pass = passInput ? passInput.value : '';
 
-        if (!user || !pass) {
-            showCredStatus('warning', '⚠️ Debes introducir usuario y contraseña.');
-            return;
-        }
-        localStorage.setItem('off_user', user);
-        localStorage.setItem('off_password', pass);
-        showCredStatus('success', `✅ Credenciales guardadas para el usuario <strong>${user}</strong>.`);
-    });
+          if (!user || !pass) {
+              showCredStatus('warning', '⚠️ Debes introducir usuario y contraseña.');
+              return;
+          }
+          localStorage.setItem('off_user', user);
+          localStorage.setItem('off_password', pass);
+          showCredStatus('success', `✅ Credenciales guardadas para el usuario <strong>${user}</strong>.`);
+      });
+    }
 
     // Borrar credenciales
-    btnClear.addEventListener('click', () => {
-        if (!confirm('¿Seguro que quieres borrar las credenciales de OpenFoodFacts?')) return;
-        localStorage.removeItem('off_user');
-        localStorage.removeItem('off_password');
-        document.getElementById('cred-username').value = '';
-        document.getElementById('cred-password').value = '';
-        showCredStatus('secondary', '🗑 Credenciales eliminadas. Se usará el entorno de test (off/off).');
-    });
+    if (btnClear) {
+      btnClear.addEventListener('click', () => {
+          if (!confirm('¿Seguro que quieres borrar las credenciales de OpenFoodFacts?')) return;
+          localStorage.removeItem('off_user');
+          localStorage.removeItem('off_password');
+          const userInput = document.getElementById('cred-username');
+          const passInput = document.getElementById('cred-password');
+          if (userInput) userInput.value = '';
+          if (passInput) passInput.value = '';
+          showCredStatus('secondary', '🗑 Credenciales eliminadas. Se usará el entorno de test (off/off).');
+      });
+    }
 
     // Verificar credenciales contra la API de test
-    btnVerify.addEventListener('click', async () => {
-        const user = document.getElementById('cred-username').value.trim();
-        const pass = document.getElementById('cred-password').value;
+    if (btnVerify) {
+      btnVerify.addEventListener('click', async () => {
+          const userInput = document.getElementById('cred-username');
+          const passInput = document.getElementById('cred-password');
+          const user = userInput ? userInput.value.trim() : '';
+          const pass = passInput ? passInput.value : '';
 
-        if (!user || !pass) {
-            showVerifyResult('warning', '⚠️ Introduce usuario y contraseña antes de verificar.');
-            return;
-        }
+          if (!user || !pass) {
+              showVerifyResult('warning', '⚠️ Introduce usuario y contraseña antes de verificar.');
+              return;
+          }
 
-        btnVerify.disabled = true;
-        btnVerify.textContent = 'Verificando...';
-        showVerifyResult('secondary', '⏳ Comprobando credenciales contra OpenFoodFacts...');
+          btnVerify.disabled = true;
+          btnVerify.textContent = 'Verificando...';
+          showVerifyResult('secondary', '⏳ Comprobando credenciales contra OpenFoodFacts...');
 
-        try {
-            // La API de OFF no tiene endpoint de login explícito; usamos
-            // el endpoint de preferencias del usuario que requiere auth.
-            const resp = await fetch(
-                `https://world.openfoodfacts.org/api/v2/preferences`,
-                {
-                    headers: {
-                        'Authorization': 'Basic ' + btoa(user + ':' + pass),
-                        'Accept': 'application/json',
-                    }
-                }
-            );
+          try {
+              const resp = await fetch(
+                  `https://world.openfoodfacts.org/api/v2/preferences`,
+                  {
+                      headers: {
+                          'Authorization': 'Basic ' + btoa(user + ':' + pass),
+                          'Accept': 'application/json',
+                      }
+                  }
+              );
 
-            if (resp.ok || resp.status === 200) {
-                showVerifyResult('success', `✅ Credenciales correctas para <strong>${user}</strong> en OpenFoodFacts (producción).`);
-            } else if (resp.status === 401) {
-                showVerifyResult('danger', '❌ Credenciales incorrectas. Comprueba usuario y contraseña.');
-            } else {
-                showVerifyResult('warning', `⚠️ Respuesta inesperada (HTTP ${resp.status}). Las credenciales podrían ser válidas igualmente.`);
-            }
-        } catch (err) {
-            showVerifyResult('danger', `❌ Error de conexión: ${err.message}`);
-        } finally {
-            btnVerify.disabled = false;
-            btnVerify.textContent = '🔍 Verificar credenciales';
-        }
-    });
+              if (resp.ok || resp.status === 200) {
+                  showVerifyResult('success', `✅ Credenciales correctas para <strong>${user}</strong> en OpenFoodFacts (producción).`);
+              } else if (resp.status === 401) {
+                  showVerifyResult('danger', '❌ Credenciales incorrectas. Comprueba usuario y contraseña.');
+              } else {
+                  showVerifyResult('warning', `⚠️ Respuesta inesperada (HTTP ${resp.status}). Las credenciales podrían ser válidas igualmente.`);
+              }
+          } catch (err) {
+              showVerifyResult('danger', `❌ Error de conexión: ${err.message}`);
+          } finally {
+              btnVerify.disabled = false;
+              btnVerify.textContent = '🔍 Verificar credenciales';
+          }
+      });
+    }
 }
 
 function populateCredentialsForm() {
     const user = localStorage.getItem('off_user');
     const pass = localStorage.getItem('off_password');
 
-    document.getElementById('cred-username').value = user || '';
-    document.getElementById('cred-password').value = pass || '';
+    const userInput = document.getElementById('cred-username');
+    const passInput = document.getElementById('cred-password');
+    if (userInput) userInput.value = user || '';
+    if (passInput) passInput.value = pass || '';
 
     if (user && user !== 'off') {
         showCredStatus('success', `✅ Cuenta configurada: <strong>${user}</strong>`);
@@ -259,17 +300,20 @@ function populateCredentialsForm() {
             'Las fotos se subirán al entorno de pruebas, no a la BD real.'
         );
     }
-    document.getElementById('cred-verify-result').classList.add('d-none');
+    const verifyResult = document.getElementById('cred-verify-result');
+    if (verifyResult) verifyResult.classList.add('d-none');
 }
 
 function showCredStatus(type, html) {
     const el = document.getElementById('cred-status');
+    if (!el) return;
     el.className = `alert alert-${type} py-2 mb-3 small`;
     el.innerHTML = html;
 }
 
 function showVerifyResult(type, html) {
     const el = document.getElementById('cred-verify-result');
+    if (!el) return;
     el.className = `alert alert-${type} py-2 small`;
     el.innerHTML = html;
     el.classList.remove('d-none');
@@ -286,29 +330,32 @@ function initFiltersConfig() {
 
     // Cargar filtros guardados
     const savedFilters = localStorage.getItem('filters');
-    if (savedFilters) {
+    if (savedFilters && filterInput) {
         filterInput.value = savedFilters;
     }
 
     // Guardar filtros
-    btnSaveFilters.addEventListener('click', () => {
-        const value = filterInput.value.trim();
-        if (value) {
-            localStorage.setItem('filters', value);
-        } else {
-            localStorage.removeItem('filters');
-        }
-        showToast('Filtros guardados correctamente.');
-    });
+    if (btnSaveFilters) {
+      btnSaveFilters.addEventListener('click', () => {
+          const value = filterInput ? filterInput.value.trim() : '';
+          if (value) {
+              localStorage.setItem('filters', value);
+          } else {
+              localStorage.removeItem('filters');
+          }
+          showToast('Filtros guardados correctamente.');
+      });
+    }
 
     // Rellenar aditivos comunes (los que pidió el usuario)
-    btnDefaultAdditives.addEventListener('click', () => {
-        const defaultAdditives = 'E249 | E250 | E251 | E252 | E102 | E104 | E110 | E122 | E124 | E127 | E950 | E951 | E952 | E955 | E220 | E221 | E222 | E223 | E224 | E225 | E226 | E227 | E228 | E214 | E215 | E216 | E217 | E218 | E219 | E621 | E622 | E623 | E624 | E625';
-        filterInput.value = defaultAdditives;
-        // opcionalmente guardar al instante
-        localStorage.setItem('filters', defaultAdditives);
-        showToast('Aditivos comunes aplicados.');
-    });
+    if (btnDefaultAdditives) {
+      btnDefaultAdditives.addEventListener('click', () => {
+          const defaultAdditives = 'E249 | E250 | E251 | E252 | E102 | E104 | E110 | E122 | E124 | E127 | E950 | E951 | E952 | E955 | E220 | E221 | E222 | E223 | E224 | E225 | E226 | E227 | E228 | E214 | E215 | E216 | E217 | E218 | E219 | E621 | E622 | E623 | E624 | E625';
+          if (filterInput) filterInput.value = defaultAdditives;
+          localStorage.setItem('filters', defaultAdditives);
+          showToast('Aditivos comunes aplicados.');
+      });
+    }
 }
 
 // Función para descargar y cargar el CSV usando Streams para evitar falta de memoria

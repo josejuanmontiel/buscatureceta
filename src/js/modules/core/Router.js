@@ -82,6 +82,22 @@ export class Router {
         if (existing) existing.remove();
         this.appView.appendChild(modal.cloneNode(true));
       });
+
+      // Inyectar etiquetas <style> específicas de la vista que estuvieran en su <head>
+      const styles = doc.querySelectorAll('style');
+      styles.forEach(style => {
+        this.appView.appendChild(style.cloneNode(true));
+      });
+
+      // Inyectar plantillas <template> específicas de la vista (ej: tpl-diary-day, tpl-meal-slot)
+      const templates = doc.querySelectorAll('template');
+      templates.forEach(tpl => {
+        if (tpl.id) {
+          const existing = document.getElementById(tpl.id);
+          if (existing) existing.remove();
+        }
+        this.appView.appendChild(tpl.cloneNode(true));
+      });
     } catch (err) {
       console.error(`Error cargando la vista ${viewName}:`, err);
       // Fallback: si falla el fetch, intentar buscar si existe template legacy
