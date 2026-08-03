@@ -87,6 +87,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: path.resolve(__dirname, 'src/index.html'),
+        home: path.resolve(__dirname, 'src/home.html'),
         grid: path.resolve(__dirname, 'src/grid.html'),
         scan: path.resolve(__dirname, 'src/scan.html'),
         recipes: path.resolve(__dirname, 'src/recipes.html'),
@@ -97,6 +98,8 @@ export default defineConfig({
         dashboard: path.resolve(__dirname, 'src/dashboard.html'),
         'db-viewer': path.resolve(__dirname, 'src/db-viewer.html'),
         settings: path.resolve(__dirname, 'src/settings.html'),
+        'cart-history': path.resolve(__dirname, 'src/cart-history.html'),
+        additives: path.resolve(__dirname, 'src/additives.html'),
       }
     },
   },
