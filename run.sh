@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Este script lanza la aplicación web Vite con soporte para HTTPS
-# El plugin @vitejs/plugin-basic-ssl ya está configurado en vite.config.js
-# Usamos --host para que la aplicación sea accesible en la red local
-npm run start -- --host
+# Este script compila la versión de producción en ./dist y la sirve
+# imitando exactamente el despliegue de PRO (archivos generados en dist/).
+
+echo "📦 Compilando versión de producción (dist)..."
+npm run build
+
+echo "🚀 Sirviendo versión de producción desde ./dist..."
+npm run preview -- --host --port 8080
