@@ -5,14 +5,16 @@ export async function initView() {
     const searchBtn = document.getElementById('btn-search-additives');
     
     // Bind events
-    searchBtn.addEventListener('click', () => performSearch(searchInput.value));
-    searchInput.addEventListener('keyup', (e) => {
-        clearTimeout(window._additivesDebounce);
-        window._additivesDebounce = setTimeout(() => performSearch(e.target.value), 300);
-    });
+    if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', () => performSearch(searchInput.value));
+        searchInput.addEventListener('keyup', (e) => {
+            clearTimeout(window._additivesDebounce);
+            window._additivesDebounce = setTimeout(() => performSearch(e.target.value), 300);
+        });
+    }
 
     // Initial render
-    performSearch('');
+    await performSearch('');
 }
 
 async function performSearch(query) {
