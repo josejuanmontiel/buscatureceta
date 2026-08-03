@@ -51,11 +51,7 @@ export default defineConfig({
             files: [
               {
                 name: "file",
-                accept: [".txt", "text/plain"]
-              },
-              {
-                name: "file",
-                accept: [".json", "application/json"]
+                accept: [".txt", "text/plain", ".json", "application/json"]
               }
             ]
           }
