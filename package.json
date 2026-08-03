@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "vite",
-    "build": "node build_spa.cjs && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
