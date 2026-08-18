@@ -368,10 +368,14 @@ let ingredientWarningModal = null;
 
 window._addIngredient = async function(code, name, force = false) {
   if (!force) {
-    const analysisResult = await ShoppingAssistant.analyzeProductForCart(code);
-    if (analysisResult && analysisResult.status === 'success') {
-      const { warnings, healthyAlternative } = analysisResult.analysis;
-      if (warnings.length > 0 || healthyAlternative) {
+    const result = await ShoppingAssistant.analyzeProductForCart(code);
+    if (result && result.status === 'warning') {
+      const warnings = result.warnings || [];
+      const healthyAlternative = (result.alternatives && result.alternatives.length > 0)
+        ? result.alternatives[0]
+        : null;
+
+      if (warnings.length > 0) {
         if (!ingredientWarningModal) {
            ingredientWarningModal = new Modal(document.getElementById('ingredientWarningModal'));
         }
@@ -403,6 +407,7 @@ window._addIngredient = async function(code, name, force = false) {
       }
     }
   }
+
 
   currentIngredients.push({ productCode: code, productName: name || `Prod ${code}`, amount: 100, unit: 'g' });
   document.getElementById('ingredient-search').value = '';

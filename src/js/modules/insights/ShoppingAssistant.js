@@ -1,10 +1,54 @@
 import * as ProductStore from "../products/ProductStore.js";
 import { db } from '../../db/schema.js';
 import * as CartStore from '../cart/CartStore.js';
+import { getAllAdditives } from '../additives/AdditivesStore.js';
+
+// Caché en memoria del listado de E-xxx peligrosos para no recargarlo cada vez
+let _dangerousAdditivesCache = null;
 
 /**
- * Filtra y analiza si un producto es apto según las reglas de exclusión (localStorage "filters")
- * y, si no lo es, devuelve una advertencia y posibles alternativas.
+ * Devuelve la lista de aditivos con riesgo 'alto' y el regex combinado para detectarlos.
+ * Se cachea en memoria la primera vez.
+ */
+async function getDangerousAdditivesRegex() {
+  if (_dangerousAdditivesCache) return _dangerousAdditivesCache;
+
+  const all = await getAllAdditives();
+  const dangerous = all.filter(a => a.risk === 'alto');
+
+  // Ordenar de mayor a menor longitud para que "E150c" case antes que "E150"
+  const codes = dangerous
+    .map(a => a.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .sort((a, b) => b.length - a.length);
+
+  const regex = new RegExp('\\b(' + codes.join('|') + ')\\b', 'gi');
+
+  _dangerousAdditivesCache = { dangerous, regex };
+  return _dangerousAdditivesCache;
+}
+
+/**
+ * Comprueba si el texto de ingredientes contiene E-xxx peligrosos.
+ * Devuelve un array de objetos aditivo encontrados (puede estar vacío).
+ */
+async function checkDangerousAdditives(ingredientsText) {
+  if (!ingredientsText) return [];
+
+  const { dangerous, regex } = await getDangerousAdditivesRegex();
+  const found = new Set();
+  const re = new RegExp(regex.source, 'gi');
+  let m;
+  while ((m = re.exec(ingredientsText)) !== null) {
+    found.add(m[1].toUpperCase());
+  }
+
+  return dangerous.filter(a => found.has(a.code.toUpperCase()));
+}
+
+/**
+ * Filtra y analiza si un producto es apto según las reglas de exclusión (localStorage "filters"),
+ * los aditivos peligrosos (E-xxx riesgo alto — siempre activo, independiente del toggle) y,
+ * opcionalmente, el NutriScore (controlado por setting_health_warnings).
  */
 export async function analyzeProductForCart(productCode) {
   const product = await ProductStore.getProductByCode(productCode);
@@ -12,37 +56,38 @@ export async function analyzeProductForCart(productCode) {
 
   const lastPrice = await CartStore.getLastKnownPrice(productCode);
 
-  // Comprobar preferencia del usuario
-  const checkHealth = localStorage.getItem('setting_health_warnings') !== 'false';
-  if (!checkHealth) {
-    return {
-      status: 'ok',
-      product,
-      warnings: [],
-      lastPrice,
-      alternatives: []
-    };
-  }
-
-  const rawFilters = localStorage.getItem("filters");
   let warnings = [];
 
-  if (rawFilters && product.ingredients_text) {
-    const regex = new RegExp(`(${rawFilters})`, 'gi');
-    const matches = product.ingredients_text.match(regex);
-    if (matches) {
-      warnings.push(`Contiene ingredientes excluidos: ${matches.join(', ')}`);
+  // ── 1. Check de aditivos peligrosos (SIEMPRE activo, no depende del toggle) ──
+  const foundDangerous = await checkDangerousAdditives(product.ingredients_text);
+  if (foundDangerous.length > 0) {
+    foundDangerous.forEach(a => {
+      warnings.push(`⚠️ Aditivo peligroso: ${a.code} – ${a.name} (riesgo ${a.risk})`);
+    });
+  }
+
+  // ── 2. Checks opcionales (controlados por el toggle setting_health_warnings) ──
+  const checkHealth = localStorage.getItem('setting_health_warnings') !== 'false';
+
+  if (checkHealth) {
+    const rawFilters = localStorage.getItem("filters");
+    if (rawFilters && product.ingredients_text) {
+      const regex = new RegExp(`(${rawFilters})`, 'gi');
+      const matches = product.ingredients_text.match(regex);
+      if (matches) {
+        warnings.push(`Contiene ingredientes excluidos: ${matches.join(', ')}`);
+      }
+    }
+
+    // Comprobar si el producto es NutriScore E o D
+    if (['d', 'e'].includes((product.nutriscore_grade || '').toLowerCase())) {
+      warnings.push(`NutriScore muy bajo (${product.nutriscore_grade.toUpperCase()})`);
     }
   }
 
-  // Comprobar si el producto es NutriScore E o D (opcional, por hacerlo más inteligente)
-  if (['d', 'e'].includes((product.nutriscore_grade || '').toLowerCase())) {
-    warnings.push(`NutriScore muy bajo (${product.nutriscore_grade.toUpperCase()})`);
-  }
-
-
   let alternatives = [];
   if (warnings.length > 0) {
+    const rawFilters = localStorage.getItem("filters");
     alternatives = await findAlternatives(product, rawFilters);
   }
 
