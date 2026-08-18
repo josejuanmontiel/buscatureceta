@@ -49,14 +49,15 @@
       </div>
     </div>
 
-    <!-- Escáner / Búsqueda -->
-    <div class="input-group mb-4 justify-content-center">
-      <input type="text" id="code-input" class="form-control" style="max-width: 300px;" placeholder="Código o Nombre" />
+    <!-- Escáner / Búsqueda / Granel -->
+    <div class="input-group mb-4 justify-content-center flex-wrap gap-1">
+      <input type="text" id="code-input" class="form-control" style="max-width: 260px;" placeholder="Código o Nombre" />
       <button class="btn btn-primary" id="query-btn">
         <span class="spinner-border spinner-border-sm d-none" id="search-spinner" role="status" aria-hidden="true"></span>
         <span id="query-btn-text">Buscar</span>
       </button>
       <button class="btn btn-outline-light" id="scan-btn"><i class="bi bi-upc-scan"></i> Escanear</button>
+      <button class="btn btn-outline-info" id="btn-manual-bulk"><i class="bi bi-basket2-fill"></i> + Granel / Manual</button>
     </div>
     
     <!-- Producto desconocido: captura de foto -->
@@ -131,6 +132,29 @@
       </div>
     </div>
 
+    <!-- Ticket adjunto al carrito actual -->
+    <div class="card bg-dark border-secondary mb-3 text-start" id="cart-ticket-card">
+      <div class="card-body p-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fs-4">🧾</span>
+          <div>
+            <div class="fw-bold small text-white" id="cart-ticket-status-title">Foto del Ticket de Compra</div>
+            <div class="text-muted small" id="cart-ticket-status-subtitle">Adjunta el ticket para guardar y consultar precios más tarde</div>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="file" id="cart-ticket-file-input" accept="image/*" capture="environment" class="d-none">
+          <button type="button" class="btn btn-outline-info btn-sm" id="btn-attach-cart-ticket">
+            <i class="bi bi-camera"></i> 📸 Adjuntar Ticket
+          </button>
+          <div id="cart-ticket-preview-box" class="d-none d-flex align-items-center gap-2">
+            <img id="cart-ticket-thumb-img" src="" class="rounded border border-info" style="width: 38px; height: 38px; object-fit: cover; cursor: pointer;" title="Hacer clic para ampliar ticket">
+            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" id="btn-remove-cart-ticket" title="Quitar ticket">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Lista del carrito -->
     <h4 class="text-start mb-3">Mi Compra</h4>
     <div id="cart-list" class="list-group text-start mb-4">
@@ -166,6 +190,117 @@
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-outline-warning btn-sm" id="btn-skip-missing-weights">Omitir pesos y continuar</button>
           <button type="button" class="btn btn-success btn-sm" id="btn-save-missing-weights">Guardar y Continuar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Manual / Bulk Purchase (Frutería / A Granel) -->
+  <div class="modal fade" id="modal-manual-bulk" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title"><i class="bi bi-basket2-fill text-warning me-2"></i>Añadir a Granel / Frutería</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-start">
+          <!-- Atajos rápidos de productos frescos / a granel -->
+          <div class="mb-3">
+            <label class="form-label small text-muted mb-1 fw-bold">Atajos rápidos:</label>
+            <div class="d-flex flex-wrap gap-1" id="bulk-quick-chips">
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Plátanos" data-unit="kg">🍌 Plátanos</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Manzanas" data-unit="kg">🍎 Manzanas</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Tomates" data-unit="kg">🍅 Tomates</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Patatas" data-unit="kg">🥔 Patatas</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Cebollas" data-unit="kg">🧅 Cebollas</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Naranjas" data-unit="kg">🍊 Naranjas</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Aguacates" data-unit="kg">🥑 Aguacates</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Zanahorias" data-unit="kg">🥕 Zanahorias</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Lechuga" data-unit="unidad">🥬 Lechuga</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Barra de Pan" data-unit="unidad">🥖 Pan</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Huevos" data-unit="unidad">🥚 Huevos</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Frutos Secos" data-unit="g">🥜 Frutos Secos</button>
+              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Legumbres a granel" data-unit="kg">🫘 Legumbres</button>
+            </div>
+          </div>
+
+          <form id="form-manual-bulk">
+            <input type="hidden" id="bulk-selected-code" value="">
+
+            <div class="mb-3">
+              <label for="bulk-product-name" class="form-label small fw-bold">Nombre del producto *</label>
+              <div class="position-relative">
+                <input type="text" class="form-control bg-dark text-white border-secondary" id="bulk-product-name" placeholder="Ej: Manzanas Fuji, Tomate pera, etc." required autocomplete="off">
+                <div id="bulk-product-results" class="list-group position-absolute w-100 mt-1 d-none shadow-lg" style="z-index: 1055; max-height: 180px; overflow-y: auto;"></div>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-7">
+                <label for="bulk-amount" class="form-label small fw-bold">Cantidad / Peso *</label>
+                <input type="number" class="form-control bg-dark text-white border-secondary" id="bulk-amount" value="1" min="0.01" step="any" required>
+              </div>
+              <div class="col-5">
+                <label for="bulk-unit" class="form-label small fw-bold">Unidad</label>
+                <select class="form-select bg-dark text-white border-secondary" id="bulk-unit">
+                  <option value="kg" selected>kg (Kilogramos)</option>
+                  <option value="g">g (Gramos)</option>
+                  <option value="unidad">ud (Unidades)</option>
+                  <option value="pack">pack (Manojo/Pack)</option>
+                  <option value="l">l (Litros)</option>
+                  <option value="ml">ml (Mililitros)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label for="bulk-unit-price" class="form-label small fw-bold">Precio Unitario (€/<span id="bulk-unit-label">kg</span>)</label>
+                <input type="number" class="form-control bg-dark text-white border-secondary" id="bulk-unit-price" placeholder="0.00" min="0" step="0.01">
+              </div>
+              <div class="col-6">
+                <label for="bulk-total-price" class="form-label small fw-bold">Precio Total (€)</label>
+                <input type="number" class="form-control bg-dark text-white border-secondary" id="bulk-total-price" placeholder="0.00" min="0" step="0.01">
+              </div>
+            </div>
+            <div class="small text-info mb-3" id="bulk-price-calc-hint">
+              💡 1 kg × 0.00 € = 0.00 €
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <label class="form-label small text-muted">Zona Despensa</label>
+                <select class="form-select form-select-sm bg-dark text-white border-secondary" id="bulk-zone">
+                  <option value="food" selected>🥦 Alimentos</option>
+                  <option value="nonfood">🧴 No alimentarios</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small text-muted">NutriScore</label>
+                <select class="form-select form-select-sm bg-dark text-white border-secondary" id="bulk-nutriscore">
+                  <option value="a" selected>A (Excelente)</option>
+                  <option value="b">B</option>
+                  <option value="c">C</option>
+                  <option value="d">D</option>
+                  <option value="e">E</option>
+                  <option value="unknown">Sin clasificar</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="bulk-save-custom" checked>
+              <label class="form-check-label small text-muted" for="bulk-save-custom">
+                Guardar en mis productos para futuras recetas y compras
+              </label>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-submit-bulk-item">
+            <i class="bi bi-cart-plus"></i> Añadir al Carro
+          </button>
         </div>
       </div>
     </div>

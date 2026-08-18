@@ -13,7 +13,7 @@ test('Test UI after import', async ({ page }) => {
 
   // Eval importData in browser context
   await page.evaluate(async (jsonStr) => {
-    const BackupStore = await import('/js/modules/backup/BackupStore.js');
+    const BackupStore = window.BackupStore || (await import('/js/modules/backup/BackupStore.js'));
     await BackupStore.importData(jsonStr);
   }, backupData);
 

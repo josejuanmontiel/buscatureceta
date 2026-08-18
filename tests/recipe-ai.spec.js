@@ -30,8 +30,8 @@ test.describe('Flujos de IA para Recetas', () => {
     await page.goto('/#meal-photos');
     
     // Add a mock photo to the store via console evaluation to skip camera API issues in headless
+    await page.waitForFunction(() => !!window.MealPhotoStore || !!window.db);
     await page.evaluate(async () => {
-      const module = await import('./js/modules/mealPhotos/MealPhotoStore.js');
       const base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
       const byteCharacters = atob(base64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -40,7 +40,21 @@ test.describe('Flujos de IA para Recetas', () => {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'image/png' });
-      await module.addMealPhoto('2026-07-19', 'breakfast', blob);
+      
+      if (window.MealPhotoStore) {
+        await window.MealPhotoStore.addMealPhoto('2026-07-19', 'breakfast', blob);
+      } else {
+        await window.db.mealPhotos.add({
+          date: '2026-07-19',
+          mealType: 'breakfast',
+          blob: blob,
+          thumbnailBlob: blob,
+          status: 'pending_review',
+          notes: '',
+          diaryEntryId: null,
+          capturedAt: new Date().toISOString(),
+        });
+      }
     });
     
     // Reload to see the photo

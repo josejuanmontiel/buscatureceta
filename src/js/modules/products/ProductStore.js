@@ -105,9 +105,18 @@ export async function addCustomProduct(productData) {
  */
 export async function updateCustomProduct(code, changes) {
   const current = await db.customProducts.get(code);
-  if (!current) throw new Error('Producto personalizado no encontrado');
-  
-  await db.customProducts.update(code, changes);
+  if (!current) {
+    const official = await db.products.get(code);
+    await db.customProducts.put({
+      ...(official || {}),
+      code,
+      product_name: changes.product_name || (official ? official.product_name : code),
+      ...changes,
+      is_custom: true
+    });
+  } else {
+    await db.customProducts.update(code, changes);
+  }
   
   // Lanzar la actualización retroactiva en background sin bloquear
   syncNutrition(code).catch(console.error);

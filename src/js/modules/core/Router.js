@@ -8,6 +8,9 @@ export class Router {
   }
 
   async handleRoute() {
+    this.navigationSeq = (this.navigationSeq || 0) + 1;
+    const currentSeq = this.navigationSeq;
+
     let hash = window.location.hash.slice(1) || 'index';
     
     // Support URL parameters in hash like #grid?code=123
@@ -54,6 +57,8 @@ export class Router {
         this.htmlCache[viewName] = htmlContent;
       }
 
+      if (this.navigationSeq !== currentSeq) return;
+
       // Extraer el contenido dentro de <main> y los modales asociados en el documento HTML
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -99,6 +104,7 @@ export class Router {
         this.appView.appendChild(tpl.cloneNode(true));
       });
     } catch (err) {
+      if (this.navigationSeq !== currentSeq) return;
       console.error(`Error cargando la vista ${viewName}:`, err);
       // Fallback: si falla el fetch, intentar buscar si existe template legacy
       const tpl = document.getElementById(`view-${viewName}`);
@@ -109,6 +115,8 @@ export class Router {
         this.appView.innerHTML = `<div class="alert alert-danger m-3">Error al cargar la vista ${viewName}</div>`;
       }
     }
+
+    if (this.navigationSeq !== currentSeq) return;
 
     // 3. Actualizar menú
     const appMenu = document.querySelector('app-menu');
@@ -138,8 +146,9 @@ export class Router {
     if (route.init) {
       // init module dynamically to save initial load time
       const module = await route.init();
-      // Verificamos que la URL siga en esta vista antes de inicializar,
-      // para evitar problemas si el usuario navegó rápido antes de que el import terminara.
+      if (this.navigationSeq !== currentSeq) return;
+
+      // Verificamos que la URL siga en esta vista antes de inicializar
       let currentHash = window.location.hash.slice(1) || 'index';
       let currentViewName = currentHash;
       const qIndex2 = currentHash.indexOf('?');

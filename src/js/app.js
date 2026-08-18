@@ -1,5 +1,9 @@
 import { Router } from './modules/core/Router.js';
 import * as BackupStore from './modules/backup/BackupStore.js';
+import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
+
+window.BackupStore = BackupStore;
+window.MealPhotoStore = MealPhotoStore;
 
 document.addEventListener('DOMContentLoaded', () => {
   const router = new Router({

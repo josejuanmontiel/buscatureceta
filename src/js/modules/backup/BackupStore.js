@@ -12,6 +12,8 @@ const TABLES_TO_BACKUP = [
   'pantry',
   'pantryLog',
   'cart',
+  'cartHistory',
+  'shoppingLists',
   'priceHistory',
   'pendingUploads',
   'mealPhotos',
@@ -78,6 +80,18 @@ export async function exportData() {
             delete record.thumbnailBlob;
           }
         }
+        if (tableName === 'cartHistory') {
+          if (record.ticketBlob instanceof Blob) {
+            record.ticketBlobBase64 = await blobToBase64(record.ticketBlob);
+            record.ticketBlobType = record.ticketBlob.type;
+            delete record.ticketBlob;
+          }
+          if (record.ticketThumbBlob instanceof Blob) {
+            record.ticketThumbBlobBase64 = await blobToBase64(record.ticketThumbBlob);
+            record.ticketThumbBlobType = record.ticketThumbBlob.type;
+            delete record.ticketThumbBlob;
+          }
+        }
       }
       
       exportObject.data[tableName] = records;
@@ -141,6 +155,22 @@ export async function importData(jsonString) {
             delete record.thumbnailBlobType;
           } else if (record.thumbnailBlob && typeof record.thumbnailBlob === 'object' && Object.keys(record.thumbnailBlob).length === 0) {
             delete record.thumbnailBlob;
+          }
+
+          if (record.ticketBlobBase64) {
+            record.ticketBlob = base64ToBlob(record.ticketBlobBase64, record.ticketBlobType || 'image/jpeg');
+            delete record.ticketBlobBase64;
+            delete record.ticketBlobType;
+          } else if (record.ticketBlob && typeof record.ticketBlob === 'object' && Object.keys(record.ticketBlob).length === 0) {
+            delete record.ticketBlob;
+          }
+
+          if (record.ticketThumbBlobBase64) {
+            record.ticketThumbBlob = base64ToBlob(record.ticketThumbBlobBase64, record.ticketThumbBlobType || 'image/jpeg');
+            delete record.ticketThumbBlobBase64;
+            delete record.ticketThumbBlobType;
+          } else if (record.ticketThumbBlob && typeof record.ticketThumbBlob === 'object' && Object.keys(record.ticketThumbBlob).length === 0) {
+            delete record.ticketThumbBlob;
           }
         }
         
@@ -207,6 +237,20 @@ export async function mergeData(jsonString) {
             delete record.thumbnailBlobType;
           } else if (record.thumbnailBlob && typeof record.thumbnailBlob === 'object' && Object.keys(record.thumbnailBlob).length === 0) {
             delete record.thumbnailBlob;
+          }
+          if (record.ticketBlobBase64) {
+            record.ticketBlob = base64ToBlob(record.ticketBlobBase64, record.ticketBlobType || 'image/jpeg');
+            delete record.ticketBlobBase64;
+            delete record.ticketBlobType;
+          } else if (record.ticketBlob && typeof record.ticketBlob === 'object' && Object.keys(record.ticketBlob).length === 0) {
+            delete record.ticketBlob;
+          }
+          if (record.ticketThumbBlobBase64) {
+            record.ticketThumbBlob = base64ToBlob(record.ticketThumbBlobBase64, record.ticketThumbBlobType || 'image/jpeg');
+            delete record.ticketThumbBlobBase64;
+            delete record.ticketThumbBlobType;
+          } else if (record.ticketThumbBlob && typeof record.ticketThumbBlob === 'object' && Object.keys(record.ticketThumbBlob).length === 0) {
+            delete record.ticketThumbBlob;
           }
         }
         await db[tableName].bulkPut(records);

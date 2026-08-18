@@ -43,6 +43,13 @@ export async function initView() {
   } catch (err) {
     console.error('Error inicializando filtros de aditivos:', err);
   }
+
+  // Inicializar preferencias del Asistente de Compras
+  try {
+    initAssistantPrefs();
+  } catch (err) {
+    console.error('Error inicializando preferencias del asistente:', err);
+  }
 }
 
 async function handleShareSystem() {
@@ -358,7 +365,31 @@ function initFiltersConfig() {
     }
 }
 
-// Función para descargar y cargar el CSV usando Streams para evitar falta de memoria
+// ─────────────────────────────────────────────────────────────────────────────
+// Preferencias del Asistente de Compras
+// ─────────────────────────────────────────────────────────────────────────────
+
+function initAssistantPrefs() {
+    const toggle = document.getElementById('toggle-health-warnings');
+    if (!toggle) return;
+
+    // Cargar valor guardado (por defecto: activado)
+    const saved = localStorage.getItem('setting_health_warnings');
+    toggle.checked = saved !== 'false'; // true si no está guardado o es 'true'
+
+    // Guardar al cambiar y mostrar confirmación
+    toggle.addEventListener('change', () => {
+        localStorage.setItem('setting_health_warnings', toggle.checked ? 'true' : 'false');
+        showToast(
+            toggle.checked
+                ? '✅ Alternativas saludables activadas.'
+                : '🔕 Alternativas saludables desactivadas.',
+            toggle.checked ? 'success' : 'secondary'
+        );
+    });
+}
+
+
 async function downloadAndLoadCSV() {
     const btn = document.getElementById("download-btn");
     try {

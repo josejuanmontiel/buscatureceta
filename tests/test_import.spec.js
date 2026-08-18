@@ -15,8 +15,7 @@ test('Test import data', async ({ page }) => {
   // Eval importData in browser context
   const result = await page.evaluate(async (jsonStr) => {
     try {
-      // Import the module dynamically to get BackupStore
-      const BackupStore = await import('/js/modules/backup/BackupStore.js');
+      const BackupStore = window.BackupStore || (await import('/js/modules/backup/BackupStore.js'));
       await BackupStore.importData(jsonStr);
       
       const db = (await import('/js/db/schema.js')).db;

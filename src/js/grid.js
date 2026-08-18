@@ -11,6 +11,12 @@ import { showToast, confirmModal } from './modules/ui/UI.js';
 let currentScannedProduct = null;
 let capturedImageBlob = null;
 let unknownBarcode = null;
+
+let currentCartTicketBlob = null;
+let currentCartTicketThumbBlob = null;
+let quickTicketBlob = null;
+let quickTicketThumbBlob = null;
+
 // Expose to allow Playwright tests to wait for product to be loaded
 Object.defineProperty(window, 'currentScannedProduct', {
     get: () => currentScannedProduct,
@@ -23,8 +29,20 @@ export async function initView() {
     await migrateFromLegacyDB().catch(console.error);
     await updateCartUI();
     await updateShoppingListUI();
+    
+    // Cargar ticket pendiente persistido en IndexedDB si existe
+    const pendingTicket = await CartStore.getPendingCartTicket();
+    if (pendingTicket) {
+        currentCartTicketBlob = pendingTicket.blob;
+        currentCartTicketThumbBlob = pendingTicket.thumbBlob;
+    } else {
+        currentCartTicketBlob = null;
+        currentCartTicketThumbBlob = null;
+    }
+    updateCartTicketUI();
+    initTicketHandlers();
 
-    document.getElementById('btn-close-shopping-list').addEventListener('click', async () => {
+    document.getElementById('btn-close-shopping-list')?.addEventListener('click', async () => {
         const activeList = await ShoppingStore.getActiveList();
         if (activeList) {
             await ShoppingStore.archiveList(activeList.id);
@@ -32,31 +50,32 @@ export async function initView() {
         }
     });
 
-    document.getElementById("query-btn").addEventListener("click", handleSearch);
-    document.getElementById("code-input").addEventListener("keypress", (e) => {
+    document.getElementById("query-btn")?.addEventListener("click", handleSearch);
+    document.getElementById("code-input")?.addEventListener("keypress", (e) => {
         if (e.key === 'Enter') handleSearch();
     });
     
-    document.getElementById("btn-add-cart").addEventListener("click", handleAddToCart);
-    document.getElementById("btn-checkout").addEventListener("click", handleCheckout);
-    document.getElementById("scan-btn").addEventListener("click", () => {
+    document.getElementById("btn-add-cart")?.addEventListener("click", handleAddToCart);
+    document.getElementById("btn-checkout")?.addEventListener("click", handleCheckout);
+    document.getElementById("scan-btn")?.addEventListener("click", () => {
         window.location.href = '/scan.html?return=%23grid';
     });
 
-    const clearDbBtn = document.getElementById("clear-db-btn");
-    if (clearDbBtn) {
-        clearDbBtn.addEventListener("click", async () => {
-            await db.delete();
-            await db.open();
-            console.log("Base de datos borrada con éxito.");
-        });
-    }
+    // Botón para abrir modal de alta manual / a granel (Frutería)
+    document.getElementById("btn-manual-bulk")?.addEventListener("click", openManualBulkModal);
+    initManualBulkHandlers();
+
+    document.getElementById("clear-db-btn")?.addEventListener("click", async () => {
+        await db.delete();
+        await db.open();
+        console.log("Base de datos borrada con éxito.");
+    });
 
     // Botones del panel de captura de foto
-    document.getElementById('btn-capture-photo').addEventListener('click', startCapture);
-    document.getElementById('btn-retake-photo').addEventListener('click', startCapture);
-    document.getElementById('btn-save-photo').addEventListener('click', handleSaveUnknownProduct);
-    document.getElementById('btn-cancel-capture').addEventListener('click', hideUnknownPanel);
+    document.getElementById('btn-capture-photo')?.addEventListener('click', startCapture);
+    document.getElementById('btn-retake-photo')?.addEventListener('click', startCapture);
+    document.getElementById('btn-save-photo')?.addEventListener('click', handleSaveUnknownProduct);
+    document.getElementById('btn-cancel-capture')?.addEventListener('click', hideUnknownPanel);
 
     // Mostrar badge inicial si existe en esta vista
     await updateSyncBadge();
@@ -184,30 +203,46 @@ async function handleAddToCart() {
 async function updateCartUI() {
     const { items, total } = await CartStore.getCart();
     
-    document.getElementById('cart-total').innerText = `${total.toFixed(2)} €`;
+    const totalEl = document.getElementById('cart-total');
+    if (totalEl) totalEl.innerText = `${total.toFixed(2)} €`;
 
     const hasOFF = localStorage.getItem('off_user') && localStorage.getItem('off_user') !== 'off';
 
     const list = document.getElementById('cart-list');
+    if (!list) return;
+
     if (items.length === 0) {
         list.innerHTML = '<div class="list-group-item bg-dark text-muted border-secondary text-center">Carro vacío</div>';
     } else {
         list.innerHTML = items.map(item => {
             const isGeneric = item.productCode.startsWith('GENERIC_');
             const showOFFButton = isGeneric && hasOFF;
+            const lineTotal = ((item.price || 0) * (item.amount || 0)).toFixed(2);
+            const safeProductName = (item.productName || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             return `
             <div class="list-group-item bg-dark text-white border-secondary d-flex flex-column gap-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 text-truncate me-2 text-info" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}')">${item.productName}</h6>
-                    <div class="d-flex gap-2">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-1 text-truncate me-1 flex-grow-1 min-w-0" id="cart-name-wrapper-${item.id}">
+                        <h6 class="mb-0 text-truncate ${isGeneric ? 'text-warning' : 'text-info'}" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.productCode}', '${safeProductName}')" id="cart-name-display-${item.id}">${item.productName}</h6>
+                        <button class="btn btn-sm btn-outline-secondary border-0 py-0 px-1 flex-shrink-0 btn-rename-cart-item" onclick="window.startRenameCartItem(${item.id}, '${safeProductName}')" title="Renombrar producto" aria-label="Renombrar producto">✏️</button>
+                        <span class="badge bg-secondary text-white-50 flex-shrink-0" style="font-size:0.75rem;">${lineTotal} €</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-shrink-0">
                         ${showOFFButton ? `<button class="btn btn-sm btn-outline-info" onclick="window.triggerOFFUpload('${item.productCode}')" title="Subir foto a OpenFoodFacts"><i class="bi bi-camera"></i> OFF</button>` : ''}
                         <button class="btn btn-sm btn-outline-danger" onclick="window.removeFromCart(${item.id})"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
                 <div class="d-flex align-items-center w-100 gap-2" id="cart-item-${item.id}">
                     <div class="input-group input-group-sm w-50">
-                        <input type="number" class="form-control bg-dark text-white border-secondary cart-amount-input" value="${item.amount}" min="0" step="0.1" onchange="window.updateCartItem(${item.id})">
-                        <span class="input-group-text bg-secondary text-white border-secondary">${item.unit}</span>
+                        <input type="number" class="form-control bg-dark text-white border-secondary cart-amount-input" value="${item.amount}" min="0" step="any" onchange="window.updateCartItem(${item.id})">
+                        <select class="form-select bg-secondary text-white border-secondary cart-unit-select" style="max-width: 75px;" onchange="window.updateCartItem(${item.id})">
+                            <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg</option>
+                            <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g</option>
+                            <option value="unidad" ${item.unit === 'unidad' || !item.unit ? 'selected' : ''}>ud</option>
+                            <option value="pack" ${item.unit === 'pack' ? 'selected' : ''}>pack</option>
+                            <option value="l" ${item.unit === 'l' ? 'selected' : ''}>l</option>
+                            <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml</option>
+                        </select>
                     </div>
                     <div class="input-group input-group-sm w-50">
                         <input type="number" class="form-control bg-dark text-white border-secondary cart-price-input" value="${item.price}" min="0" step="0.01" onchange="window.updateCartItem(${item.id})">
@@ -226,13 +261,15 @@ async function updateShoppingListUI() {
     const checkedList = document.getElementById('shopping-list-checked');
     const title = document.getElementById('shopping-list-title');
 
+    if (!container) return;
+
     if (!activeList) {
         container.classList.add('d-none');
         return;
     }
 
     container.classList.remove('d-none');
-    title.textContent = `🛒 ${activeList.name || 'Lista Activa'}`;
+    if (title) title.textContent = `🛒 ${activeList.name || 'Lista Activa'}`;
 
     const pendingItems = activeList.items.filter(i => !i.checked);
     const checkedItems = activeList.items.filter(i => i.checked);
@@ -282,7 +319,9 @@ window.updateCartItem = async function(id) {
     if (!container) return;
     const amount = container.querySelector('.cart-amount-input').value;
     const price = container.querySelector('.cart-price-input').value;
-    await CartStore.updateCartItem(id, amount, price);
+    const unitSelect = container.querySelector('.cart-unit-select');
+    const unit = unitSelect ? unitSelect.value : undefined;
+    await CartStore.updateCartItem(id, amount, price, unit);
     await updateCartUI();
 };
 
@@ -291,9 +330,328 @@ window.removeFromCart = async function(id) {
     await updateCartUI();
 };
 
+/**
+ * Muestra un input inline para renombrar un producto genérico del carrito.
+ * Útil para frutas/verduras pesadas que tienen código de barras pero nombre genérico.
+ */
+window.startRenameCartItem = function(id, currentName) {
+    const wrapper = document.getElementById(`cart-name-wrapper-${id}`);
+    if (!wrapper) return;
+    // Evitar doble activación
+    if (wrapper.querySelector('.cart-rename-input')) return;
+    wrapper.innerHTML = `
+        <div class="input-group input-group-sm flex-grow-1">
+            <input type="text" class="form-control bg-dark text-warning border-warning cart-rename-input"
+                   id="cart-rename-input-${id}"
+                   value="${currentName.replace(/&quot;/g, '"')}"
+                   placeholder="Nombre del producto"
+                   maxlength="80"
+                   onkeydown="if(event.key==='Enter'){window.confirmRenameCartItem(${id});}else if(event.key==='Escape'){window.updateCartUI();}"
+            >
+            <button class="btn btn-warning btn-sm" onclick="window.confirmRenameCartItem(${id})" title="Guardar nombre"><i class="bi bi-check-lg"></i></button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.updateCartUI()" title="Cancelar"><i class="bi bi-x-lg"></i></button>
+        </div>
+    `;
+    const input = document.getElementById(`cart-rename-input-${id}`);
+    if (input) { input.focus(); input.select(); }
+};
+
+/**
+ * Confirma el renombre: actualiza customProducts con el nuevo nombre y refresca el carrito.
+ */
+window.confirmRenameCartItem = async function(id) {
+    const input = document.getElementById(`cart-rename-input-${id}`);
+    if (!input) return;
+    const newName = input.value.trim();
+    if (!newName) { showToast('El nombre no puede estar vacío', 'warning'); return; }
+
+    // Obtener el productCode del item del carrito
+    const { items } = await CartStore.getCart();
+    const cartItem = items.find(i => i.id === id);
+    if (!cartItem) return;
+
+    // Actualizar el nombre en customProducts
+    await ProductStore.updateCustomProduct(cartItem.productCode, { product_name: newName });
+    showToast(`✅ Renombrado: ${newName}`, 'success');
+    await updateCartUI();
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Alta Manual / A Granel (Frutería / Sin Códigos)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function openManualBulkModal() {
+    const modalEl = document.getElementById('modal-manual-bulk');
+    if (!modalEl) return;
+    
+    // Reset form
+    document.getElementById('form-manual-bulk').reset();
+    document.getElementById('bulk-selected-code').value = '';
+    document.getElementById('bulk-amount').value = '1';
+    document.getElementById('bulk-unit').value = 'kg';
+    const unitLabel = document.getElementById('bulk-unit-label');
+    if (unitLabel) unitLabel.textContent = 'kg';
+    document.getElementById('bulk-unit-price').value = '';
+    document.getElementById('bulk-total-price').value = '';
+    document.getElementById('bulk-save-custom').checked = true;
+    document.getElementById('bulk-zone').value = 'food';
+    document.getElementById('bulk-nutriscore').value = 'a';
+    updateBulkPriceHint();
+
+    const modal = Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    setTimeout(() => {
+        const nameInput = document.getElementById('bulk-product-name');
+        if (nameInput) nameInput.focus();
+    }, 400);
+}
+
+function initManualBulkHandlers() {
+    const chipsContainer = document.getElementById('bulk-quick-chips');
+    if (chipsContainer) {
+        chipsContainer.querySelectorAll('.bulk-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const name = chip.dataset.name;
+                const unit = chip.dataset.unit || 'kg';
+                document.getElementById('bulk-product-name').value = name;
+                document.getElementById('bulk-unit').value = unit;
+                const unitLabel = document.getElementById('bulk-unit-label');
+                if (unitLabel) unitLabel.textContent = unit;
+                document.getElementById('bulk-selected-code').value = '';
+                const resultsContainer = document.getElementById('bulk-product-results');
+                if (resultsContainer) resultsContainer.classList.add('d-none');
+                
+                // Intenta buscar el último precio si ya existe
+                ProductStore.searchProducts(name, 1).then(async results => {
+                    if (results.length > 0 && results[0].product_name.toLowerCase() === name.toLowerCase()) {
+                        const lastPrice = await CartStore.getLastKnownPrice(results[0].code);
+                        if (lastPrice > 0) {
+                            document.getElementById('bulk-unit-price').value = lastPrice.toFixed(2);
+                        }
+                    }
+                    updateBulkPriceSync('unit');
+                });
+
+                document.getElementById('bulk-amount').focus();
+            });
+        });
+    }
+
+    const nameInput = document.getElementById('bulk-product-name');
+    const resultsContainer = document.getElementById('bulk-product-results');
+    let searchTimeout = null;
+
+    if (nameInput && resultsContainer) {
+        nameInput.addEventListener('input', () => {
+            const query = nameInput.value.trim();
+            document.getElementById('bulk-selected-code').value = '';
+            
+            clearTimeout(searchTimeout);
+            if (query.length < 2) {
+                resultsContainer.classList.add('d-none');
+                resultsContainer.innerHTML = '';
+                return;
+            }
+
+            searchTimeout = setTimeout(async () => {
+                const products = await ProductStore.searchProducts(query, 5);
+                if (products.length === 0) {
+                    resultsContainer.classList.add('d-none');
+                    resultsContainer.innerHTML = '';
+                    return;
+                }
+
+                resultsContainer.innerHTML = products.map(p => `
+                    <button type="button" class="list-group-item list-group-item-action bg-dark text-white border-secondary d-flex justify-content-between align-items-center py-2" data-code="${p.code}" data-name="${(p.product_name || '').replace(/"/g, '&quot;')}" data-zone="${p.pantryZone || 'food'}" data-nutriscore="${p.nutriscore_grade || 'unknown'}">
+                        <span>${p.product_name}</span>
+                        <small class="badge bg-secondary">${p.pantryZone === 'nonfood' ? '🧴' : '🥦'}</small>
+                    </button>
+                `).join('');
+                resultsContainer.classList.remove('d-none');
+
+                resultsContainer.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        nameInput.value = btn.dataset.name;
+                        document.getElementById('bulk-selected-code').value = btn.dataset.code;
+                        document.getElementById('bulk-zone').value = btn.dataset.zone || 'food';
+                        document.getElementById('bulk-nutriscore').value = btn.dataset.nutriscore || 'unknown';
+                        resultsContainer.classList.add('d-none');
+
+                        const lastPrice = await CartStore.getLastKnownPrice(btn.dataset.code);
+                        if (lastPrice > 0) {
+                            document.getElementById('bulk-unit-price').value = lastPrice.toFixed(2);
+                            updateBulkPriceSync('unit');
+                        }
+                    });
+                });
+            }, 250);
+        });
+
+        // Cerrar resultados si se hace click fuera
+        document.addEventListener('click', (e) => {
+            if (!nameInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+                resultsContainer.classList.add('d-none');
+            }
+        });
+    }
+
+    const amountInput = document.getElementById('bulk-amount');
+    const unitSelect = document.getElementById('bulk-unit');
+    const unitPriceInput = document.getElementById('bulk-unit-price');
+    const totalPriceInput = document.getElementById('bulk-total-price');
+
+    if (unitSelect) {
+        unitSelect.addEventListener('change', () => {
+            const unitLabel = document.getElementById('bulk-unit-label');
+            if (unitLabel) unitLabel.textContent = unitSelect.value;
+            updateBulkPriceHint();
+        });
+    }
+
+    if (amountInput) {
+        amountInput.addEventListener('input', () => updateBulkPriceSync('amount'));
+    }
+
+    if (unitPriceInput) {
+        unitPriceInput.addEventListener('input', () => updateBulkPriceSync('unit'));
+    }
+
+    if (totalPriceInput) {
+        totalPriceInput.addEventListener('input', () => updateBulkPriceSync('total'));
+    }
+
+    const btnSubmit = document.getElementById('btn-submit-bulk-item');
+    if (btnSubmit) {
+        btnSubmit.addEventListener('click', handleSaveBulkItem);
+    }
+
+    const form = document.getElementById('form-manual-bulk');
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleSaveBulkItem();
+        });
+    }
+}
+
+function updateBulkPriceSync(source) {
+    const amount = parseFloat(document.getElementById('bulk-amount').value) || 0;
+    const unitPriceInput = document.getElementById('bulk-unit-price');
+    const totalPriceInput = document.getElementById('bulk-total-price');
+
+    if (source === 'unit' || source === 'amount') {
+        const unitPrice = parseFloat(unitPriceInput.value);
+        if (!isNaN(unitPrice) && amount > 0) {
+            totalPriceInput.value = (amount * unitPrice).toFixed(2);
+        }
+    } else if (source === 'total') {
+        const totalPrice = parseFloat(totalPriceInput.value);
+        if (!isNaN(totalPrice) && amount > 0) {
+            unitPriceInput.value = (totalPrice / amount).toFixed(2);
+        }
+    }
+    updateBulkPriceHint();
+}
+
+function updateBulkPriceHint() {
+    const amount = parseFloat(document.getElementById('bulk-amount').value) || 0;
+    const unit = document.getElementById('bulk-unit')?.value || 'kg';
+    const unitPrice = parseFloat(document.getElementById('bulk-unit-price').value) || 0;
+    const total = amount * unitPrice;
+    
+    const hint = document.getElementById('bulk-price-calc-hint');
+    if (hint) {
+        hint.innerHTML = `💡 ${amount} ${unit} × ${unitPrice.toFixed(2)} €/${unit} = <strong>${total.toFixed(2)} €</strong>`;
+    }
+}
+
+async function handleSaveBulkItem() {
+    const nameInput = document.getElementById('bulk-product-name');
+    const name = nameInput.value.trim();
+    if (!name) {
+        nameInput.focus();
+        showToast('Introduce un nombre para el producto', 'warning');
+        return;
+    }
+
+    const amount = parseFloat(document.getElementById('bulk-amount').value);
+    if (isNaN(amount) || amount <= 0) {
+        showToast('Introduce una cantidad válida mayor que 0', 'warning');
+        return;
+    }
+
+    const unit = document.getElementById('bulk-unit').value || 'kg';
+    let unitPrice = parseFloat(document.getElementById('bulk-unit-price').value) || 0;
+    const totalPrice = parseFloat(document.getElementById('bulk-total-price').value);
+
+    if (unitPrice === 0 && !isNaN(totalPrice) && totalPrice > 0 && amount > 0) {
+        unitPrice = totalPrice / amount;
+    }
+
+    const zone = document.getElementById('bulk-zone').value || 'food';
+    const nutriscore = document.getElementById('bulk-nutriscore').value || 'a';
+    const saveCustom = document.getElementById('bulk-save-custom').checked;
+
+    let code = document.getElementById('bulk-selected-code').value;
+
+    if (!code) {
+        // Verificar si ya existe un producto con el mismo nombre exacto
+        const existing = await ProductStore.searchProducts(name, 1);
+        if (existing.length > 0 && existing[0].product_name.toLowerCase() === name.toLowerCase()) {
+            code = existing[0].code;
+        } else {
+            // Crear código único para producto genérico/manual
+            code = 'GENERIC_BULK_' + Date.now();
+        }
+    }
+
+    if (saveCustom) {
+        await ProductStore.addCustomProduct({
+            code,
+            product_name: name,
+            pantryZone: zone,
+            nutriscore_grade: nutriscore,
+            ingredients_text: '',
+            is_custom: true
+        });
+    }
+
+    await CartStore.addToCart(code, amount, unitPrice, unit);
+    RecentStore.markAsUsed(code);
+
+    // Marcar en la lista de compra activa si coincide
+    const activeList = await ShoppingStore.getActiveList();
+    if (activeList) {
+        const changed = await ShoppingStore.checkItem(activeList.id, code) || 
+                        await ShoppingStore.checkItem(activeList.id, name);
+        if (changed) await updateShoppingListUI();
+    }
+
+    // Ocultar modal
+    const modalEl = document.getElementById('modal-manual-bulk');
+    if (modalEl) {
+        const modal = Modal.getInstance(modalEl) || Modal.getOrCreateInstance(modalEl);
+        modal.hide();
+    }
+
+    await updateCartUI();
+    showToast(`🛒 ${name} añadido al carro (${amount} ${unit})`);
+}
+
 async function handleCheckout() {
     const { items } = await CartStore.getCart();
-    if (items.length === 0) return showToast('El carro está vacío', 'warning');
+    const pendingTicket = await CartStore.getPendingCartTicket();
+
+    if (items.length === 0 && !pendingTicket && !currentCartTicketBlob) {
+        return showToast('El carro está vacío. Escanea productos o adjunta un ticket.', 'warning');
+    }
+
+    if (items.length === 0) {
+        // Carro sin productos pero con ticket adjunto
+        await performCheckout(0);
+        return;
+    }
 
     const missingWeights = [];
     for (const item of items) {
@@ -394,14 +752,99 @@ async function handleCheckout() {
 }
 
 async function performCheckout(itemCount) {
-    if (confirm(`¿Terminar compra y mover ${itemCount} productos a la despensa?`)) {
-        const warnings = await CartStore.checkout();
-        let msg = '¡Compra guardada en Despensa!';
-        if (warnings && warnings.length > 0) {
-            msg += "\n\n⚠️ Atención:\n" + warnings.join("\n") + "\n\nSe ha asumido 1kg para los que no tenían peso.";
+    const hasTicket = !!(currentCartTicketBlob || (await CartStore.getPendingCartTicket()));
+    const promptMsg = itemCount > 0
+        ? `¿Terminar compra y mover ${itemCount} productos a la despensa${hasTicket ? ' (con ticket adjunto)' : ''}?`
+        : '¿Guardar compra con foto del ticket en el Historial?';
+
+    if (confirm(promptMsg)) {
+        const warnings = await CartStore.checkout('', '', currentCartTicketBlob, currentCartTicketThumbBlob);
+        currentCartTicketBlob = null;
+        currentCartTicketThumbBlob = null;
+        await CartStore.clearPendingCartTicket();
+        updateCartTicketUI();
+
+        if (itemCount > 0) {
+            let msg = '¡Compra guardada en Despensa!';
+            if (warnings && warnings.length > 0) {
+                msg += "\n\n⚠️ Atención:\n" + warnings.join("\n") + "\n\nSe ha asumido 1kg para los que no tenían peso.";
+            }
+            showToast(msg.replace(/\n/g, '<br>'));
+            setTimeout(() => window.location.hash = '#pantry', 1000);
+        } else {
+            showToast('🧾 ¡Compra con ticket guardada en el Historial!');
+            setTimeout(() => window.location.hash = '#cart-history', 1000);
         }
-        showToast(msg.replace(/\n/g, '<br>'));
-        setTimeout(() => window.location.hash = '#pantry', 1000);
+    }
+}
+
+function initTicketHandlers() {
+    // Carrito activo: botón adjuntar ticket
+    const btnAttach = document.getElementById('btn-attach-cart-ticket');
+    const fileInput = document.getElementById('cart-ticket-file-input');
+    const btnRemove = document.getElementById('btn-remove-cart-ticket');
+    const thumbImg = document.getElementById('cart-ticket-thumb-img');
+
+    if (btnAttach && fileInput) {
+        btnAttach.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+                const { blob, thumbBlob } = await CartStore.processTicketImage(file);
+                currentCartTicketBlob = blob;
+                currentCartTicketThumbBlob = thumbBlob;
+                await CartStore.savePendingCartTicket(blob, thumbBlob);
+                updateCartTicketUI();
+                showToast('🧾 Ticket adjuntado al carrito');
+            } catch (err) {
+                console.error(err);
+                showToast('Error al procesar foto del ticket: ' + err.message, 'danger');
+            }
+        });
+    }
+
+    if (btnRemove) {
+        btnRemove.addEventListener('click', async () => {
+            currentCartTicketBlob = null;
+            currentCartTicketThumbBlob = null;
+            await CartStore.clearPendingCartTicket();
+            if (fileInput) fileInput.value = '';
+            updateCartTicketUI();
+            showToast('Ticket eliminado del carrito');
+        });
+    }
+
+    if (thumbImg) {
+        thumbImg.addEventListener('click', () => {
+            if (currentCartTicketBlob) {
+                const url = URL.createObjectURL(currentCartTicketBlob);
+                window.open(url, '_blank');
+            }
+        });
+    }
+}
+
+function updateCartTicketUI() {
+    const previewBox = document.getElementById('cart-ticket-preview-box');
+    const thumbImg = document.getElementById('cart-ticket-thumb-img');
+    const btnAttach = document.getElementById('btn-attach-cart-ticket');
+    const statusTitle = document.getElementById('cart-ticket-status-title');
+    const statusSub = document.getElementById('cart-ticket-status-subtitle');
+
+    if (!previewBox) return;
+
+    if (currentCartTicketThumbBlob) {
+        thumbImg.src = URL.createObjectURL(currentCartTicketThumbBlob);
+        previewBox.classList.remove('d-none');
+        btnAttach.innerHTML = '<i class="bi bi-arrow-repeat"></i> Cambiar';
+        statusTitle.textContent = '🧾 Ticket listo para adjuntar';
+        statusSub.textContent = 'Se guardará junto a la compra al pasar por caja';
+    } else {
+        previewBox.classList.add('d-none');
+        btnAttach.innerHTML = '<i class="bi bi-camera"></i> 📸 Adjuntar Ticket';
+        statusTitle.textContent = 'Foto del Ticket de Compra';
+        statusSub.textContent = 'Adjunta el ticket para guardar y consultar precios más tarde';
     }
 }
 

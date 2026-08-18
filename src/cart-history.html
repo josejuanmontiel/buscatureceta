@@ -6,6 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Historial de Compras - NutriAgenda</title>
   <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    #qr-reader-inline { width: 100%; border-radius: 8px; overflow: hidden; background: #000; }
+    #qr-reader-inline video { border-radius: 8px; }
+    #scan-inline-status { font-size: 0.82rem; min-height: 1.4em; }
+  </style>
 </head>
 
 <body class="d-flex flex-column h-100 text-center">
@@ -54,6 +59,96 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal: Visor de Ticket Ampliado con Zoom -->
+  <div class="modal fade" id="modal-ticket-viewer" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary py-2">
+          <h5 class="modal-title fs-6" id="ticket-viewer-title">🧾 Ticket de Compra</h5>
+          <div class="d-flex gap-1 align-items-center ms-auto me-2">
+            <button type="button" class="btn btn-sm btn-outline-light py-0 px-2" id="btn-zoom-in" title="Acercar">🔍+</button>
+            <button type="button" class="btn btn-sm btn-outline-light py-0 px-2" id="btn-zoom-out" title="Alejar">🔍-</button>
+            <button type="button" class="btn btn-sm btn-outline-light py-0 px-2" id="btn-zoom-reset" title="Restablecer">100%</button>
+            <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" id="btn-rotate-ticket" title="Girar 90°">🔄</button>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-center p-2 bg-black overflow-auto" style="min-height: 400px; max-height: 80vh;">
+          <div id="ticket-zoom-container" style="transition: transform 0.2s ease; transform-origin: top center; display: inline-block;">
+            <img id="ticket-viewer-img" src="" class="img-fluid rounded" style="max-height: 85vh; object-fit: contain;">
+          </div>
+        </div>
+        <div class="modal-footer border-secondary py-1 justify-content-between">
+          <span class="small text-muted" id="ticket-viewer-meta"></span>
+          <div>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Añadir Producto a Compra Histórica -->
+  <div class="modal fade" id="modal-history-add-product" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title">➕ Añadir Producto a la Compra</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body text-start">
+          <form id="form-history-add-product">
+            <input type="hidden" id="history-add-cart-id" value="">
+            <input type="hidden" id="history-add-product-code" value="">
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Nombre del Producto *</label>
+              <div class="input-group">
+                <input type="text" class="form-control bg-dark text-white border-secondary" id="history-add-product-name" placeholder="Ej: Leche desnatada, Manzanas..." required>
+                <button class="btn btn-outline-info" type="button" id="btn-scan-inline-toggle" title="Escanear código de barras">
+                  <i class="bi bi-upc-scan"></i>
+                </button>
+              </div>
+              <div id="scan-inline-wrapper" class="mt-2" style="display:none;">
+                <div id="qr-reader-inline"></div>
+                <div id="scan-inline-status" class="text-center text-muted mt-1"></div>
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1" id="btn-scan-inline-stop">✕ Cerrar cámara</button>
+              </div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-7">
+                <label class="form-label small fw-bold">Cantidad</label>
+                <input type="number" step="any" min="0.01" class="form-control bg-dark text-white border-secondary" id="history-add-amount" value="1" required>
+              </div>
+              <div class="col-5">
+                <label class="form-label small fw-bold">Unidad</label>
+                <select class="form-select bg-dark text-white border-secondary" id="history-add-unit">
+                  <option value="unidad" selected>ud (Unidad)</option>
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="l">l</option>
+                  <option value="ml">ml</option>
+                  <option value="pack">pack</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Precio Unitario (€)</label>
+              <input type="number" step="0.01" min="0" class="form-control bg-dark text-white border-secondary" id="history-add-price" placeholder="0.00" required>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-save-history-add-product">Añadir Producto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input oculto para adjuntar/cambiar ticket desde una compra existente -->
+  <input type="file" id="cart-item-ticket-file-input" accept="image/*" capture="environment" class="d-none">
 
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/cart-history.js"></script>
