@@ -1,0 +1,76 @@
+1
+00:00:00,000 --> 00:00:15,192
+Bienvenido a NutriAgenda. Esta aplicación nace con un objetivo fundamental: devolverte el control absoluto de lo que compras, comes y almacenas, combinando la base de datos abierta de OpenFoodFacts con un gestor nutricional completo y cien por cien privado.
+
+2
+00:00:15,192 --> 00:00:31,296
+A diferencia de las aplicaciones comerciales convencionales, NutriAgenda funciona totalmente en local dentro de tu navegador utilizando IndexedDB y Dexie. Tus compras, recetas, fotos y datos de salud no viajan a ningún servidor remoto: la privacidad es total.
+
+3
+00:00:31,296 --> 00:00:46,728
+El flujo de la aplicación conecta todos los eslabones: desde el escaneo con alertas de aditivos en el supermercado, el control de existencias en tu despensa, la creación de recetas con cálculo de macros, hasta el registro diario de ingestas y análisis gráfico.
+
+4
+00:00:46,733 --> 00:01:00,965
+En la sección de ajustes podemos configurar alertas automáticas para ingredientes y aditivos controvertidos. Por ejemplo, activamos la exclusión del conservante E250, el nitrito sódico habitual en embutidos ultraprocesados.
+
+5
+00:01:00,965 --> 00:01:14,093
+Al escanear un producto en el supermercado, el sistema analiza sus componentes al instante. Si detecta el aditivo E250, emite un aviso visual en rojo y nos explica el motivo de la advertencia sanitaria.
+
+6
+00:01:14,093 --> 00:01:26,717
+NutriAgenda no solo te alerta, sino que te propone automáticamente productos alternativos de la misma categoría libres del aditivo nocivo. Con un solo clic sustituimos el producto por la opción saludable.
+
+7
+00:01:26,717 --> 00:01:35,717
+Ajustamos el precio real del supermercado y la cantidad. La cesta calcula el total en tiempo real para mantenernos siempre dentro de nuestro presupuesto.
+
+8
+00:01:35,733 --> 00:01:45,333
+Añadimos a la cesta el resto de nuestra compra: Pan de molde blanco y leche entera. Cada producto queda registrado con sus macros nutricionales y coste asociado.
+
+9
+00:01:45,333 --> 00:01:53,901
+Al pulsar el botón de Checkout, la cesta de la compra se transfiere íntegramente a nuestro inventario de cocina. No hace falta reescribir nada a mano.
+
+10
+00:01:53,901 --> 00:02:03,573
+En la sección de Despensa tenemos una vista clara de todos los alimentos disponibles, sus fechas de caducidad, cantidades y valores calóricos. Todo listo para cocinar.
+
+11
+00:02:03,573 --> 00:02:13,869
+Pasamos a la pestaña de Recetas y abrimos el editor. Aquí podemos diseñar nuestros platos combinando productos escaneados con las existencias reales de nuestra despensa.
+
+12
+00:02:13,869 --> 00:02:24,261
+Bautizamos la receta como 'Bocadillo de Salchichas Saludables', definimos dos raciones y seleccionamos las salchichas de pollo y el pan de molde como ingredientes principales.
+
+13
+00:02:24,261 --> 00:02:36,093
+El sistema calcula al vuelo el desglose por ración: calorías totales, gramos de proteína, carbohidratos, grasas y el coste exacto en euros. Guardamos la receta y queda lista en nuestro recetario.
+
+14
+00:02:36,107 --> 00:02:47,411
+En la NutriAgenda planificamos nuestras comidas del día distribuidas en desayuno, almuerzo, merienda y cena. Visualizamos de un vistazo el cumplimiento de nuestro objetivo calórico diario.
+
+15
+00:02:47,411 --> 00:02:58,451
+Añadimos nuestra receta al almuerzo de hoy. En ese mismo instante, la aplicación descuenta automáticamente las porciones e ingredientes utilizados de las existencias de la despensa.
+
+16
+00:02:58,451 --> 00:03:10,475
+Además, podemos asociar una fotografía real del plato cocinado. Las imágenes se guardan de forma optimizada y segura en la base de datos local, creando un diario visual ideal para seguimiento personal.
+
+17
+00:03:10,475 --> 00:03:23,579
+En el Dashboard consultamos la analítica completa: distribución de macronutrientes, balance energético semanal y estadísticas de consumo. Todos los gráficos se renderizan al instante con Chart.js en el cliente.
+
+18
+00:03:23,579 --> 00:03:35,603
+Por último, el visor de base de datos nos permite explorar cientos de miles de productos de OpenFoodFacts España sin conexión a internet, gracias a las tablas interactivas ultrarrápidas de Tabulator.
+
+19
+00:03:35,603 --> 00:03:46,355
+NutriAgenda demuestra que es posible crear herramientas potentes de nutrición e inventario que respetan al cien por cien la privacidad del usuario. ¡Gracias por ver esta demostración!
+

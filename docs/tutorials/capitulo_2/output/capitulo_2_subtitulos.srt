@@ -1,0 +1,16 @@
+1
+00:00:00,000 --> 00:00:14,232
+En la sección de ajustes podemos configurar alertas automáticas para ingredientes y aditivos controvertidos. Por ejemplo, activamos la exclusión del conservante E250, el nitrito sódico habitual en embutidos ultraprocesados.
+
+2
+00:00:14,232 --> 00:00:27,360
+Al escanear un producto en el supermercado, el sistema analiza sus componentes al instante. Si detecta el aditivo E250, emite un aviso visual en rojo y nos explica el motivo de la advertencia sanitaria.
+
+3
+00:00:27,360 --> 00:00:39,984
+NutriAgenda no solo te alerta, sino que te propone automáticamente productos alternativos de la misma categoría libres del aditivo nocivo. Con un solo clic sustituimos el producto por la opción saludable.
+
+4
+00:00:39,984 --> 00:00:48,984
+Ajustamos el precio real del supermercado y la cantidad. La cesta calcula el total en tiempo real para mantenernos siempre dentro de nuestro presupuesto.
+

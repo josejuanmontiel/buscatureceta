@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visor de Masterclass & Videotutoriales — NutriAgenda</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .hero-header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .video-container {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      background-color: #000;
+    }
+    .chapter-card {
+      background-color: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      transition: all 0.2s ease-in-out;
+      cursor: pointer;
+    }
+    .chapter-card:hover {
+      background-color: #334155;
+      transform: translateY(-2px);
+      border-color: #38bdf8;
+    }
+    .chapter-card.active {
+      background-color: #0369a1;
+      border-color: #38bdf8;
+    }
+    .badge-chapter {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #fff;
+    }
+    .doc-preview {
+      background-color: #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero-header py-4 mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="h3 mb-1 fw-bold text-info"><i class="bi bi-play-circle-fill me-2"></i>NutriAgenda — Centro de Masterclass</h1>
+        <p class="text-muted mb-0">Demostraciones audiovisuales y videotutoriales generados por código</p>
+      </div>
+      <div>
+        <a href="https://josejuanmontiel.github.io/OpenFoodFacts/" target="_blank" class="btn btn-outline-info me-2">
+          <i class="bi bi-globe me-1"></i> Abrir App Web
+        </a>
+        <a href="https://github.com/josejuanmontiel/buscatureceta" target="_blank" class="btn btn-outline-light">
+          <i class="bi bi-github me-1"></i> GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mb-5">
+    <div class="row g-4">
+      <!-- Reproductor Principal -->
+      <div class="col-lg-8">
+        <div class="video-container mb-3">
+          <video id="videoPlayer" class="w-100" controls preload="metadata">
+            <source id="videoSource" src="./masterclass_completa_nutriagenda.mp4" type="video/mp4">
+            <track id="videoTrack" label="Español" kind="subtitles" srclang="es" src="./masterclass_completa_subtitulos.srt" default>
+            Tu navegador no soporta la reproducción de vídeo HTML5.
+          </video>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center p-3 bg-dark rounded-3 border border-secondary border-opacity-25 mb-4">
+          <div>
+            <h4 id="currentTitle" class="h5 mb-1 text-light">Masterclass Completa: OpenFoodFacts & NutriAgenda</h4>
+            <span id="currentBadge" class="badge badge-chapter">Vídeo Completo Unificado</span>
+          </div>
+          <div>
+            <a id="downloadVideoBtn" href="./masterclass_completa_nutriagenda.mp4" download class="btn btn-sm btn-primary me-2">
+              <i class="bi bi-download me-1"></i> MP4
+            </a>
+            <a id="downloadSrtBtn" href="./masterclass_completa_subtitulos.srt" download class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-card-text me-1"></i> SRT
+            </a>
+          </div>
+        </div>
+
+        <div class="doc-preview">
+          <h5 class="fw-bold mb-3"><i class="bi bi-file-earmark-text me-2 text-info"></i>Resumen Didáctico</h5>
+          <div id="chapterSummary" class="text-secondary">
+            NutriAgenda es un ecosistema nutricional offline-first diseñado para operar directamente en el navegador del usuario sin servidores ni recolección de datos privados. Esta masterclass recorre paso a paso el ciclo de vida de la nutrición: escaneo inteligente, despensa, recetas y control de salud.
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de Capítulos -->
+      <div class="col-lg-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-collection-play me-2 text-info"></i>Capítulos y Módulos</h5>
+        
+        <div class="d-flex flex-column gap-2" id="chapterList">
+          <div class="chapter-card p-3 active" onclick="loadVideo('master', 'Masterclass Completa: OpenFoodFacts & NutriAgenda', './masterclass_completa_nutriagenda.mp4', './masterclass_completa_subtitulos.srt', 'Recorrido audiovisual completo que integra los 6 módulos de la plataforma.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white"><i class="bi bi-film me-2"></i>Masterclass Completa</span>
+              <span class="badge bg-secondary">Todo</span>
+            </div>
+          </div>
+
+          <div class="chapter-card p-3" onclick="loadVideo(1, 'Capítulo 1: Introducción & Filosofía Offline-First', './capitulo_1/output/capitulo_1_masterclass.mp4', './capitulo_1/output/capitulo_1_subtitulos.srt', 'Presentación del paradigma offline-first con Dexie / IndexedDB y soberanía sobre los datos personales.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white">01. Filosofía Offline-First</span>
+              <span class="badge badge-chapter">Cap. 1</span>
+            </div>
+          </div>
+
+          <div class="chapter-card p-3" onclick="loadVideo(2, 'Capítulo 2: Supermercado Inteligente & Aditivos', './capitulo_2/output/capitulo_2_masterclass.mp4', './capitulo_2/output/capitulo_2_subtitulos.srt', 'Escaneo de códigos de barras, detección de nitrito sódico E250, alerta roja y reemplazo por alternativas saludables.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white">02. Supermercado & Aditivos</span>
+              <span class="badge badge-chapter">Cap. 2</span>
+            </div>
+          </div>
+
+          <div class="chapter-card p-3" onclick="loadVideo(3, 'Capítulo 3: Checkout a la Despensa', './capitulo_3/output/capitulo_3_masterclass.mp4', './capitulo_3/output/capitulo_3_subtitulos.srt', 'Traspaso directo de la compra al inventario de cocina sin necesidad de entrada manual de datos.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white">03. Checkout y Despensa</span>
+              <span class="badge badge-chapter">Cap. 3</span>
+            </div>
+          </div>
+
+          <div class="chapter-card p-3" onclick="loadVideo(4, 'Capítulo 4: Editor de Recetas y Macros', './capitulo_4/output/capitulo_4_masterclass.mp4', './capitulo_4/output/capitulo_4_subtitulos.srt', 'Composición de platos usando existencias reales, desglose calórico automático y cálculo de coste por plato.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white">04. Editor de Recetas</span>
+              <span class="badge badge-chapter">Cap. 4</span>
+            </div>
+          </div>
+
+          <div class="chapter-card p-3" onclick="loadVideo(5, 'Capítulo 5: NutriAgenda y Registro Fotográfico', './capitulo_5/output/capitulo_5_masterclass.mp4', './capitulo_5/output/capitulo_5_subtitulos.srt', 'Asignación de comidas a la agenda semanal, descuento automático de existencias y registro visual.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white">05. NutriAgenda & Fotos</span>
+              <span class="badge badge-chapter">Cap. 5</span>
+            </div>
+          </div>
+
+          <div class="chapter-card p-3" onclick="loadVideo(6, 'Capítulo 6: Dashboard de Salud y OpenFoodFacts', './capitulo_6/output/capitulo_6_masterclass.mp4', './capitulo_6/output/capitulo_6_subtitulos.srt', 'Gráficos analíticos con Chart.js y visor ultra-rápido de la base de datos de productos de España.')">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-white">06. Dashboard y OpenFoodFacts</span>
+              <span class="badge badge-chapter">Cap. 6</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function loadVideo(ch, title, videoPath, srtPath, summary) {
+      const player = document.getElementById('videoPlayer');
+      const source = document.getElementById('videoSource');
+      const track = document.getElementById('videoTrack');
+      const titleEl = document.getElementById('currentTitle');
+      const badgeEl = document.getElementById('currentBadge');
+      const downloadBtn = document.getElementById('downloadVideoBtn');
+      const downloadSrt = document.getElementById('downloadSrtBtn');
+      const summaryEl = document.getElementById('chapterSummary');
+
+      source.src = videoPath;
+      track.src = srtPath;
+      titleEl.innerText = title;
+      badgeEl.innerText = ch === 'master' ? 'Vídeo Completo Unificado' : `Capítulo ${ch}`;
+      downloadBtn.href = videoPath;
+      downloadSrt.href = srtPath;
+      summaryEl.innerText = summary;
+
+      // Actualizar tarjeta activa
+      const cards = document.querySelectorAll('.chapter-card');
+      cards.forEach(c => c.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      player.load();
+      player.play().catch(() => {});
+    }
+  </script>
+</body>
+</html>

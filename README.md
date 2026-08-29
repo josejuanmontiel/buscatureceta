@@ -1,6 +1,7 @@
 # OpenFoodFacts & NutriAgenda
 
-**🌍 Aplicación en vivo:** [https://josejuanmontiel.github.io/OpenFoodFacts/](https://josejuanmontiel.github.io/OpenFoodFacts/) *(Se despliega automáticamente con cada push a la rama principal)*
+**🌍 Aplicación en vivo:** [https://josejuanmontiel.github.io/OpenFoodFacts/](https://josejuanmontiel.github.io/OpenFoodFacts/) *(Se despliega automáticamente con cada push a la rama principal)*  
+**🎥 Vídeo Demostración y Masterclass en YouTube:** [https://youtu.be/03f_0AD84B0](https://youtu.be/03f_0AD84B0)
 
 ## Motivo
 A raiz de este [este](https://www.youtube.com/watch?v=j5dUzDTQ3mc) video de la fundacion [UAPO](https://www.fundacionuapo.org) y a cosas que ya tenia en la cabeza de hace tiempo:
@@ -72,22 +73,24 @@ Tras haber consolidado el flujo principal de *Compra → Despensa → Ingesta* (
 - [ ] **Compartición P2P:** Aprovechar WebRTC/PeerJS (experiencia de "pingo") para compartir la despensa o la lista de la compra entre miembros de la misma familia sin pasar por un servidor centralizado.
 - [ ] **Adaptadores externos de Recetas:** Conectores (solo lectura) para importar recetas estructuradas desde APIs como Mealie o Tandoor si el usuario tiene su propio servidor casero.
 - [ ] **Export/Import de Privacidad:** Mecanismo robusto para descargar toda tu vida nutricional en un archivo JSON y llevártela a otro dispositivo.
-E
 ---
 
-## Flujo End-to-End (E2E) Automatizado
+## 🎥 Videotutoriales, Demostración en Vídeo y Flujo E2E
 
-A continuación se muestra el ciclo de vida completo del "Smart Cart" validado automáticamente con Playwright (reproducido a velocidad x0.1 para apreciar los detalles). 
+> 🔴 **[▶️ Ver Masterclass y Demostración Completa en YouTube (3:46 min)](https://youtu.be/03f_0AD84B0)**  
+> 📺 **[🌐 Abrir Visor Web Interactivo](./docs/tutorials/visor_masterclass.html)** • 📖 **[Centro de Recursos Audiovisuales y Guiones IA](./docs/VIDEOTUTORIALES_Y_MASTERCLASS.md)**
 
-<video controls autoplay loop muted src="./flow_slow.webm" width="100%"></video>
+A continuación se muestra el ciclo de vida completo de la **NutriAgenda** validado y generado automáticamente con el orquestador de Playwright + Kokoro TTS / Edge-TTS + FFmpeg:
 
-> *Nota: Si tu visor de Markdown no reproduce automáticamente el vídeo, puedes **[verlo o descargarlo directamente haciendo clic aquí](./flow_slow.webm)**.*
+<video controls autoplay loop muted src="./docs/tutorials/masterclass_completa_nutriagenda.mp4" width="100%"></video>
 
-**Explicación del flujo:**
-1. **Configuración Inicial**: Se carga una base local y se configuran alertas (ej. `E250`).
-2. **Escaneo y Alerta**: Escaneo de Costilla Adobada → alerta visual → sugerencia de Salchichas de Pollo.
-3. **Compra e Ingesta de Presupuesto**: Elección de productos y control de presupuesto.
-4. **Despensa Automática**: Al hacer Checkout, los artículos pasan al stock.
-5. **Generación de Recetas**: Se crea "Bocadillo de Salchicha" sumando macros automáticamente.
-6. **Agenda Semanal (Diario)**: Al registrar la ingesta, se descuentan las cantidades de la despensa.
-7. **Dashboard Nutricional**: Todos los datos se presentan visualmente (calorías, macros, etc.).
+> *Nota: Si tu visor de Markdown no reproduce automáticamente el vídeo, puedes **[verlo en YouTube](https://youtu.be/03f_0AD84B0)** o **[descargar el MP4 directamente aquí](./docs/tutorials/masterclass_completa_nutriagenda.mp4)**.*
+
+**Módulos y Explicación del Flujo:**
+1. **Filosofía Offline-First**: Arquitectura 100% en cliente con Dexie / IndexedDB sin servidores intermedios.
+2. **Supermercado y Alerta de Aditivos**: Escaneo de producto → detección de aditivo `E250` → alerta visual roja → sustitución por alternativa saludable.
+3. **Control de Presupuesto y Checkout**: Ajuste de precios en vivo y traspaso automático de la compra al stock de la despensa.
+4. **Gestión de Despensa**: Control de existencias, cantidades y fechas.
+5. **Editor de Recetas**: Composición de platos sumando macros (Kcal, Proteínas, Hidratos, Grasas) y costes por ración automáticamente.
+6. **NutriAgenda y Registro Fotográfico**: Planificación semanal con descuento automático de despensa y almacenamiento de fotografías de comidas.
+7. **Dashboard Nutricional & Explorador**: Visualización gráfica del balance nutricional y consulta a la BD completa de España.

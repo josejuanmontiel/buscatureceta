@@ -32,3 +32,6 @@ spain_products.csv
 spain_products.csv.backup
 spain_products_ingredients.csv
 spain_products_ingredients.csv.backup
+
+# Video Orchestrator intermediate raw files
+**/output/raw_video/

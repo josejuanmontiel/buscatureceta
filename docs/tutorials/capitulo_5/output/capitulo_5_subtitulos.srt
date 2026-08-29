@@ -1,0 +1,12 @@
+1
+00:00:00,000 --> 00:00:11,304
+En la NutriAgenda planificamos nuestras comidas del día distribuidas en desayuno, almuerzo, merienda y cena. Visualizamos de un vistazo el cumplimiento de nuestro objetivo calórico diario.
+
+2
+00:00:11,304 --> 00:00:22,344
+Añadimos nuestra receta al almuerzo de hoy. En ese mismo instante, la aplicación descuenta automáticamente las porciones e ingredientes utilizados de las existencias de la despensa.
+
+3
+00:00:22,344 --> 00:00:34,368
+Además, podemos asociar una fotografía real del plato cocinado. Las imágenes se guardan de forma optimizada y segura en la base de datos local, creando un diario visual ideal para seguimiento personal.
+

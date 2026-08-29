@@ -1,0 +1,12 @@
+1
+00:00:00,000 --> 00:00:09,600
+Añadimos a la cesta el resto de nuestra compra: Pan de molde blanco y leche entera. Cada producto queda registrado con sus macros nutricionales y coste asociado.
+
+2
+00:00:09,600 --> 00:00:18,168
+Al pulsar el botón de Checkout, la cesta de la compra se transfiere íntegramente a nuestro inventario de cocina. No hace falta reescribir nada a mano.
+
+3
+00:00:18,168 --> 00:00:27,840
+En la sección de Despensa tenemos una vista clara de todos los alimentos disponibles, sus fechas de caducidad, cantidades y valores calóricos. Todo listo para cocinar.
+

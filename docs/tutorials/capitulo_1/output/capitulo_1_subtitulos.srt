@@ -1,0 +1,12 @@
+1
+00:00:00,000 --> 00:00:15,192
+Bienvenido a NutriAgenda. Esta aplicación nace con un objetivo fundamental: devolverte el control absoluto de lo que compras, comes y almacenas, combinando la base de datos abierta de OpenFoodFacts con un gestor nutricional completo y cien por cien privado.
+
+2
+00:00:15,192 --> 00:00:31,296
+A diferencia de las aplicaciones comerciales convencionales, NutriAgenda funciona totalmente en local dentro de tu navegador utilizando IndexedDB y Dexie. Tus compras, recetas, fotos y datos de salud no viajan a ningún servidor remoto: la privacidad es total.
+
+3
+00:00:31,296 --> 00:00:46,728
+El flujo de la aplicación conecta todos los eslabones: desde el escaneo con alertas de aditivos en el supermercado, el control de existencias en tu despensa, la creación de recetas con cálculo de macros, hasta el registro diario de ingestas y análisis gráfico.
+

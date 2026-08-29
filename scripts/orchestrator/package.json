@@ -1,0 +1,20 @@
+{
+  "name": "nutriagenda-orchestrator",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Code-to-Video and Masterclass Orchestrator with Playwright, Edge-TTS and FFmpeg for Buscatureceta (NutriAgenda)",
+  "main": "orchestrator.js",
+  "scripts": {
+    "record:ch1": "node orchestrator.js --chapter 1",
+    "record:ch2": "node orchestrator.js --chapter 2",
+    "record:ch3": "node orchestrator.js --chapter 3",
+    "record:ch4": "node orchestrator.js --chapter 4",
+    "record:ch5": "node orchestrator.js --chapter 5",
+    "record:ch6": "node orchestrator.js --chapter 6",
+    "record:all": "node orchestrator.js --all",
+    "concat": "node concat_masterclass.js"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}

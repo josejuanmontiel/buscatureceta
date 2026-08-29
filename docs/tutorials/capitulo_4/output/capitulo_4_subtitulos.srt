@@ -1,0 +1,12 @@
+1
+00:00:00,000 --> 00:00:10,296
+Pasamos a la pestaña de Recetas y abrimos el editor. Aquí podemos diseñar nuestros platos combinando productos escaneados con las existencias reales de nuestra despensa.
+
+2
+00:00:10,296 --> 00:00:20,688
+Bautizamos la receta como 'Bocadillo de Salchichas Saludables', definimos dos raciones y seleccionamos las salchichas de pollo y el pan de molde como ingredientes principales.
+
+3
+00:00:20,688 --> 00:00:32,520
+El sistema calcula al vuelo el desglose por ración: calorías totales, gramos de proteína, carbohidratos, grasas y el coste exacto en euros. Guardamos la receta y queda lista en nuestro recetario.
+

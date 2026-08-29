@@ -1,0 +1,6 @@
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_1/output/capitulo_1_masterclass.mp4'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_2/output/capitulo_2_masterclass.mp4'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_3/output/capitulo_3_masterclass.mp4'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_4/output/capitulo_4_masterclass.mp4'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_5/output/capitulo_5_masterclass.mp4'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_6/output/capitulo_6_masterclass.mp4'
