@@ -1,6 +1,9 @@
 # OpenFoodFacts & NutriAgenda
 
-**🌍 Aplicación en vivo:** [https://josejuanmontiel.github.io/OpenFoodFacts/](https://josejuanmontiel.github.io/OpenFoodFacts/) *(Se despliega automáticamente con cada push a la rama principal)*  
+**🌍 Aplicación en vivo:**
+- 🚀 **Producción:** [https://buscatureceta.accreativos.com](https://buscatureceta.accreativos.com)
+- 🐙 **GitHub Pages:** [https://josejuanmontiel.github.io/buscatureceta/](https://josejuanmontiel.github.io/buscatureceta/) *(Despliegue automatizado por CI/CD)*
+
 **🎥 Vídeo Demostración y Masterclass en YouTube:** [https://youtu.be/03f_0AD84B0](https://youtu.be/03f_0AD84B0)
 
 ## Motivo
