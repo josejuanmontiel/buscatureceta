@@ -3,6 +3,7 @@ import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
+import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import { showToast, confirmModal } from './modules/ui/UI.js';
 
 let recipeModal;
@@ -58,6 +59,7 @@ async function loadRecipes(query = '') {
         </div>
         <div class="card-footer d-flex gap-2 bg-dark border-secondary">
           <a href="#recipe-editor?id=${recipe.id}" class="btn btn-sm btn-outline-light flex-grow-1">✏️ Editar</a>
+          <button class="btn btn-sm btn-outline-success" onclick="event.stopPropagation(); window._generateShoppingList(${recipe.id})" title="Generar Lista de Compra">🛒 Lista</button>
           <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window._duplicateRecipe(${recipe.id})" title="Duplicar">📋</button>
           <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); window.deleteRecipe(${recipe.id})" title="Eliminar">🗑</button>
         </div>
@@ -65,6 +67,53 @@ async function loadRecipes(query = '') {
     </div>
   `).join('');
 }
+
+window._generateShoppingList = async function(recipeId) {
+  const recipe = await RecipeStore.getRecipeById(recipeId);
+  if (!recipe || !recipe.ingredients || recipe.ingredients.length === 0) {
+    showToast('La receta no tiene ingredientes para generar una lista.', 'warning');
+    return;
+  }
+
+  const missingItems = [];
+  for (const ing of recipe.ingredients) {
+    let currentStock = 0;
+    if (ing.productCode) {
+      const pantryItem = await db.pantry.where({ productCode: ing.productCode }).first();
+      if (pantryItem) currentStock = pantryItem.amount;
+    }
+    const needed = ing.amount || 1;
+    const diff = needed - currentStock;
+    if (diff > 0 || currentStock === 0) {
+      missingItems.push({
+        name: ing.productName || 'Ingrediente',
+        code: ing.productCode || null,
+        amount: Math.round(diff * 10) / 10,
+        unit: ing.unit || ''
+      });
+    }
+  }
+
+  const itemsToBuy = missingItems.length > 0 ? missingItems : recipe.ingredients.map(i => ({
+    name: i.productName,
+    code: i.productCode || null,
+    amount: i.amount || 1,
+    unit: i.unit || ''
+  }));
+
+  const msg = missingItems.length > 0
+    ? `¿Crear lista de la compra para "${recipe.name}" con ${missingItems.length} ingredientes faltantes?`
+    : `Tienes stock suficiente en la despensa para todos los ingredientes. ¿Deseas crear la lista para reponer "${recipe.name}"?`;
+
+  const confirmed = await confirmModal('Generar Lista de la Compra', msg);
+  if (!confirmed) return;
+
+  await ShoppingStore.createList(recipe.name, itemsToBuy);
+  showToast(`Lista de la compra creada con ${itemsToBuy.length} productos. Abriendo Carrito...`, 'success');
+  setTimeout(() => {
+    window.location.hash = '#grid';
+  }, 800);
+};
 
 window.editRecipe = async function(id) {
   const recipe = await RecipeStore.getRecipeById(id);

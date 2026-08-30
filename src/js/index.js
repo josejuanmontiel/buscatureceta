@@ -16,6 +16,8 @@ function parseCSV(data) {
 }
 
 import { db, migrateFromLegacyDB } from './db/schema.js';
+import { seedDemoData } from './modules/demo/demoData.js';
+import { showToast, confirmModal } from './modules/ui/UI.js';
 
 // Llamar a migración al inicio
 migrateFromLegacyDB().catch(console.error);
@@ -23,28 +25,39 @@ migrateFromLegacyDB().catch(console.error);
 // E2E test helper: clear all user-generated data (keeps products intact)
 window.__resetUserData = async function() {
   const stores = ['cart', 'pantry', 'pantryLog', 'diary', 'recipes',
-    'recipeVersions', 'recentProducts', 'customProducts', 'priceHistory', 'mealPhotos'];
+    'recipeVersions', 'recentProducts', 'customProducts', 'priceHistory', 'mealPhotos', 'shoppingLists'];
   for (const store of stores) {
     if (db[store]) await db[store].clear();
   }
 };
 
-
-// Función para guardar los datos en Dexie
-async function saveToDatabase(data) {
-    try {
-        const adapted = data.map(item => ({
-            ...item,
-            code: item.code || item.id
-        }));
-        await db.products.bulkPut(adapted);
-        console.log("Datos guardados exitosamente en IndexedDB (Dexie)");
-    } catch (error) {
-        console.error("Error al guardar los datos: ", error);
-    }
-}
+window.__seedDemoData = seedDemoData;
 
 export async function initView() {
-    // La vista index ahora solo tiene botones que navegan por hash (href o onclick con location.hash)
-    // No requiere inicialización de eventos compleja.
+  const btnDemo = document.getElementById('btn-load-demo-home');
+  if (btnDemo) {
+    btnDemo.addEventListener('click', async () => {
+      const confirmed = await confirmModal(
+        '¿Cargar datos de demostración?',
+        'Se añadirán productos limpios a la despensa, 3 recetas listas y registros en la agenda para que puedas probar la aplicación al completo.'
+      );
+      if (!confirmed) return;
+
+      btnDemo.disabled = true;
+      btnDemo.textContent = 'Cargando...';
+      try {
+        await seedDemoData();
+        showToast('¡Datos de demostración cargados con éxito! Redirigiendo a tu Agenda...', 'success');
+        setTimeout(() => {
+          window.location.hash = '#diary';
+        }, 800);
+      } catch (err) {
+        console.error('Error al sembrar demo data:', err);
+        showToast('Error al cargar datos de demo: ' + err.message, 'danger');
+        btnDemo.disabled = false;
+        btnDemo.textContent = '🪄 Cargar datos de prueba';
+      }
+    });
+  }
 }
+

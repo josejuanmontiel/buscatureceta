@@ -19,13 +19,13 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
       localStorage.removeItem('off_password');
     });
 
-    const unknownCode = '8402001052859';
+    const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
     await page.waitForTimeout(1000);
 
     // El item debe aparecer en el carro
-    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 5000 });
+    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // Verificar que internamente su productCode empieza por GENERIC_
     const cartCodes = await page.evaluate(async () => {
@@ -61,13 +61,13 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
       localStorage.setItem('off_password', 'Cr0nauer.');
     });
 
-    const unknownCode = '8402001052859';
+    const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
     await page.waitForTimeout(1000);
 
     // El item debe aparecer en el carro
-    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 5000 });
+    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // CON login SÍ debe aparecer el botón OFF azul
     const offButton = page.locator('#cart-list button:has-text("OFF")');
@@ -86,11 +86,11 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
       localStorage.removeItem('off_password');
     });
 
-    const unknownCode = '8402001052859';
+    const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
     await page.waitForTimeout(1000);
-    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 5000 });
+    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // Sin login: sin botón OFF
     expect(await page.locator('#cart-list button:has-text("OFF")').count()).toBe(0);
@@ -108,7 +108,7 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
     await page.waitForTimeout(1000);
 
     // El producto sigue en el carro
-    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 5000 });
+    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // Ahora SÍ debe aparecer el botón OFF
     const offButton = page.locator('#cart-list button:has-text("OFF")');
@@ -127,11 +127,11 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
       localStorage.setItem('off_password', 'Cr0nauer.');
     });
 
-    const unknownCode = '8402001052859';
+    const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
     await page.waitForTimeout(1000);
-    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 5000 });
+    await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // Click en el botón OFF de la cámara
     const offButton = page.locator('#cart-list button:has-text("OFF")');

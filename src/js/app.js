@@ -1,9 +1,12 @@
 import { Router } from './modules/core/Router.js';
 import * as BackupStore from './modules/backup/BackupStore.js';
 import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
+import { seedDemoData } from './modules/demo/demoData.js';
 
 window.BackupStore = BackupStore;
 window.MealPhotoStore = MealPhotoStore;
+window.seedDemoData = seedDemoData;
+window.__seedDemoData = seedDemoData;
 
 document.addEventListener('DOMContentLoaded', () => {
   const router = new Router({

@@ -1,3 +1,4 @@
+import * as PrimaryFoodStore from "./modules/products/PrimaryFoodStore.js";
 import * as ShoppingAssistant from "./modules/insights/ShoppingAssistant.js";
 import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
@@ -643,7 +644,16 @@ async function runSmartMatch(ingredients) {
     let searchRes = await searchInCustomFirst(q);
     let bestMatch = searchRes.length > 0 ? searchRes[0] : null;
 
-    // 2º: si no hay nada, buscar en BD oficial con límite pequeño para no atascar
+    // 2º: buscar en Alimentos Primarios (BEDCA/PrimaryFoods offline)
+    if (!bestMatch) {
+      const primaryRes = await PrimaryFoodStore.searchPrimaryFoods(q, 5);
+      if (primaryRes.length > 0) {
+        bestMatch = primaryRes[0];
+        searchRes = primaryRes;
+      }
+    }
+
+    // 3º: si no hay nada, buscar en BD oficial con límite pequeño para no atascar
     if (!bestMatch) {
       const officialRes = await searchInOfficial(q, 5);
       if (officialRes.length > 0) {
@@ -703,7 +713,9 @@ function renderSmartMatchList() {
         <div class="fw-bold small text-muted text-truncate">${item.original.amount}${item.original.unit} ${item.original.name}</div>
         ${item.match 
           ? `<div class="small mt-1">✅ <span class="fw-bold text-success">${item.match.product_name}</span>
-             <span class="badge bg-secondary ms-1">${item.match.code}</span></div>`
+             ${(item.match.code && item.match.code.startsWith('primary:')) || item.match.isPrimaryFood ? '<span class="badge bg-success ms-1">🌱 Primario</span>' : `<span class="badge bg-secondary ms-1">${item.match.code}</span>`}
+             ${item.match.benefits && item.match.benefits.length > 0 ? `<div class="text-info mt-1" style="font-size:0.75rem;">✨ ${item.match.benefits[0]}</div>` : ''}
+             </div>`
           : `<div class="small mt-1">❌ <span class="text-warning">Sin match — pulsa "Buscar" para asignar uno</span></div>`
         }
       </div>
@@ -735,16 +747,20 @@ async function searchChangeIngredient() {
   const container = document.getElementById('change-ingredient-results');
   container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm text-info"></span></div>';
 
-  // Buscar primero en custom (siempre visible arriba)
+  // 1. Buscar en custom
   const customRes = await searchInCustomFirst(q);
-  // Luego en oficial
+  // 2. Buscar en alimentos primarios (BEDCA)
+  const primaryRes = await PrimaryFoodStore.searchPrimaryFoods(q, 10);
+  // 3. Buscar en oficial OFF
   const officialRes = await searchInOfficial(q, 20);
 
-  // Combinar: custom primero, sin duplicados
+  // Combinar sin duplicados
   const customCodes = new Set(customRes.map(p => p.code));
+  const primaryCodes = new Set(primaryRes.map(p => p.code));
   const all = [
     ...customRes.map(p => ({ ...p, _isCustom: true })),
-    ...officialRes.filter(p => !customCodes.has(p.code))
+    ...primaryRes.filter(p => !customCodes.has(p.code)).map(p => ({ ...p, _isPrimary: true })),
+    ...officialRes.filter(p => !customCodes.has(p.code) && !primaryCodes.has(p.code))
   ];
 
   if (all.length === 0) {
@@ -758,6 +774,7 @@ async function searchChangeIngredient() {
       <span class="small">${p.product_name || 'Sin nombre'}</span>
       <span>
         ${p._isCustom ? '<span class="badge bg-info text-dark me-1">Mi lista</span>' : ''}
+        ${p._isPrimary ? '<span class="badge bg-success me-1">🌱 Primario</span>' : ''}
         <span class="badge bg-secondary">${p.code}</span>
       </span>
     </button>`).join('');

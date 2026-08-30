@@ -150,3 +150,35 @@ export function compressImage(imageFile, maxWidth = 1080) {
     img.src = url;
   });
 }
+
+/**
+ * Emite una respuesta sensorial (vibración háptica y sonido de confirmación sutil)
+ * ideal para uso en el escáner del supermercado.
+ */
+export function triggerScanFeedback() {
+  // Vibración háptica
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+    try {
+      navigator.vibrate([40, 30, 40]);
+    } catch (e) {}
+  }
+
+  // Beep sutil usando Web Audio API
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // La5 (880Hz)
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    }
+  } catch (e) {}
+}
+

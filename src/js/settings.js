@@ -2,6 +2,7 @@ import * as BackupStore from './modules/backup/BackupStore.js';
 import { showToast, confirmModal } from './modules/ui/UI.js';
 import { getPendingUploads, deletePendingUpload, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
 import { db } from './db/schema.js';
+import { seedDemoData } from './modules/demo/demoData.js';
 
 export async function initView() {
   const btnExport = document.getElementById('btn-export');
@@ -12,6 +13,29 @@ export async function initView() {
   
   const btnClearData = document.getElementById('btn-clear-data');
   if (btnClearData) btnClearData.addEventListener('click', handleClearData);
+
+  const btnDemo = document.getElementById('btn-load-demo-settings');
+  if (btnDemo) {
+    btnDemo.addEventListener('click', async () => {
+      const confirmed = await confirmModal(
+        '¿Cargar datos de demostración?',
+        'Se añadirán productos de despensa, 3 recetas listas y registros de agenda para pruebas rápidas.'
+      );
+      if (!confirmed) return;
+      btnDemo.disabled = true;
+      btnDemo.textContent = 'Cargando...';
+      try {
+        await seedDemoData();
+        showToast('¡Datos de demostración cargados con éxito!', 'success');
+      } catch (err) {
+        console.error('Error al cargar datos demo:', err);
+        showToast('Error: ' + err.message, 'danger');
+      } finally {
+        btnDemo.disabled = false;
+        btnDemo.textContent = '🪄 Cargar / Restablecer Datos de Demostración';
+      }
+    });
+  }
 
   const shareBtn = document.getElementById('btn-share-sys');
   if (shareBtn && typeof navigator.canShare === 'function') {

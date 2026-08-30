@@ -6,7 +6,7 @@ import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
 import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import { saveImageToPendingUploads, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
 import { Modal } from 'bootstrap';
-import { showToast, confirmModal } from './modules/ui/UI.js';
+import { showToast, confirmModal, triggerScanFeedback } from './modules/ui/UI.js';
 
 let currentScannedProduct = null;
 let capturedImageBlob = null;
@@ -135,6 +135,7 @@ async function handleSearch() {
             });
             // Añadir al carro directamente
             await CartStore.addToCart(genericCode, 1, 0, 'unidad');
+            triggerScanFeedback();
             document.getElementById('code-input').value = '';
             await updateCartUI();
             return;
@@ -144,6 +145,7 @@ async function handleSearch() {
         currentScannedProduct = result.product;
         await CartStore.addToCart(result.product.code, 1, result.lastPrice || 0, 'unidad');
         RecentStore.markAsUsed(result.product.code);
+        triggerScanFeedback();
 
         // Marcar en la lista de compra activa
         const activeList = await ShoppingStore.getActiveList();

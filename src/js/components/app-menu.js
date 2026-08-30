@@ -22,9 +22,9 @@ class AppMenu extends HTMLElement {
     const offcanvasId = 'appNavOffcanvas';
 
     const isActive = (id) => current === `${id}.html` || current === id;
+    const isSPA = typeof document !== 'undefined' && document.getElementById('app-view') !== null;
 
     const renderItem = (item) => {
-      const isSPA = document.getElementById('app-view') !== null;
       if (item.group) {
         const childrenHtml = item.children.map(child => {
           const active = isActive(child.id);
@@ -60,6 +60,7 @@ class AppMenu extends HTMLElement {
         <span class="hamburger-bar"></span>
       </button>
 
+      <!-- Menú Lateral (Offcanvas) -->
       <div class="offcanvas offcanvas-start" tabindex="-1" id="${offcanvasId}" aria-labelledby="${offcanvasId}Label">
         <div class="offcanvas-header border-bottom border-secondary">
           <span class="offcanvas-title fw-bold fs-5" id="${offcanvasId}Label">🥦 NutriAgenda</span>
@@ -76,6 +77,30 @@ class AppMenu extends HTMLElement {
           </div>
         </div>
       </div>
+
+      <!-- Barra de Navegación Inferior Móvil (Bottom Navigation Bar) -->
+      <nav class="app-bottom-nav d-md-none" aria-label="Navegación principal">
+        <a class="bottom-nav-link${isActive('grid') ? ' active' : ''}" href="${isSPA ? '#grid' : 'grid.html'}" data-target="grid">
+          <span class="bottom-nav-icon">🛒</span>
+          <span class="bottom-nav-text">Carrito</span>
+        </a>
+        <a class="bottom-nav-link${isActive('pantry') ? ' active' : ''}" href="${isSPA ? '#pantry' : 'pantry.html'}" data-target="pantry">
+          <span class="bottom-nav-icon">🥫</span>
+          <span class="bottom-nav-text">Despensa</span>
+        </a>
+        <a class="bottom-nav-link${isActive('recipes') ? ' active' : ''}" href="${isSPA ? '#recipes' : 'recipes.html'}" data-target="recipes">
+          <span class="bottom-nav-icon">📖</span>
+          <span class="bottom-nav-text">Recetas</span>
+        </a>
+        <a class="bottom-nav-link${isActive('diary') ? ' active' : ''}" href="${isSPA ? '#diary' : 'diary.html'}" data-target="diary">
+          <span class="bottom-nav-icon">📅</span>
+          <span class="bottom-nav-text">Agenda</span>
+        </a>
+        <button class="bottom-nav-link btn-more-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#${offcanvasId}" aria-label="Más opciones">
+          <span class="bottom-nav-icon">☰</span>
+          <span class="bottom-nav-text">Más</span>
+        </button>
+      </nav>
     `;
 
     // Ensure navigation when clicking links, as Bootstrap's data-bs-dismiss might prevent default navigation
@@ -84,16 +109,15 @@ class AppMenu extends HTMLElement {
       if (link) {
         e.preventDefault();
         const target = link.getAttribute('data-target');
-        const isSPA = document.getElementById('app-view') !== null;
+        const isSPAView = document.getElementById('app-view') !== null;
         
-        // Timeout to allow offcanvas close animation to start smoothly
         setTimeout(() => {
-          if (isSPA) {
+          if (isSPAView) {
             window.location.hash = target;
           } else {
             window.location.href = `${target}.html`;
           }
-        }, 150);
+        }, 120);
       }
     });
 
@@ -127,3 +151,4 @@ class AppMenu extends HTMLElement {
 }
 
 customElements.define('app-menu', AppMenu);
+

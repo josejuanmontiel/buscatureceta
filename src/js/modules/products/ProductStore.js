@@ -1,16 +1,67 @@
 import { db } from '../../db/schema.js';
 import { syncNutrition } from './ProductSync.js';
 import * as RecentStore from './RecentStore.js';
+import * as PrimaryFoodStore from './PrimaryFoodStore.js';
+
+/**
+ * Obtener un producto remoto desde la API pública de OpenFoodFacts si no está localmente.
+ */
+export async function fetchProductFromOFF(code) {
+  if (!code || !/^\d{4,16}$/.test(code.trim())) return undefined;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code.trim()}.json`, {
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    if ((data.status === 1 || data.status_verbose === 'product found') && data.product) {
+      const p = data.product;
+      const formatted = {
+        code: p.code || code.trim(),
+        product_name: p.product_name || p.product_name_es || p.generic_name || `Producto ${code}`,
+        brands: p.brands || '',
+        categories_tags: p.categories_tags || [],
+        nutriments: p.nutriments || {},
+        nutriscore_grade: p.nutriscore_grade || '',
+        nova_group: p.nova_group || null,
+        additives_tags: p.additives_tags || [],
+        image_url: p.image_url || p.image_front_url || ''
+      };
+      await db.products.put(formatted);
+      return formatted;
+    }
+  } catch (err) {
+    console.debug('[ProductStore] No se pudo obtener producto de OFF online:', err.message);
+  }
+  return undefined;
+}
 
 /**
  * Obtener un producto por código.
- * Busca primero en customProducts y, si no lo encuentra, en products.
+ * Busca en customProducts, PrimaryFoods (BEDCA), IndexedDB products y fallback OFF online.
  */
 export async function getProductByCode(code) {
   if (!code) return undefined;
   const custom = await db.customProducts.get(code);
   if (custom) return custom;
-  return db.products.get(code);
+
+  // Si es un alimento primario / código primary:
+  if (code.startsWith('primary:') || code.startsWith('bedca_')) {
+    const primary = await PrimaryFoodStore.getPrimaryFoodByCode(code);
+    if (primary) return primary;
+  }
+
+  const local = await db.products.get(code);
+  if (local) return local;
+
+  // Fallback a Alimento Primario si no se encuentra
+  const primaryFallback = await PrimaryFoodStore.getPrimaryFoodByCode(code);
+  if (primaryFallback) return primaryFallback;
+
+  return fetchProductFromOFF(code);
 }
 
 /**
@@ -21,18 +72,30 @@ export async function getProductsByCodes(codes) {
   const customProducts = await db.customProducts.where('code').anyOf(codes).toArray();
   const foundCustomCodes = customProducts.map(p => p.code);
   const remainingCodes = codes.filter(c => !foundCustomCodes.includes(c));
-  
-  let officialProducts = [];
-  if (remainingCodes.length > 0) {
-    officialProducts = await db.products.where('code').anyOf(remainingCodes).toArray();
+
+  // Extraer alimentos primarios
+  const primaryProducts = [];
+  const toFetchInOfficial = [];
+  for (const c of remainingCodes) {
+    if (c.startsWith('primary:') || c.startsWith('bedca_')) {
+      const p = await PrimaryFoodStore.getPrimaryFoodByCode(c);
+      if (p) primaryProducts.push(p);
+      else toFetchInOfficial.push(c);
+    } else {
+      toFetchInOfficial.push(c);
+    }
   }
-  
-  return [...customProducts, ...officialProducts];
+
+  let officialProducts = [];
+  if (toFetchInOfficial.length > 0) {
+    officialProducts = await db.products.where('code').anyOf(toFetchInOfficial).toArray();
+  }
+
+  return [...customProducts, ...primaryProducts, ...officialProducts];
 }
 
 /**
- * Búsqueda de productos en ambas bases de datos.
- * Busca por partes del nombre, marca o código.
+ * Búsqueda de productos en todas las fuentes (customProducts, PrimaryFoods, OpenFoodFacts).
  */
 export async function searchProducts(query, limit = 500) {
   const qLower = query.toLowerCase().trim();
@@ -41,83 +104,27 @@ export async function searchProducts(query, limit = 500) {
     if (recentCodes.length === 0) return [];
     return getProductsByCodes(recentCodes);
   }
-  
-  const terms = qLower.split(' ').filter(t => t.length > 0);
-  
-  const filterFunc = p => {
-    const name = (p.product_name || '').toLowerCase();
-    const brand = (p.brands || '').toLowerCase();
-    const code = (p.code || '').toLowerCase();
-    return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
-  };
-  
-  const customResults = await db.customProducts.filter(filterFunc).toArray();
-  const customCodes = customResults.map(p => p.code);
-  
-  // Excluimos de officialResults aquellos que ya hayamos encontrado en customProducts
-  // por si tuvieran el mismo código, para dar preferencia al custom
-  // Limitamos el escaneo a 10000 registros para evitar que la app se congele si no hay resultados
-  let scanned = 0;
-  const officialResults = await db.products.toCollection()
-    .until(() => {
-      scanned++;
-      return scanned > 10000;
-    })
-    .filter(p => {
-      return !customCodes.includes(p.code) && filterFunc(p);
-    })
+
+  // 1. Mis productos
+  const customAll = await db.customProducts.toArray();
+  const customMatches = customAll.filter(p =>
+    (p.product_name && p.product_name.toLowerCase().includes(qLower)) ||
+    (p.brands && p.brands.toLowerCase().includes(qLower)) ||
+    p.code.includes(qLower)
+  );
+
+  // 2. Alimentos primarios (BEDCA)
+  const primaryMatches = await PrimaryFoodStore.searchPrimaryFoods(qLower, 20);
+
+  // 3. Productos oficiales OFF
+  const officialMatches = await db.products
+    .filter(p =>
+      (p.product_name && p.product_name.toLowerCase().includes(qLower)) ||
+      (p.brands && p.brands.toLowerCase().includes(qLower)) ||
+      p.code.includes(qLower)
+    )
+    .limit(limit)
     .toArray();
-  
-  const allResults = [...customResults, ...officialResults];
-  
-  // Boost recientes
-  const recentCodes = await RecentStore.getRecentProductCodes();
-  
-  // Ordenar: primero los que estén en recentCodes (ordenados por fecha desc), luego el resto
-  allResults.sort((a, b) => {
-    const idxA = recentCodes.indexOf(a.code);
-    const idxB = recentCodes.indexOf(b.code);
-    
-    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-    if (idxA !== -1) return -1;
-    if (idxB !== -1) return 1;
-    return 0; // mantener orden original si ninguno es reciente
-  });
-  
-  return allResults.slice(0, limit);
-}
 
-/**
- * Añadir un producto genérico o personalizado a la BD especial.
- */
-export async function addCustomProduct(productData) {
-  const data = {
-    ...productData,
-    is_custom: true
-  };
-  await db.customProducts.put(data);
-  return data.code;
-}
-
-/**
- * Actualizar un producto personalizado existente.
- * Esto lanzará la sincronización retroactiva en agenda y recetas.
- */
-export async function updateCustomProduct(code, changes) {
-  const current = await db.customProducts.get(code);
-  if (!current) {
-    const official = await db.products.get(code);
-    await db.customProducts.put({
-      ...(official || {}),
-      code,
-      product_name: changes.product_name || (official ? official.product_name : code),
-      ...changes,
-      is_custom: true
-    });
-  } else {
-    await db.customProducts.update(code, changes);
-  }
-  
-  // Lanzar la actualización retroactiva en background sin bloquear
-  syncNutrition(code).catch(console.error);
+  return [...customMatches, ...primaryMatches, ...officialMatches].slice(0, limit);
 }
