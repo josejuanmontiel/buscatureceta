@@ -3,6 +3,7 @@ import * as ShoppingAssistant from "./modules/insights/ShoppingAssistant.js";
 import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
 import * as PantryStore from './modules/pantry/PantryStore.js';
+import * as MealieClient from './modules/mealie/MealieClient.js';
 /**
  * recipe-editor.js — Lógica del editor completo de recetas
  *
@@ -29,6 +30,7 @@ let aiImportModal = null;
 let smartMatchModal = null;
 let changeIngredientModal = null;
 let mergeConflictModal = null;
+let ingredientDetailModal = null;
 let aiImportedRecipeData = null;
 let aiImportedIngredients = [];
 let currentChangeIngredientIndex = null;
@@ -40,6 +42,10 @@ export async function initView() {
   smartMatchModal = new Modal(document.getElementById('smartMatchModal'));
   changeIngredientModal = new Modal(document.getElementById('changeIngredientModal'));
   mergeConflictModal = new Modal(document.getElementById('mergeConflictModal'));
+  const ingDetailEl = document.getElementById('ingredientDetailModal');
+  if (ingDetailEl) {
+    ingredientDetailModal = new Modal(ingDetailEl);
+  }
 
   const params = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const idParam = params.get('id');
@@ -48,15 +54,46 @@ export async function initView() {
     await loadRecipe(recipeId);
   }
 
+  const mealieSlugParam = params.get('mealieSlug');
+  if (mealieSlugParam) {
+    await loadFromMealie(mealieSlugParam);
+  }
+
   bindEvents();
 
   const codeParam = params.get('code');
   if (codeParam) {
-    document.getElementById('ingredient-search').value = codeParam;
-    setTimeout(searchIngredient, 500);
+    const p = await ProductStore.getProductByCode(codeParam);
+    if (p) {
+      currentIngredients.push({
+        productCode: p.code,
+        productName: p.product_name,
+        amount: 100,
+        unit: 'g'
+      });
+      renderIngredients();
+      await updateNutrition();
+    }
   }
 
   loadPantryQuickAdd();
+}
+
+async function loadFromMealie(slug) {
+  try {
+    showToast('Cargando receta desde Mealie...', 'info');
+    const raw = await MealieClient.getRecipeDetail(slug);
+    const converted = MealieClient.convertMealieToBuscaReceta(raw);
+    aiImportedRecipeData = converted;
+    if (converted.ingredients && converted.ingredients.length > 0) {
+      await runSmartMatch(converted.ingredients);
+    } else {
+      applyImportedRecipeData();
+    }
+  } catch (err) {
+    console.error('Error cargando receta desde Mealie:', err);
+    showToast(`Error al cargar desde Mealie: ${err.message}`, 'danger');
+  }
 }
 
 async function loadPantryQuickAdd() {
@@ -107,9 +144,8 @@ async function loadRecipe(id) {
   vBadge.textContent = `v${recipe.version || 1}`;
   vBadge.style.display = 'inline';
 
-  document.getElementById('btn-delete-recipe').style.display = 'inline-block';
-  document.getElementById('btn-duplicate-recipe').style.display = 'inline-block';
-  document.getElementById('btn-create-list-recipe').style.display = 'inline-block';
+  const optionsDropdown = document.getElementById('recipe-options-dropdown-container');
+  if (optionsDropdown) optionsDropdown.style.display = 'inline-block';
 
   renderIngredients();
   renderTags();
@@ -435,15 +471,245 @@ function renderIngredients() {
     container.innerHTML = '<div class="text-muted small">Aún no hay ingredientes.</div>';
     return;
   }
-  container.innerHTML = currentIngredients.map((ing, i) => `
-    <div class="ingredient-row">
-      <span class="ingredient-name" title="${ing.productName}">${ing.productName}</span>
-      <input type="number" class="form-control form-control-sm" style="width:80px;"
-             value="${ing.amount}" onchange="window._changeAmount(${i}, this.value)">
-      <span class="small text-muted">${ing.unit}</span>
-      <button class="btn-remove-ing" onclick="window._removeIngredient(${i})">✕</button>
-    </div>`).join('');
+  container.innerHTML = currentIngredients.map((ing, i) => {
+    const isPrimary = ing.productCode?.startsWith('primary:') || ing.productCode?.startsWith('bedca_');
+    const isOff = ing.productCode && /^\d+$/.test(ing.productCode);
+    const badge = isPrimary 
+      ? '<span class="badge bg-success-subtle text-success border border-success me-2" style="font-size:0.72rem;">🌱 Primario</span>'
+      : (isOff ? '<span class="badge bg-primary-subtle text-primary border border-primary me-2" style="font-size:0.72rem;">🛒 OFF</span>' : '');
+
+    return `
+    <div class="ingredient-row d-flex align-items-center justify-content-between py-2 border-bottom border-secondary border-opacity-25">
+      <div class="d-flex align-items-center flex-grow-1 me-2" style="cursor:pointer;" onclick="window._showIngredientDetail(${i})" title="Ver ficha nutricional de ${ing.productName}">
+        ${badge}
+        <span class="ingredient-name fw-medium text-white me-2" title="${ing.productName}">${ing.productName}</span>
+        <button type="button" class="btn btn-sm btn-outline-info p-0 px-2 py-0" style="font-size:0.72rem;" title="Ver ficha nutricional">ℹ️</button>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <input type="number" class="form-control form-control-sm text-end" style="width:75px;"
+               value="${ing.amount}" min="0" step="any" onchange="window._changeAmount(${i}, this.value)">
+        <span class="small text-muted" style="min-width:25px;">${ing.unit}</span>
+        <button class="btn-remove-ing" onclick="window._removeIngredient(${i})" title="Eliminar">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
+
+window._showIngredientDetail = async function(index) {
+  const ing = currentIngredients[index];
+  if (!ing) return;
+
+  const titleEl = document.getElementById('modal-ing-title');
+  const subtitleEl = document.getElementById('modal-ing-subtitle');
+  const bodyEl = document.getElementById('modal-ing-body');
+
+  if (titleEl) titleEl.textContent = ing.productName || 'Detalle del Ingrediente';
+  if (subtitleEl) subtitleEl.textContent = `Cantidad en esta receta: ${ing.amount} ${ing.unit}`;
+
+  if (bodyEl) {
+    bodyEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-info" role="status"></div><p class="mt-2 text-muted small">Cargando ficha nutricional...</p></div>';
+  }
+  if (ingredientDetailModal) {
+    ingredientDetailModal.show();
+  }
+
+  let product = null;
+  if (ing.productCode) {
+    product = await ProductStore.getProductByCode(ing.productCode);
+  }
+
+  if (!product && ing.productName) {
+    product = await PrimaryFoodStore.resolveIngredientSmart(ing.productName);
+  }
+
+  if (!product) {
+    if (bodyEl) {
+      bodyEl.innerHTML = `
+        <div class="alert alert-warning py-3 mb-0">
+          <h6>⚠️ Ingrediente no vinculado</h6>
+          <p class="small mb-0">Este ingrediente aún no está enlazado a la base de datos de Alimentos Primarios (BEDCA) ni a Open Food Facts. Puedes buscarlo en el buscador de ingredientes para asignarle valores nutricionales.</p>
+        </div>`;
+    }
+    return;
+  }
+
+  const isPrimary = product.isPrimaryFood || product.code?.startsWith('primary:') || product.code?.startsWith('bedca_');
+  const nutriments = product.nutriments || {};
+
+  const factor = (ing.amount || 100) / 100;
+  const cal100 = parseFloat(nutriments['energy-kcal_100g'] ?? product['energy-kcal_100g'] ?? 0);
+  const prot100 = parseFloat(nutriments['proteins_100g'] ?? product['proteins_100g'] ?? 0);
+  const fat100 = parseFloat(nutriments['fat_100g'] ?? product['fat_100g'] ?? 0);
+  const carbs100 = parseFloat(nutriments['carbohydrates_100g'] ?? product['carbohydrates_100g'] ?? 0);
+  const fiber100 = parseFloat(nutriments['fiber_100g'] ?? product['fiber_100g'] ?? 0);
+  const sugars100 = parseFloat(nutriments['sugars_100g'] ?? product['sugars_100g'] ?? 0);
+  const salt100 = parseFloat(nutriments['salt_100g'] ?? product['salt_100g'] ?? 0);
+
+  const calRec = Math.round(cal100 * factor * 10) / 10;
+  const protRec = Math.round(prot100 * factor * 10) / 10;
+  const fatRec = Math.round(fat100 * factor * 10) / 10;
+  const carbsRec = Math.round(carbs100 * factor * 10) / 10;
+  const fiberRec = Math.round(fiber100 * factor * 10) / 10;
+  const sugarsRec = Math.round(sugars100 * factor * 10) / 10;
+  const saltRec = Math.round(salt100 * factor * 100) / 100;
+
+  const nutriscore = (product.nutriscore_grade || 'a').toUpperCase();
+  const nova = product.nova_group || (isPrimary ? 1 : null);
+
+  let badgesHtml = `
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+      <span class="badge ${isPrimary ? 'bg-success' : 'bg-primary'} px-2 py-1">
+        ${isPrimary ? '🌱 Alimento Básico (BEDCA)' : '🛒 Producto Comercial (OpenFoodFacts)'}
+      </span>
+      <span class="badge bg-secondary px-2 py-1">Nutri-Score: <strong>${nutriscore}</strong></span>
+      ${nova ? `<span class="badge bg-dark border border-secondary px-2 py-1">NOVA: <strong>Grupo ${nova}</strong></span>` : ''}
+      ${product.brands && !isPrimary ? `<span class="badge bg-info text-dark px-2 py-1">${product.brands}</span>` : ''}
+    </div>`;
+
+  // Micronutrientes
+  let micronutrientsHtml = '';
+  const microList = [];
+  const microKeys = [
+    { k: 'vitamina_c_mg', label: 'Vitamina C', unit: 'mg' },
+    { k: 'vitamina_a_ug', label: 'Vitamina A', unit: 'µg' },
+    { k: 'vitamina_e_mg', label: 'Vitamina E', unit: 'mg' },
+    { k: 'vitamina_b6_mg', label: 'Vitamina B6', unit: 'mg' },
+    { k: 'vitamina_b12_ug', label: 'Vitamina B12', unit: 'µg' },
+    { k: 'acido_folico_ug', label: 'Ácido Fólico', unit: 'µg' },
+    { k: 'calcio_mg', label: 'Calcio', unit: 'mg' },
+    { k: 'potasio_mg', label: 'Potasio', unit: 'mg' },
+    { k: 'hierro_mg', label: 'Hierro', unit: 'mg' },
+    { k: 'magnesio_mg', label: 'Magnesio', unit: 'mg' },
+    { k: 'fosforo_mg', label: 'Fósforo', unit: 'mg' },
+    { k: 'zinc_mg', label: 'Zinc', unit: 'mg' },
+    { k: 'selenio_ug', label: 'Selenio', unit: 'µg' }
+  ];
+
+  for (const m of microKeys) {
+    if (nutriments[m.k] !== undefined && nutriments[m.k] !== null && nutriments[m.k] > 0) {
+      const val100 = parseFloat(nutriments[m.k]);
+      const valRec = Math.round(val100 * factor * 100) / 100;
+      microList.push(`<span class="badge bg-dark border border-success text-success px-2 py-1">${m.label}: <strong>${valRec} ${m.unit}</strong> <small class="text-muted">(${val100}${m.unit}/100g)</small></span>`);
+    }
+  }
+
+  if (microList.length > 0) {
+    micronutrientsHtml = `
+      <div class="mt-3">
+        <h6 class="text-success small fw-bold mb-2">🌿 Vitaminas y Minerales Destacados:</h6>
+        <div class="d-flex flex-wrap gap-2">${microList.join('')}</div>
+      </div>`;
+  }
+
+  // Beneficios de salud
+  let benefitsHtml = '';
+  if (product.benefits && product.benefits.length > 0) {
+    benefitsHtml = `
+      <div class="mt-3 p-3 bg-dark border border-success border-opacity-50 rounded-3">
+        <h6 class="text-success small fw-bold mb-2">💚 Beneficios para la Salud:</h6>
+        <ul class="small mb-0 ps-3">
+          ${product.benefits.map(b => `<li class="mb-1 text-light">${b}</li>`).join('')}
+        </ul>
+      </div>`;
+  }
+
+  // Sinergias culinarias / nutricionales
+  let synergiesHtml = '';
+  if (product.synergies && product.synergies.length > 0) {
+    synergiesHtml = `
+      <div class="mt-3 p-3 bg-dark border border-warning border-opacity-50 rounded-3">
+        <h6 class="text-warning small fw-bold mb-2">⚡ Sinergias Nutricionales:</h6>
+        <ul class="small mb-0 ps-3">
+          ${product.synergies.map(s => `<li class="mb-1 text-light">${s}</li>`).join('')}
+        </ul>
+      </div>`;
+  }
+
+  // Compuestos bioactivos
+  let bioactivesHtml = '';
+  if (product.bioactiveCompounds && product.bioactiveCompounds.length > 0) {
+    bioactivesHtml = `
+      <div class="mt-3">
+        <h6 class="text-info small fw-bold mb-2">✨ Compuestos Bioactivos:</h6>
+        <div class="d-flex flex-wrap gap-1">
+          ${product.bioactiveCompounds.map(c => `<span class="badge bg-info-subtle text-info border border-info">${c}</span>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // Aditivos
+  let additivesHtml = '';
+  if (product.additives_tags && product.additives_tags.length > 0) {
+    additivesHtml = `
+      <div class="mt-3 p-3 bg-dark border border-danger border-opacity-50 rounded-3">
+        <h6 class="text-danger small fw-bold mb-2">⚠️ Aditivos Detectados (${product.additives_tags.length}):</h6>
+        <div class="d-flex flex-wrap gap-1">
+          ${product.additives_tags.map(a => `<span class="badge bg-danger-subtle text-danger border border-danger">${a.replace('en:', '').toUpperCase()}</span>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  if (bodyEl) {
+    bodyEl.innerHTML = `
+      ${badgesHtml}
+      
+      <div class="table-responsive">
+        <table class="table table-dark table-sm table-bordered mb-0 small">
+          <thead>
+            <tr class="text-muted">
+              <th>Nutriente</th>
+              <th class="text-end">Por 100g / 100ml</th>
+              <th class="text-end text-success fw-bold">En tu receta (${ing.amount} ${ing.unit})</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>🔥 Calorías</strong></td>
+              <td class="text-end">${cal100} kcal</td>
+              <td class="text-end text-success fw-bold">${calRec} kcal</td>
+            </tr>
+            <tr>
+              <td><strong>💪 Proteínas</strong></td>
+              <td class="text-end">${prot100} g</td>
+              <td class="text-end text-success fw-bold">${protRec} g</td>
+            </tr>
+            <tr>
+              <td><strong>🥑 Grasas</strong></td>
+              <td class="text-end">${fat100} g</td>
+              <td class="text-end text-success fw-bold">${fatRec} g</td>
+            </tr>
+            <tr>
+              <td><strong>🍞 Carbohidratos</strong></td>
+              <td class="text-end">${carbs100} g</td>
+              <td class="text-end text-success fw-bold">${carbsRec} g</td>
+            </tr>
+            <tr>
+              <td>&nbsp;&nbsp;↳ de los cuales azúcares</td>
+              <td class="text-end text-muted">${sugars100} g</td>
+              <td class="text-end text-muted">${sugarsRec} g</td>
+            </tr>
+            <tr>
+              <td><strong>🌾 Fibra alimentaria</strong></td>
+              <td class="text-end">${fiber100} g</td>
+              <td class="text-end text-success fw-bold">${fiberRec} g</td>
+            </tr>
+            <tr>
+              <td><strong>🧂 Sal</strong></td>
+              <td class="text-end">${salt100} g</td>
+              <td class="text-end">${saltRec} g</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      ${micronutrientsHtml}
+      ${bioactivesHtml}
+      ${benefitsHtml}
+      ${synergiesHtml}
+      ${additivesHtml}
+    `;
+  }
+};
 
 // ─── Nutrición ─────────────────────────────────────────────────────────────────
 async function updateNutrition() {

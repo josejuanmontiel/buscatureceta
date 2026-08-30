@@ -282,3 +282,54 @@ export async function seedDemoData() {
   console.log('[DemoData] Datos de prueba cargados con éxito.');
   return true;
 }
+
+/**
+ * Importa el catálogo de 12 recetas mediterráneas reales con resolución Smart Match
+ * @returns {Promise<number>} Número de recetas importadas
+ */
+export async function seedMediterraneanPack() {
+  const { resolveIngredientSmart } = await import('../products/PrimaryFoodStore.js');
+  const NutritionCalc = await import('../nutrition/NutritionCalculator.js');
+
+  let res = await fetch('/data/mediterranean_recipes.json');
+  if (!res.ok) res = await fetch('./data/mediterranean_recipes.json');
+  if (!res.ok) throw new Error(`HTTP ${res.status} al cargar mediterranean_recipes.json`);
+  const pack = await res.json();
+
+  let importedCount = 0;
+  for (const item of pack) {
+    const resolvedIngredients = [];
+    for (const ing of (item.ingredients || [])) {
+      if (ing.productCode) {
+        resolvedIngredients.push(ing);
+      } else {
+        const match = await resolveIngredientSmart(ing.name || ing.productName);
+        resolvedIngredients.push({
+          productCode: match ? match.code : null,
+          productName: match ? match.product_name : (ing.name || ing.productName),
+          amount: ing.amount || 100,
+          unit: ing.unit || 'g'
+        });
+      }
+    }
+
+    const servings = item.servings || 2;
+    const nutritionPerServing = item.nutritionPerServing || 
+      await NutritionCalc.calculateRecipeNutritionPerServing(resolvedIngredients, servings);
+
+    await RecipeStore.createRecipe({
+      name: item.name,
+      servings,
+      description: item.description || '',
+      instructions: item.instructions || '',
+      tags: item.tags || ['mediterránea'],
+      ingredients: resolvedIngredients,
+      nutritionPerServing
+    });
+    importedCount++;
+  }
+
+  console.log(`[DemoData] ${importedCount} recetas mediterráneas importadas con éxito.`);
+  return importedCount;
+}
+

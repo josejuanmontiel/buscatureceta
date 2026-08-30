@@ -74,6 +74,13 @@ export default defineConfig({
   server: {
     port: 8080,
     hot: true,
+    proxy: {
+      '/mealie-proxy': {
+        target: 'http://127.0.0.1:9925',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/mealie-proxy/, '')
+      }
+    }
   },
   build: {
     outDir: '../dist',

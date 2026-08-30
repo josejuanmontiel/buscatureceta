@@ -1,10 +1,11 @@
 import { db } from './db/schema.js';
 import * as ProductStore from './modules/products/ProductStore.js';
+import * as PrimaryFoodStore from './modules/products/PrimaryFoodStore.js';
 import {TabulatorFull as Tabulator} from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator_midnight.min.css';
 
 let table;
-let currentDb = 'official'; // 'official' o 'custom'
+let currentDb = 'official'; // 'official', 'primary' o 'custom'
 
 export async function initView() {
     // Sincronizar estado con la UI por si venimos de otra vista (SPA)
@@ -14,15 +15,23 @@ export async function initView() {
     await updateCount();
 
     // Configuración de columnas base
+    const numFormatter = (field) => (cell) => {
+        const row = cell.getData();
+        const v = cell.getValue() ?? row?.nutriments?.[field];
+        if (v === undefined || v === null || v === '') return '-';
+        const num = parseFloat(v);
+        return isNaN(num) ? '-' : (Math.round(num * 10) / 10).toString();
+    };
+
     const columns = [
         { title: "Código", field: "code", width: 150, headerFilter: "input", editable: false },
         { title: "Nombre", field: "product_name", headerFilter: "input", editable: false },
-        { title: "Marcas", field: "brands", width: 150, headerFilter: "input", editable: false },
+        { title: "Marcas / Origen", field: "brands", width: 160, headerFilter: "input", editable: false },
         { title: "Nutriscore", field: "nutriscore_grade", width: 100, formatter: "uppercase", hozAlign: "center", editable: false },
-        { title: "Energía (kcal)", field: "energy-kcal_100g", width: 120, hozAlign: "right", editable: false },
-        { title: "Proteínas", field: "proteins_100g", width: 100, hozAlign: "right", editable: false },
-        { title: "Carbohidratos", field: "carbohydrates_100g", width: 120, hozAlign: "right", editable: false },
-        { title: "Grasas", field: "fat_100g", width: 100, hozAlign: "right", editable: false }
+        { title: "Energía (kcal)", field: "energy-kcal_100g", width: 120, hozAlign: "right", formatter: numFormatter('energy-kcal_100g'), editable: false },
+        { title: "Proteínas (g)", field: "proteins_100g", width: 110, hozAlign: "right", formatter: numFormatter('proteins_100g'), editable: false },
+        { title: "Carbohidratos (g)", field: "carbohydrates_100g", width: 130, hozAlign: "right", formatter: numFormatter('carbohydrates_100g'), editable: false },
+        { title: "Grasas (g)", field: "fat_100g", width: 100, hozAlign: "right", formatter: numFormatter('fat_100g'), editable: false }
     ];
 
     // Inicializar Tabulator
@@ -50,10 +59,8 @@ export async function initView() {
         }
     });
 
-    // Cargar datos iniciales y forzar redibujado (necesario en SPA donde el contenedor
-    // puede no tener dimensiones definitivas en el momento de la inicialización)
+    // Cargar datos iniciales y forzar redibujado
     await loadTableData();
-    // Esperar al siguiente ciclo para que el DOM termine de renderizar
     setTimeout(() => { if (table) table.redraw(true); }, 0);
 
     // Toggle de BD
@@ -86,59 +93,89 @@ export async function initView() {
         const term = e.target.value.trim().toLowerCase();
 
         searchTimeout = setTimeout(async () => {
-            if (term.length < 3 && term.length > 0) return;
+            if (term.length < 2 && term.length > 0) return;
             
             const countEl = document.getElementById('db-count');
             countEl.textContent = "Buscando...";
 
             let results = [];
-            const targetDb = currentDb === 'custom' ? db.customProducts : db.products;
 
-            if (term.length === 0) {
-                results = await targetDb.limit(1000).toArray();
-            } else {
-                const terms = term.split(' ').filter(t => t.length > 0);
-                
-                // 1. Si es un código exacto (o parece un código), probar búsqueda directa ultra-rápida
-                if (/^\d+$/.test(terms[0]) && terms.length === 1) {
-                    const exact = await targetDb.get(terms[0]);
-                    if (exact) results = [exact];
+            if (currentDb === 'primary') {
+                if (term.length === 0) {
+                    const all = await PrimaryFoodStore.getAllPrimaryFoods();
+                    results = all.map(PrimaryFoodStore.primaryFoodToProduct);
+                } else {
+                    results = await PrimaryFoodStore.searchPrimaryFoods(term, 100);
                 }
-                
-                // 2. Búsqueda por texto (limitado para no congelar)
-                if (results.length === 0) {
-                    let scanned = 0;
-                    results = await targetDb.toCollection()
-                        .until(() => {
-                            scanned++;
-                            return scanned > 15000;
-                        })
-                        .filter(p => {
-                            const name = (p.product_name || '').toLowerCase();
-                            const brand = (p.brands || '').toLowerCase();
-                            const code = (p.code || '').toLowerCase();
-                            return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
-                        })
-                        .limit(150)
-                        .toArray();
+            } else {
+                const targetDb = currentDb === 'custom' ? db.customProducts : db.products;
+
+                if (term.length === 0) {
+                    results = await targetDb.limit(1000).toArray();
+                } else {
+                    const terms = term.split(' ').filter(t => t.length > 0);
+                    
+                    // 1. Si es un código exacto
+                    if (/^\d+$/.test(terms[0]) && terms.length === 1) {
+                        const exact = await targetDb.get(terms[0]);
+                        if (exact) results = [exact];
+                    }
+                    
+                    // 2. Búsqueda por texto
+                    if (results.length === 0) {
+                        let scanned = 0;
+                        results = await targetDb.toCollection()
+                            .until(() => {
+                                scanned++;
+                                return scanned > 15000;
+                            })
+                            .filter(p => {
+                                const name = (p.product_name || '').toLowerCase();
+                                const brand = (p.brands || '').toLowerCase();
+                                const code = (p.code || '').toLowerCase();
+                                return terms.every(t => name.includes(t) || brand.includes(t) || code.includes(t));
+                            })
+                            .limit(150)
+                            .toArray();
+                    }
                 }
             }
 
             table.replaceData(results);
-            await updateCount();
-        }, 800); // Aumentamos el debounce para no atascar el navegador si tecleas rápido
+            await updateCount(results.length);
+        }, 300);
     });
 }
 
 async function loadTableData() {
+    if (currentDb === 'primary') {
+        const all = await PrimaryFoodStore.getAllPrimaryFoods();
+        const data = all.map(PrimaryFoodStore.primaryFoodToProduct);
+        table.replaceData(data);
+        return;
+    }
     const targetDb = currentDb === 'custom' ? db.customProducts : db.products;
     const initialData = await targetDb.limit(1000).toArray();
     table.replaceData(initialData);
 }
 
-async function updateCount() {
+async function updateCount(overrideCount) {
+    const countEl = document.getElementById('db-count');
+    if (!countEl) return;
+
+    if (overrideCount !== undefined) {
+        countEl.textContent = `${overrideCount} productos`;
+        return;
+    }
+
+    if (currentDb === 'primary') {
+        const all = await PrimaryFoodStore.getAllPrimaryFoods();
+        countEl.textContent = `${all.length} alimentos básicos (BEDCA)`;
+        return;
+    }
+
     const count = currentDb === 'custom' ? await db.customProducts.count() : await db.products.count();
-    document.getElementById('db-count').textContent = `${count} productos`;
+    countEl.textContent = `${count} productos`;
 }
 
 // Pequeño toast para el visor

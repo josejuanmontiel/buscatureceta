@@ -1,4 +1,5 @@
 import * as BackupStore from './modules/backup/BackupStore.js';
+import * as MealieClient from './modules/mealie/MealieClient.js';
 import { showToast, confirmModal } from './modules/ui/UI.js';
 import { getPendingUploads, deletePendingUpload, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
 import { db } from './db/schema.js';
@@ -32,7 +33,31 @@ export async function initView() {
         showToast('Error: ' + err.message, 'danger');
       } finally {
         btnDemo.disabled = false;
-        btnDemo.textContent = '🪄 Cargar / Restablecer Datos de Demostración';
+        btnDemo.textContent = '🪄 Cargar Datos de Demostración (Completo)';
+      }
+    });
+  }
+
+  const btnMedSettings = document.getElementById('btn-load-mediterranean-settings');
+  if (btnMedSettings) {
+    btnMedSettings.addEventListener('click', async () => {
+      const confirmed = await confirmModal(
+        '¿Cargar Pack de Recetas Mediterráneas?',
+        'Se importarán 12 recetas equilibradas (desayunos, comidas, cenas y meriendas) con Alimentos Primarios BEDCA.'
+      );
+      if (!confirmed) return;
+      btnMedSettings.disabled = true;
+      btnMedSettings.textContent = 'Cargando pack...';
+      try {
+        const { seedMediterraneanPack } = await import('./modules/demo/demoData.js');
+        const count = await seedMediterraneanPack();
+        showToast(`🎉 ¡${count} recetas mediterráneas importadas con éxito!`, 'success');
+      } catch (err) {
+        console.error('Error al cargar pack mediterráneo:', err);
+        showToast('Error: ' + err.message, 'danger');
+      } finally {
+        btnMedSettings.disabled = false;
+        btnMedSettings.textContent = '🥗 Importar Pack 12 Recetas Mediterráneas';
       }
     });
   }
@@ -55,6 +80,13 @@ export async function initView() {
     initCredentialsConfig();
   } catch (err) {
     console.error('Error inicializando credenciales OFF:', err);
+  }
+
+  // Inicializar configuración de Mealie
+  try {
+    initMealieConfig();
+  } catch (err) {
+    console.error('Error inicializando configuración de Mealie:', err);
   }
   
   // Inicializar Carga de Base de Datos
@@ -529,4 +561,105 @@ async function downloadAndLoadCSV() {
     } finally {
         btn.disabled = false;
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gestión de Integración con Mealie
+// ─────────────────────────────────────────────────────────────────────────────
+
+function initMealieConfig() {
+  const btnSave = document.getElementById('btn-save-mealie');
+  const btnClear = document.getElementById('btn-clear-mealie');
+  const btnVerify = document.getElementById('btn-verify-mealie');
+  const btnToggle = document.getElementById('btn-toggle-mealie-token');
+
+  populateMealieForm();
+
+  if (btnToggle) {
+    btnToggle.addEventListener('click', () => {
+      const tokenInput = document.getElementById('mealie-token');
+      if (tokenInput) {
+        tokenInput.type = tokenInput.type === 'password' ? 'text' : 'password';
+        btnToggle.textContent = tokenInput.type === 'password' ? '👁' : '🙈';
+      }
+    });
+  }
+
+  if (btnSave) {
+    btnSave.addEventListener('click', () => {
+      const urlInput = document.getElementById('mealie-url');
+      const tokenInput = document.getElementById('mealie-token');
+      const url = urlInput ? urlInput.value.trim() : '';
+      const token = tokenInput ? tokenInput.value.trim() : '';
+
+      MealieClient.saveMealieConfig(url, token);
+      populateMealieForm();
+      showToast('Configuración de Mealie guardada.', 'success');
+    });
+  }
+
+  if (btnClear) {
+    btnClear.addEventListener('click', async () => {
+      if (!(await confirmModal('¿Deseas borrar la configuración y credenciales de Mealie?', 'Borrar Mealie'))) return;
+      MealieClient.saveMealieConfig('', '');
+      populateMealieForm();
+      showToast('Configuración de Mealie eliminada.', 'info');
+    });
+  }
+
+  if (btnVerify) {
+    btnVerify.addEventListener('click', async () => {
+      const urlInput = document.getElementById('mealie-url');
+      const tokenInput = document.getElementById('mealie-token');
+      const url = urlInput ? urlInput.value.trim() : '';
+      const token = tokenInput ? tokenInput.value.trim() : '';
+
+      btnVerify.disabled = true;
+      btnVerify.textContent = 'Probando...';
+      showMealieVerifyResult('secondary', '⏳ Conectando con el servidor Mealie...');
+
+      const result = await MealieClient.testConnection(url, token);
+      if (result.ok) {
+        showMealieVerifyResult('success', `✅ ${result.message}`);
+        showToast(result.message, 'success');
+      } else {
+        showMealieVerifyResult('danger', `❌ ${result.message}`);
+        showToast(result.message, 'danger');
+      }
+
+      btnVerify.disabled = false;
+      btnVerify.textContent = '🔍 Probar Conexión';
+    });
+  }
+}
+
+function populateMealieForm() {
+  const config = MealieClient.getMealieConfig();
+  const urlInput = document.getElementById('mealie-url');
+  const tokenInput = document.getElementById('mealie-token');
+
+  if (urlInput) urlInput.value = config.url || 'http://localhost:9925';
+  if (tokenInput) tokenInput.value = config.token || '';
+
+  const statusEl = document.getElementById('mealie-status');
+  if (statusEl) {
+    if (config.token) {
+      statusEl.className = 'alert alert-success py-2 mb-3 small';
+      statusEl.innerHTML = `✅ Servidor configurado: <strong>${config.url}</strong> (Token presente)`;
+    } else {
+      statusEl.className = 'alert alert-warning py-2 mb-3 small';
+      statusEl.innerHTML = `⚠️ Servidor: <strong>${config.url}</strong> (Sin token configurado, solo recetas públicas si están habilitadas).`;
+    }
+  }
+
+  const verifyResult = document.getElementById('mealie-verify-result');
+  if (verifyResult) verifyResult.classList.add('d-none');
+}
+
+function showMealieVerifyResult(type, html) {
+  const el = document.getElementById('mealie-verify-result');
+  if (!el) return;
+  el.className = `alert alert-${type} py-2 small mt-2 mb-3`;
+  el.innerHTML = html;
+  el.classList.remove('d-none');
 }

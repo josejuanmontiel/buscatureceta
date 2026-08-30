@@ -1,4 +1,6 @@
 import * as ProductStore from "./modules/products/ProductStore.js";
+import * as PrimaryFoodStore from "./modules/products/PrimaryFoodStore.js";
+import * as MealieClient from "./modules/mealie/MealieClient.js";
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
@@ -7,10 +9,16 @@ import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import { showToast, confirmModal } from './modules/ui/UI.js';
 
 let recipeModal;
+let mealieModal;
 let currentIngredients = [];
+let mealieRecipesCache = [];
 
 export async function initView() {
   recipeModal = new Modal(document.getElementById('recipeModal'));
+  const mealieEl = document.getElementById('mealieImportModal');
+  if (mealieEl) {
+    mealieModal = new Modal(mealieEl);
+  }
   
   await loadRecipes();
 
@@ -21,6 +29,28 @@ export async function initView() {
   document.getElementById('btn-new-recipe').addEventListener('click', () => {
     window.location.hash = '#recipe-editor';
   });
+
+  // Botón Importar de Mealie
+  const btnOpenMealie = document.getElementById('btn-open-mealie-import');
+  if (btnOpenMealie) {
+    btnOpenMealie.addEventListener('click', openMealieImportModal);
+  }
+
+  // Buscador y refresco de Mealie
+  const mealieSearchInput = document.getElementById('mealie-recipe-search');
+  if (mealieSearchInput) {
+    mealieSearchInput.addEventListener('input', (e) => filterMealieRecipes(e.target.value));
+  }
+  const btnRefreshMealie = document.getElementById('btn-refresh-mealie-list');
+  if (btnRefreshMealie) {
+    btnRefreshMealie.addEventListener('click', () => loadMealieRecipes());
+  }
+
+  // Botón Pack Mediterráneo
+  const btnMedPack = document.getElementById('btn-import-mediterranean-pack');
+  if (btnMedPack) {
+    btnMedPack.addEventListener('click', importMediterraneanPack);
+  }
 
   // Recalcular al cambiar raciones
   const servingsEl = document.getElementById('recipe-servings');
@@ -34,7 +64,26 @@ async function loadRecipes(query = '') {
   const container = document.getElementById('recipes-list');
   
   if (recipes.length === 0) {
-    container.innerHTML = `<div class="col-12 text-center mt-5"><p class="text-muted">No tienes recetas guardadas.</p></div>`;
+    container.innerHTML = `
+      <div class="col-12 text-center my-5">
+        <div class="p-4 bg-dark border border-secondary rounded-3 d-inline-block text-start" style="max-width: 540px;">
+          <h5 class="text-info mb-2">📖 Aún no tienes recetas guardadas</h5>
+          <p class="text-muted small mb-3">
+            Comienza creando una nueva receta, importando desde tu servidor Mealie o cargando nuestro pack de 12 recetas mediterráneas con Alimentos Primarios (BEDCA).
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-sm btn-success" onclick="document.getElementById('btn-import-mediterranean-pack').click()">
+              🥗 Cargar 12 Recetas Mediterráneas
+            </button>
+            <button class="btn btn-sm btn-outline-info" onclick="document.getElementById('btn-open-mealie-import').click()">
+              🍽️ Importar de Mealie
+            </button>
+            <a href="#recipe-editor" class="btn btn-sm btn-outline-light">
+              + Crear Receta
+            </a>
+          </div>
+        </div>
+      </div>`;
     return;
   }
 
@@ -288,4 +337,199 @@ window._duplicateRecipe = async function(id) {
   await RecipeStore.createRecipe(data);
   await loadRecipes();
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Integración con Mealie
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function openMealieImportModal() {
+  if (!mealieModal) return;
+  mealieModal.show();
+  await loadMealieRecipes();
+}
+
+async function loadMealieRecipes(query = '') {
+  const statusEl = document.getElementById('mealie-recipes-status');
+  const container = document.getElementById('mealie-recipes-container');
+  if (!container) return;
+
+  const config = MealieClient.getMealieConfig();
+  if (statusEl) {
+    statusEl.className = 'alert alert-info py-2 small mb-3';
+    statusEl.innerHTML = `Conectando con <strong>${config.url}</strong>...`;
+  }
+  container.innerHTML = '<div class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm text-info me-2"></span>Cargando recetas de Mealie...</div>';
+
+  try {
+    const items = await MealieClient.getRecipes(query);
+    mealieRecipesCache = items || [];
+
+    if (mealieRecipesCache.length === 0) {
+      if (statusEl) {
+        statusEl.className = 'alert alert-warning py-2 small mb-3';
+        statusEl.innerHTML = `No se encontraron recetas en Mealie (${config.url}).`;
+      }
+      container.innerHTML = '<div class="text-center py-4 text-muted small">No hay recetas disponibles en tu servidor Mealie o no coinciden con la búsqueda.</div>';
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.className = 'alert alert-success py-2 small mb-3';
+      statusEl.innerHTML = `✅ Conectado a Mealie. <strong>${mealieRecipesCache.length}</strong> recetas encontradas.`;
+    }
+
+    renderMealieRecipesList(mealieRecipesCache);
+  } catch (err) {
+    console.error('Error cargando recetas de Mealie:', err);
+    if (statusEl) {
+      statusEl.className = 'alert alert-danger py-2 small mb-3';
+      statusEl.innerHTML = `❌ Error al conectar con Mealie: ${err.message}. Revisa la URL y Token en <a href="#settings" class="alert-link">Ajustes</a>.`;
+    }
+    container.innerHTML = `<div class="p-3 text-center text-danger small">
+      No se pudo conectar con el servidor Mealie.<br>
+      Asegúrate de que Mealie está iniciado en <code>${config.url}</code> y configurado en <a href="#settings">Ajustes</a>.
+    </div>`;
+  }
+}
+
+function filterMealieRecipes(q) {
+  const query = (q || '').toLowerCase().trim();
+  if (!query) {
+    renderMealieRecipesList(mealieRecipesCache);
+    return;
+  }
+  const filtered = mealieRecipesCache.filter(r => 
+    (r.name && r.name.toLowerCase().includes(query)) ||
+    (r.description && r.description.toLowerCase().includes(query)) ||
+    (r.tags && r.tags.some(t => (t.name || t).toLowerCase().includes(query)))
+  );
+  renderMealieRecipesList(filtered);
+}
+
+function renderMealieRecipesList(items) {
+  const container = document.getElementById('mealie-recipes-container');
+  if (!container) return;
+
+  if (items.length === 0) {
+    container.innerHTML = '<div class="text-muted text-center py-3 small">Sin resultados coincidentes.</div>';
+    return;
+  }
+
+  container.innerHTML = items.map((r, idx) => `
+    <div class="list-group-item bg-dark text-white border-secondary d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 py-3">
+      <div style="flex:1; min-width:0;">
+        <div class="fw-bold text-info">${r.name}</div>
+        <div class="text-muted small text-truncate">${r.description || 'Sin descripción'}</div>
+        <div class="mt-1">
+          <span class="badge bg-secondary me-1">🍽️ ${r.recipeServings || r.recipeYieldQuantity || 2} raciones</span>
+          ${(r.tags || []).map(t => `<span class="badge bg-dark border border-info me-1">${typeof t === 'object' ? t.name : t}</span>`).join('')}
+        </div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button class="btn btn-sm btn-outline-info" onclick="window._openMealieInEditor('${r.slug}')" title="Editar antes de guardar">
+          ✏️ Editor
+        </button>
+        <button class="btn btn-sm btn-success" id="btn-import-direct-${idx}" onclick="window._importMealieDirect('${r.slug}', ${idx})" title="Importar directamente">
+          ⚡ Importar
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window._openMealieInEditor = function(slug) {
+  if (mealieModal) mealieModal.hide();
+  window.location.hash = `#recipe-editor?mealieSlug=${encodeURIComponent(slug)}`;
+};
+
+window._importMealieDirect = async function(slug, btnIdx) {
+  const btn = document.getElementById(`btn-import-direct-${btnIdx}`);
+  const originalText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Importando...';
+  }
+
+  try {
+    const rawDetail = await MealieClient.getRecipeDetail(slug);
+    const converted = MealieClient.convertMealieToBuscaReceta(rawDetail);
+    
+    // Resolver ingredientes con Smart Match (Alimentos Primarios BEDCA / OFF)
+    const resolvedIngredients = [];
+    for (const rawIng of converted.ingredients) {
+      const match = await PrimaryFoodStore.resolveIngredientSmart(rawIng.name);
+      resolvedIngredients.push({
+        productCode: match ? match.code : null,
+        productName: match ? match.product_name : rawIng.name,
+        amount: rawIng.amount || 100,
+        unit: rawIng.unit || 'g',
+        isPrimary: match ? (match.isPrimaryFood || (match.code && match.code.startsWith('primary:'))) : false
+      });
+    }
+
+    const nutritionPerServing = await NutritionCalc.calculateRecipeNutritionPerServing(
+      resolvedIngredients,
+      converted.servings || 2
+    );
+
+    const recipeData = {
+      name: converted.name,
+      servings: converted.servings || 2,
+      description: converted.description,
+      instructions: converted.instructions,
+      tags: converted.tags,
+      ingredients: resolvedIngredients,
+      nutritionPerServing,
+      mealieSlug: slug
+    };
+
+    await RecipeStore.createRecipe(recipeData);
+    showToast(`✅ Receta "${converted.name}" importada con éxito de Mealie.`, 'success');
+    if (mealieModal) mealieModal.hide();
+    await loadRecipes();
+  } catch (err) {
+    console.error('Error importando receta de Mealie:', err);
+    showToast(`Error al importar receta: ${err.message}`, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Importador Pack Dieta Mediterránea
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function importMediterraneanPack() {
+  const confirmed = await confirmModal(
+    '¿Cargar Pack de Recetas Mediterráneas?',
+    'Se importarán 12 recetas equilibradas (desayunos, comidas, cenas y meriendas) con Alimentos Primarios BEDCA y macros calculados.'
+  );
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btn-import-mediterranean-pack');
+  const originalText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Importando pack...';
+  }
+
+  try {
+    const { seedMediterraneanPack } = await import('./modules/demo/demoData.js');
+    const count = await seedMediterraneanPack();
+    showToast(`🎉 ¡${count} recetas mediterráneas importadas con éxito!`, 'success');
+    await loadRecipes();
+  } catch (err) {
+    console.error('Error importando pack mediterráneo:', err);
+    showToast(`Error al cargar el pack: ${err.message}`, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
 

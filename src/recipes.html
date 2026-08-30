@@ -27,11 +27,19 @@
     </header>
 
     <main class="px-3 flex-grow-1">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h1>Mis Recetas</h1>
-        <button class="btn btn-primary" id="btn-new-recipe">
-          + Añadir
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-info" id="btn-open-mealie-import">
+            🍽️ Importar de Mealie
+          </button>
+          <button class="btn btn-outline-success" id="btn-import-mediterranean-pack">
+            🥗 Pack Mediterráneo
+          </button>
+          <button class="btn btn-primary" id="btn-new-recipe">
+            + Añadir
+          </button>
+        </div>
       </div>
 
       <!-- Buscador -->
@@ -45,6 +53,36 @@
       </div>
     </main>
 
+  </div>
+
+  <!-- Modal para Importar desde Mealie -->
+  <div class="modal fade" id="mealieImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">🍽️ Importar Recetas desde Mealie</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="input-group mb-3">
+            <input type="text" id="mealie-recipe-search" class="form-control" placeholder="Buscar en Mealie...">
+            <button class="btn btn-outline-info" type="button" id="btn-refresh-mealie-list">🔄 Refrescar</button>
+          </div>
+
+          <div id="mealie-recipes-status" class="alert alert-secondary py-2 small mb-3">
+            Conectando con Mealie...
+          </div>
+
+          <div id="mealie-recipes-container" class="list-group mb-3" style="max-height: 420px; overflow-y: auto;">
+            <!-- Recetas de Mealie inyectadas vía JS -->
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <a href="#settings" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">⚙️ Ajustes de Mealie</a>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Modal para Crear/Editar Receta -->

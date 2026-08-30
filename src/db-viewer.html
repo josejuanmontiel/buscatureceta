@@ -26,10 +26,13 @@
         <h4 class="mb-0 text-start">Visor de Productos</h4>
         <div class="btn-group" role="group">
           <input type="radio" class="btn-check" name="dbtype" id="db-official" value="official" checked>
-          <label class="btn btn-outline-primary btn-sm" for="db-official">BD Oficial</label>
+          <label class="btn btn-outline-primary btn-sm" for="db-official">BD Oficial (OFF)</label>
+
+          <input type="radio" class="btn-check" name="dbtype" id="db-primary" value="primary">
+          <label class="btn btn-outline-success btn-sm" for="db-primary">🌱 Alimentos Básicos (BEDCA)</label>
 
           <input type="radio" class="btn-check" name="dbtype" id="db-custom" value="custom">
-          <label class="btn btn-outline-primary btn-sm" for="db-custom">Mis Productos</label>
+          <label class="btn btn-outline-info btn-sm" for="db-custom">Mis Productos</label>
         </div>
         <span id="db-count" class="badge bg-primary ms-2">Cargando...</span>
       </div>

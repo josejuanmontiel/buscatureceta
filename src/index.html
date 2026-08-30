@@ -123,8 +123,28 @@
       </div>
     </div>
 
+    <!-- Sección Modo Demo / Inicio Rápido -->
+    <div class="container mt-4 text-start">
+      <div class="card bg-dark border-success">
+        <div class="card-body">
+          <h5 class="card-title text-success mb-2">🪄 ¿Primera vez aquí? Comienza con datos de ejemplo</h5>
+          <p class="text-muted small mb-3">
+            Explora la aplicación inmediatamente con paquetes de datos listos para usar:
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-success btn-sm" id="btn-load-demo-home">
+              🪄 Datos de Prueba (Despensa, Recetas y Agenda)
+            </button>
+            <button class="btn btn-outline-info btn-sm" id="btn-load-mediterranean-home">
+              🥗 Pack 12 Recetas Mediterráneas (BEDCA)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Sección informativa -->
-    <div class="container mt-5 text-start">
+    <div class="container mt-4 text-start">
       <div class="card bg-dark border-secondary">
         <div class="card-body">
           <h5 class="card-title text-info">¿Cómo funciona?</h5>
@@ -600,11 +620,19 @@
   <template id="view-recipes">
     <div class="view-content d-flex flex-column min-h-100">
       
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h1>Mis Recetas</h1>
-        <button class="btn btn-primary" id="btn-new-recipe">
-          + Añadir
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-info" id="btn-open-mealie-import">
+            🍽️ Importar de Mealie
+          </button>
+          <button class="btn btn-outline-success" id="btn-import-mediterranean-pack">
+            🥗 Pack Mediterráneo
+          </button>
+          <button class="btn btn-primary" id="btn-new-recipe">
+            + Añadir
+          </button>
+        </div>
       </div>
 
       <!-- Buscador -->
@@ -617,7 +645,35 @@
         <!-- Las recetas se inyectan aquí vía JS -->
       </div>
     
-      <div class="modal fade" id="recipeModal" tabindex="-1" aria-hidden="true">
+      <div class="modal fade" id="mealieImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">🍽️ Importar Recetas desde Mealie</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="input-group mb-3">
+            <input type="text" id="mealie-recipe-search" class="form-control" placeholder="Buscar en Mealie...">
+            <button class="btn btn-outline-info" type="button" id="btn-refresh-mealie-list">🔄 Refrescar</button>
+          </div>
+
+          <div id="mealie-recipes-status" class="alert alert-secondary py-2 small mb-3">
+            Conectando con Mealie...
+          </div>
+
+          <div id="mealie-recipes-container" class="list-group mb-3" style="max-height: 420px; overflow-y: auto;">
+            <!-- Recetas de Mealie inyectadas vía JS -->
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <a href="#settings" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">⚙️ Ajustes de Mealie</a>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="recipeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
@@ -680,16 +736,46 @@
       
     <div class="editor-header">
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-outline-secondary me-1" onclick="window.history.back()">←</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.history.back()" title="Volver">←</button>
         <h1 class="h5 mb-0" id="editor-page-title">Nueva Receta</h1>
         <span class="version-badge" id="version-badge" style="display:none;"></span>
       </div>
-      <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-warning" id="btn-import-ai">✨ Importar con IA</button>
-        <button class="btn btn-sm btn-outline-info" id="btn-duplicate-recipe" style="display:none;" title="Duplicar receta">📋</button>
-        <button class="btn btn-sm btn-outline-danger" id="btn-delete-recipe" style="display:none;" title="Eliminar receta">🗑</button>
-        <button class="btn btn-sm btn-outline-primary" id="btn-create-list-recipe" style="display:none;" title="Crear Lista de Compra">🛒</button>
-        <button class="btn btn-sm btn-success px-3" id="btn-save-recipe">💾 Guardar</button>
+
+      <div class="header-actions-group d-flex align-items-center gap-2">
+        <!-- Importar IA -->
+        <button class="btn btn-sm btn-outline-warning" id="btn-import-ai" title="Importar receta con IA">
+          ✨ <span class="d-none d-sm-inline">Importar con IA</span><span class="d-inline d-sm-none">IA</span>
+        </button>
+
+        <!-- Menú desplegable ⋮ Más opciones (cuando la receta ya está guardada) -->
+        <div class="dropdown" id="recipe-options-dropdown-container" style="display:none;">
+          <button class="btn btn-sm btn-outline-secondary px-2" type="button" id="recipeOptionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones de receta">
+            <strong style="font-size:1.1rem; line-height:1;">⋮</strong>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow border-secondary py-1" aria-labelledby="recipeOptionsDropdown">
+            <li>
+              <button class="dropdown-item d-flex align-items-center gap-2 py-2" id="btn-create-list-recipe">
+                🛒 <span>Crear Lista de Compra</span>
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item d-flex align-items-center gap-2 py-2" id="btn-duplicate-recipe">
+                📋 <span>Duplicar Receta</span>
+              </button>
+            </li>
+            <li><hr class="dropdown-divider border-secondary my-1"></li>
+            <li>
+              <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" id="btn-delete-recipe">
+                🗑 <span>Eliminar Receta</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- CTA Principal: Guardar -->
+        <button class="btn btn-sm btn-success px-3 fw-bold shadow-sm" id="btn-save-recipe">
+          💾 Guardar
+        </button>
       </div>
     </div>
     <div class="editor-grid">
@@ -913,6 +999,25 @@
             <button class="btn btn-outline-danger" id="btn-merge-replace">Reemplazar ingredientes existentes</button>
             <button class="btn btn-outline-primary" id="btn-merge-append">Añadirlos a los existentes</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<div class="modal fade" id="ingredientDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <div>
+            <h5 class="modal-title mb-0" id="modal-ing-title">Ficha del Ingrediente</h5>
+            <small class="text-muted" id="modal-ing-subtitle"></small>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modal-ing-body">
+          <!-- Se genera dinámicamente -->
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>
@@ -1358,10 +1463,13 @@
         <h4 class="mb-0 text-start">Visor de Productos</h4>
         <div class="btn-group" role="group">
           <input type="radio" class="btn-check" name="dbtype" id="db-official" value="official" checked="">
-          <label class="btn btn-outline-primary btn-sm" for="db-official">BD Oficial</label>
+          <label class="btn btn-outline-primary btn-sm" for="db-official">BD Oficial (OFF)</label>
+
+          <input type="radio" class="btn-check" name="dbtype" id="db-primary" value="primary">
+          <label class="btn btn-outline-success btn-sm" for="db-primary">🌱 Alimentos Básicos (BEDCA)</label>
 
           <input type="radio" class="btn-check" name="dbtype" id="db-custom" value="custom">
-          <label class="btn btn-outline-primary btn-sm" for="db-custom">Mis Productos</label>
+          <label class="btn btn-outline-info btn-sm" for="db-custom">Mis Productos</label>
         </div>
         <span id="db-count" class="badge bg-primary ms-2">Cargando...</span>
       </div>
@@ -1392,6 +1500,17 @@
             <button class="btn btn-primary" type="button" id="download-btn">
                 Cargar BD
             </button>
+        </div>
+      </div>
+
+      <div class="settings-section border-success border">
+        <h4 class="mb-3 text-success">🪄 Datos de Demostración y Packs de Recetas</h4>
+        <p class="text-muted small mb-3">
+          Carga datos de prueba o importa el catálogo de recetas mediterráneas para explorar la app rápidamente.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-success btn-sm" id="btn-load-demo-settings">🪄 Cargar Datos de Demostración (Completo)</button>
+          <button class="btn btn-outline-info btn-sm" id="btn-load-mediterranean-settings">🥗 Importar Pack 12 Recetas Mediterráneas</button>
         </div>
       </div>
 
@@ -1462,6 +1581,41 @@
         </div>
       </div>
 
+      <div class="settings-section border-info border">
+        <h4 class="mb-3 text-info">🍽️ Servidor Mealie (Recetario Self-Hosted)</h4>
+        <p class="text-muted small mb-3">
+          Conecta Busca Tu Receta con tu instancia local o remota de Mealie para importar recetas directamente con resolución inteligente de ingredientes.
+        </p>
+
+        <div id="mealie-status" class="alert alert-secondary py-2 mb-3 small">
+          Cargando estado de Mealie...
+        </div>
+
+        <div class="mb-3">
+          <label for="mealie-url" class="form-label form-label-sm">URL del Servidor Mealie</label>
+          <input type="text" id="mealie-url" class="form-control form-control-sm bg-secondary text-white border-secondary" placeholder="http://localhost:9925" value="http://localhost:9925">
+        </div>
+
+        <div class="mb-3">
+          <label for="mealie-token" class="form-label form-label-sm">API Token de Mealie</label>
+          <div class="input-group input-group-sm">
+            <input type="password" id="mealie-token" class="form-control bg-secondary text-white border-secondary" placeholder="eyJhbGciOiJIUzI1Ni..." autocomplete="off">
+            <button class="btn btn-outline-secondary" type="button" id="btn-toggle-mealie-token" title="Mostrar/ocultar">
+              👁
+            </button>
+          </div>
+          <div class="form-text text-muted">Genera tu API token en Mealie: Perfil → API Tokens.</div>
+        </div>
+
+        <div id="mealie-verify-result" class="d-none small mt-2 mb-3"></div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-info btn-sm" id="btn-verify-mealie">🔍 Probar Conexión</button>
+          <button class="btn btn-outline-danger btn-sm" id="btn-clear-mealie">🗑 Borrar Configuración</button>
+          <button class="btn btn-success btn-sm ms-auto" id="btn-save-mealie">💾 Guardar Configuración</button>
+        </div>
+      </div>
+
       <div class="settings-section">
         <h4 class="mb-3">🚫 Filtro de Aditivos e Ingredientes</h4>
         <p class="text-muted small mb-3">
@@ -1524,6 +1678,25 @@
         <!-- Rellenado por JS -->
       </div>
     
+      <div class="modal fade" id="quickDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="qd-product-name">Detalle del Producto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-2" id="qd-product-code"></p>
+          <div id="qd-badges" class="mb-3"></div>
+          <h6>Información Nutricional (por 100g/ml)</h6>
+          <ul class="list-group list-group-flush mb-3" id="qd-nutrition"></ul>
+          <a id="qd-off-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm d-none">
+            🌍 Ver en OpenFoodFacts
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 <div class="modal fade" id="modal-ticket-viewer" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content bg-dark text-white border-secondary">
@@ -1561,9 +1734,21 @@
         <div class="modal-body text-start">
           <form id="form-history-add-product">
             <input type="hidden" id="history-add-cart-id" value="">
+            <input type="hidden" id="history-add-product-code" value="">
+
             <div class="mb-3">
               <label class="form-label small fw-bold">Nombre del Producto *</label>
-              <input type="text" class="form-control bg-dark text-white border-secondary" id="history-add-product-name" placeholder="Ej: Leche desnatada, Manzanas..." required="">
+              <div class="input-group">
+                <input type="text" class="form-control bg-dark text-white border-secondary" id="history-add-product-name" placeholder="Ej: Leche desnatada, Manzanas..." required="">
+                <button class="btn btn-outline-info" type="button" id="btn-scan-inline-toggle" title="Escanear código de barras">
+                  <i class="bi bi-upc-scan"></i>
+                </button>
+              </div>
+              <div id="scan-inline-wrapper" class="mt-2" style="display:none;">
+                <div id="qr-reader-inline"></div>
+                <div id="scan-inline-status" class="text-center text-muted mt-1"></div>
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-1" id="btn-scan-inline-stop">✕ Cerrar cámara</button>
+              </div>
             </div>
             <div class="row g-2 mb-3">
               <div class="col-7">
@@ -1625,26 +1810,4 @@
       
     </div>
   </template>
-
-  <!-- Modal detalle rápido de producto (global, accesible desde cualquier vista) -->
-  <div class="modal fade" id="quickDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="qd-product-name">Detalle del Producto</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          <p class="text-muted small mb-2" id="qd-product-code"></p>
-          <div id="qd-badges" class="mb-3"></div>
-          <h6>Información Nutricional (por 100g/ml)</h6>
-          <ul class="list-group list-group-flush mb-3" id="qd-nutrition"></ul>
-          <a id="qd-off-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm d-none">
-            🌍 Ver en OpenFoodFacts
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
   </body></html>

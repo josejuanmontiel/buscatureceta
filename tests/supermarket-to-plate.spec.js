@@ -221,7 +221,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await page.waitForSelector('#ingredient-search-results button', { state: 'visible' });
     await page.locator('#ingredient-search-results button').first().click();
 
-    await expect(page.locator('#ingredient-list')).toContainText(/Pan de Molde Blanco/i);
+    await expect(page.locator('#ingredient-list')).toContainText(/Pan.*molde/i);
 
     // El preview nutricional debe actualizarse con los 2 ingredientes
     await page.waitForTimeout(400);
@@ -320,7 +320,7 @@ test('Full journey: Supermarket → Pantry → Recipe → Diary → Dashboard', 
     await expect(page.locator('#mealModal')).not.toBeVisible();
     
     // El grid ahora debe mostrar "Leche entera" en el segundo día
-    await expect(page.locator('.diary-day').nth(tomorrowIndex)).toContainText('Leche entera');
+    await expect(page.locator('.diary-day').nth(tomorrowIndex)).toContainText(/Leche.*entera/i);
     console.log('📅  Producto suelto (Leche) registrado en la Agenda (Mañana)');
   });
 

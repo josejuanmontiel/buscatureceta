@@ -55,7 +55,34 @@ export async function initView() {
         console.error('Error al sembrar demo data:', err);
         showToast('Error al cargar datos de demo: ' + err.message, 'danger');
         btnDemo.disabled = false;
-        btnDemo.textContent = '🪄 Cargar datos de prueba';
+        btnDemo.textContent = '🪄 Datos de Prueba (Despensa, Recetas y Agenda)';
+      }
+    });
+  }
+
+  const btnMedHome = document.getElementById('btn-load-mediterranean-home');
+  if (btnMedHome) {
+    btnMedHome.addEventListener('click', async () => {
+      const confirmed = await confirmModal(
+        '¿Cargar Pack de Recetas Mediterráneas?',
+        'Se importarán 12 recetas equilibradas (desayunos, comidas, cenas y meriendas) con Alimentos Primarios BEDCA.'
+      );
+      if (!confirmed) return;
+
+      btnMedHome.disabled = true;
+      btnMedHome.textContent = 'Cargando pack...';
+      try {
+        const { seedMediterraneanPack } = await import('./modules/demo/demoData.js');
+        const count = await seedMediterraneanPack();
+        showToast(`🎉 ¡${count} recetas mediterráneas importadas con éxito! Redirigiendo a Recetas...`, 'success');
+        setTimeout(() => {
+          window.location.hash = '#recipes';
+        }, 800);
+      } catch (err) {
+        console.error('Error cargando pack mediterráneo:', err);
+        showToast('Error al cargar el pack: ' + err.message, 'danger');
+        btnMedHome.disabled = false;
+        btnMedHome.textContent = '🥗 Pack 12 Recetas Mediterráneas (BEDCA)';
       }
     });
   }

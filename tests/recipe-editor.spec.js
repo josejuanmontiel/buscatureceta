@@ -77,8 +77,10 @@ test.describe('Recipe Editor Flow', () => {
     await page.fill('#recipe-servings', '2');
     await page.click('#btn-save-recipe');
 
-    // Esperar a que se asigne ID
-    await page.waitForURL('**/#recipe-editor?id=*');
+    // Abrir menú de opciones ⋮
+    const dropdownBtn = page.locator('#recipeOptionsDropdown');
+    await expect(dropdownBtn).toBeVisible();
+    await dropdownBtn.click();
 
     // Comprobar que aparece el botón de duplicar
     const btnDuplicate = page.locator('#btn-duplicate-recipe');

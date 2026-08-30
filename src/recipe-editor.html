@@ -30,9 +30,30 @@
     .version-dot.current { background:#75b798; }
     .version-label { font-size:.83rem; font-weight:500; }
     .version-meta { font-size:.72rem; color:#7c8ca0; }
-    .editor-header { position:sticky; top:0; z-index:10; background:rgba(33,37,41,.92); backdrop-filter:blur(8px); border-bottom:1px solid rgba(255,255,255,.08); padding:.65rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
-    .editor-header h1 { font-size:1.05rem; font-weight:600; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:45vw; }
+    .editor-header { 
+      position:sticky; 
+      top:0; 
+      z-index:100; 
+      background:rgba(21, 24, 28, 0.95); 
+      backdrop-filter:blur(10px); 
+      border-bottom:1px solid rgba(255,255,255,.08); 
+      padding:.65rem 1rem; 
+      display:flex; 
+      align-items:center; 
+      justify-content:space-between; 
+      flex-wrap:wrap; 
+      gap:.65rem; 
+      margin-bottom:1.25rem; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    }
+    .editor-header h1 { font-size:1.1rem; font-weight:600; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:35vw; }
     .version-badge { font-size:.72rem; background:rgba(110,168,254,.15); border:1px solid rgba(110,168,254,.3); color:#6ea8fe; border-radius:20px; padding:2px 9px; }
+    .header-actions-group { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+    @media(max-width:768px){
+      .editor-header h1 { max-width:55vw; font-size:1rem; }
+      .editor-header { padding:0.5rem 0.75rem; }
+      .header-actions-group { width:100%; justify-content:space-between; }
+    }
     .toast-container { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; }
     .my-toast { background:#198754; color:#fff; border-radius:12px; padding:.65rem 1.1rem; font-size:.88rem; font-weight:500; box-shadow:0 4px 20px rgba(0,0,0,.4); opacity:0; transform:translateY(10px); transition:opacity .3s,transform .3s; }
     .my-toast.show { opacity:1; transform:translateY(0); }
@@ -44,16 +65,46 @@
   <main class="container-fluid px-3 px-md-4 pb-5">
     <div class="editor-header">
       <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-sm btn-outline-secondary me-1" onclick="window.history.back()">←</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.history.back()" title="Volver">←</button>
         <h1 class="h5 mb-0" id="editor-page-title">Nueva Receta</h1>
         <span class="version-badge" id="version-badge" style="display:none;"></span>
       </div>
-      <div class="d-flex gap-2">
-        <button class="btn btn-sm btn-outline-warning" id="btn-import-ai">✨ Importar con IA</button>
-        <button class="btn btn-sm btn-outline-info" id="btn-duplicate-recipe" style="display:none;" title="Duplicar receta">📋</button>
-        <button class="btn btn-sm btn-outline-danger" id="btn-delete-recipe" style="display:none;" title="Eliminar receta">🗑</button>
-        <button class="btn btn-sm btn-outline-primary" id="btn-create-list-recipe" style="display:none;" title="Crear Lista de Compra">🛒</button>
-        <button class="btn btn-sm btn-success px-3" id="btn-save-recipe">💾 Guardar</button>
+
+      <div class="header-actions-group d-flex align-items-center gap-2">
+        <!-- Importar IA -->
+        <button class="btn btn-sm btn-outline-warning" id="btn-import-ai" title="Importar receta con IA">
+          ✨ <span class="d-none d-sm-inline">Importar con IA</span><span class="d-inline d-sm-none">IA</span>
+        </button>
+
+        <!-- Menú desplegable ⋮ Más opciones (cuando la receta ya está guardada) -->
+        <div class="dropdown" id="recipe-options-dropdown-container" style="display:none;">
+          <button class="btn btn-sm btn-outline-secondary px-2" type="button" id="recipeOptionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones de receta">
+            <strong style="font-size:1.1rem; line-height:1;">⋮</strong>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark shadow border-secondary py-1" aria-labelledby="recipeOptionsDropdown">
+            <li>
+              <button class="dropdown-item d-flex align-items-center gap-2 py-2" id="btn-create-list-recipe">
+                🛒 <span>Crear Lista de Compra</span>
+              </button>
+            </li>
+            <li>
+              <button class="dropdown-item d-flex align-items-center gap-2 py-2" id="btn-duplicate-recipe">
+                📋 <span>Duplicar Receta</span>
+              </button>
+            </li>
+            <li><hr class="dropdown-divider border-secondary my-1"></li>
+            <li>
+              <button class="dropdown-item text-danger d-flex align-items-center gap-2 py-2" id="btn-delete-recipe">
+                🗑 <span>Eliminar Receta</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- CTA Principal: Guardar -->
+        <button class="btn btn-sm btn-success px-3 fw-bold shadow-sm" id="btn-save-recipe">
+          💾 Guardar
+        </button>
       </div>
     </div>
     <div class="editor-grid">
@@ -287,6 +338,27 @@
             <button class="btn btn-outline-danger" id="btn-merge-replace">Reemplazar ingredientes existentes</button>
             <button class="btn btn-outline-primary" id="btn-merge-append">Añadirlos a los existentes</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ficha de Detalle de Ingrediente -->
+  <div class="modal fade" id="ingredientDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <div>
+            <h5 class="modal-title mb-0" id="modal-ing-title">Ficha del Ingrediente</h5>
+            <small class="text-muted" id="modal-ing-subtitle"></small>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modal-ing-body">
+          <!-- Se genera dinámicamente -->
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>

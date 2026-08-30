@@ -128,3 +128,23 @@ export async function searchProducts(query, limit = 500) {
 
   return [...customMatches, ...primaryMatches, ...officialMatches].slice(0, limit);
 }
+
+/**
+ * Añadir producto personalizado
+ */
+export async function addCustomProduct(product) {
+  if (!product.code) {
+    product.code = `custom_${Date.now()}`;
+  }
+  await db.customProducts.put(product);
+  return product;
+}
+
+/**
+ * Actualizar producto personalizado
+ */
+export async function updateCustomProduct(code, updates) {
+  await db.customProducts.update(code, updates);
+  return await db.customProducts.get(code);
+}
+

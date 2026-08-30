@@ -72,7 +72,9 @@ export async function getWeeklyVariety(referenceDate = new Date()) {
   const products = await ProductStore.getProductsByCodes([...consumedProductCodes]);
   
   products.forEach(p => {
-    const tagsStr = (p.categories_tags || '').toLowerCase();
+    if (!p) return;
+    const rawTags = p.categories_tags || p.categories || '';
+    const tagsStr = (Array.isArray(rawTags) ? rawTags.join(' ') : String(rawTags)).toLowerCase();
     for (const [groupKey, groupDef] of Object.entries(FOOD_GROUPS)) {
       if (groupDef.tags.some(t => tagsStr.includes(t))) {
         groupCounts[groupKey]++;

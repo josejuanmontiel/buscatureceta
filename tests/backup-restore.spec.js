@@ -70,7 +70,7 @@ test.describe('Backup and Restore Flow', () => {
       ]);
       
       await page.goto('/#recipes');
-      await expect(page.locator('#recipes-list')).toContainText('No tienes recetas guardadas');
+      await expect(page.locator('#recipes-list')).toContainText(/no tienes recetas guardadas/i);
     });
 
     // 4. Import the data back
