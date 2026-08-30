@@ -39,38 +39,54 @@ Al pulsar el botón de Checkout, la cesta de la compra se transfiere íntegramen
 En la sección de Despensa tenemos una vista clara de todos los alimentos disponibles, sus fechas de caducidad, cantidades y valores calóricos. Todo listo para cocinar.
 
 11
-00:02:03,573 --> 00:02:13,869
-Pasamos a la pestaña de Recetas y abrimos el editor. Aquí podemos diseñar nuestros platos combinando productos escaneados con las existencias reales de nuestra despensa.
+00:02:03,573 --> 00:02:15,549
+Entramos en la pestaña de Recetas y abrimos el editor. Aquí podemos diseñar nuestros platos combinando productos escaneados con alimentos frescos de la despensa y recetas mediterráneas.
 
 12
-00:02:13,869 --> 00:02:24,261
-Bautizamos la receta como 'Bocadillo de Salchichas Saludables', definimos dos raciones y seleccionamos las salchichas de pollo y el pan de molde como ingredientes principales.
+00:02:15,549 --> 00:02:29,661
+Escribimos el nombre del plato, definimos dos raciones y añadimos ingredientes. Al hacer clic sobre cualquier ingrediente, se despliega su ficha de detalle completa con vitaminas, minerales, Nutri-Score y beneficios.
 
 13
-00:02:24,261 --> 00:02:36,093
-El sistema calcula al vuelo el desglose por ración: calorías totales, gramos de proteína, carbohidratos, grasas y el coste exacto en euros. Guardamos la receta y queda lista en nuestro recetario.
+00:02:29,661 --> 00:02:42,501
+El sistema calcula automáticamente las calorías y macronutrientes por ración. Con la cabecera minimalista podemos guardar la receta o acceder al menú de opciones para duplicar o crear listas de compra.
 
 14
-00:02:36,107 --> 00:02:47,411
+00:02:42,507 --> 00:02:53,811
 En la NutriAgenda planificamos nuestras comidas del día distribuidas en desayuno, almuerzo, merienda y cena. Visualizamos de un vistazo el cumplimiento de nuestro objetivo calórico diario.
 
 15
-00:02:47,411 --> 00:02:58,451
+00:02:53,811 --> 00:03:04,851
 Añadimos nuestra receta al almuerzo de hoy. En ese mismo instante, la aplicación descuenta automáticamente las porciones e ingredientes utilizados de las existencias de la despensa.
 
 16
-00:02:58,451 --> 00:03:10,475
+00:03:04,851 --> 00:03:16,875
 Además, podemos asociar una fotografía real del plato cocinado. Las imágenes se guardan de forma optimizada y segura en la base de datos local, creando un diario visual ideal para seguimiento personal.
 
 17
-00:03:10,475 --> 00:03:23,579
+00:03:16,875 --> 00:03:30,555
 En el Dashboard consultamos la analítica completa: distribución de macronutrientes, balance energético semanal y estadísticas de consumo. Todos los gráficos se renderizan al instante con Chart.js en el cliente.
 
 18
-00:03:23,579 --> 00:03:35,603
-Por último, el visor de base de datos nos permite explorar cientos de miles de productos de OpenFoodFacts España sin conexión a internet, gracias a las tablas interactivas ultrarrápidas de Tabulator.
+00:03:30,555 --> 00:03:44,043
+El visor de base de datos nos permite alternar entre productos envasados de OpenFoodFacts y casi mil alimentos primarios frescos de BEDCA, con desglose de calorías, proteínas, grasas y minerales sin conexión a internet.
 
 19
-00:03:35,603 --> 00:03:46,355
+00:03:44,043 --> 00:03:55,419
 NutriAgenda demuestra que es posible crear herramientas potentes de nutrición e inventario que respetan al cien por cien la privacidad del usuario. ¡Gracias por ver esta demostración!
+
+20
+00:03:55,419 --> 00:04:09,003
+NutriAgenda integra casi mil alimentos básicos de la base de datos oficial BEDCA: frutas, verduras, carnes, pescados y aceites clasificados como alimentos naturales sin procesar, listos para consultar sin internet.
+
+21
+00:04:09,003 --> 00:04:20,067
+Con un solo clic podemos importar el pack completo de doce recetas mediterráneas tradicionales: desde gazpacho andaluz y lentejas estofadas hasta salmón al horno o crema suave de calabacín.
+
+22
+00:04:20,067 --> 00:04:33,555
+Al entrar en cualquier receta y hacer clic en un ingrediente, exploramos su ficha de detalle: nutrientes exactos para la cantidad del plato, vitaminas, minerales destacados, beneficios de salud y sinergias culinarias.
+
+23
+00:04:33,555 --> 00:04:46,587
+Además, nos conectamos directamente con servidores de recetas Mealie. El algoritmo de Smart Match empareja automáticamente los ingredientes importados con los alimentos primarios locales de tu despensa.
 

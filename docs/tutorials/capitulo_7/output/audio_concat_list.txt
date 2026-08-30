@@ -1,0 +1,4 @@
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_7/output/audio_clips/scene_1.mp3'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_7/output/audio_clips/scene_2.mp3'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_7/output/audio_clips/scene_3.mp3'
+file '/home/jose/workspace/josejuanmontiel/buscatureceta/docs/tutorials/capitulo_7/output/audio_clips/scene_4.mp3'

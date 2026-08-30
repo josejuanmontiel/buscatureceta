@@ -18,16 +18,17 @@ flowchart LR
 
 ---
 
-## 📚 Índice de los 6 Capítulos de la Masterclass
+## 📚 Índice de los 7 Capítulos de la Masterclass
 
 | Cap. | Título y Enfoque | Resumen Pedagógico | Entregables Generados |
 | :---: | :--- | :--- | :--- |
 | **01** | **Introducción & Filosofía Offline-First** | Soberanía sobre los datos de salud y almacenamiento local con Dexie / IndexedDB sin servidores intermedios. | • `capitulo_1_masterclass.mp4`<br>• `capitulo_1_subtitulos.srt` |
 | **02** | **Supermercado Inteligente & Alertas de Aditivos** | Escaneo en tienda, detección visual de aditivos nocivos (E250 nitrito sódico), propuesta de alternativas sanas y presupuesto. | • `capitulo_2_masterclass.mp4`<br>• `capitulo_2_subtitulos.srt` |
 | **03** | **De la Cesta a la Cocina: Checkout y Despensa** | Traspaso automático de la compra al inventario del hogar y trazabilidad de existencias en tiempo real. | • `capitulo_3_masterclass.mp4`<br>• `capitulo_3_subtitulos.srt` |
-| **04** | **Editor de Recetas & Análisis de Macros** | Creación de platos utilizando ingredientes de la despensa, desglose automático de calorías, macronutrientes y costes. | • `capitulo_4_masterclass.mp4`<br>• `capitulo_4_subtitulos.srt` |
+| **04** | **Editor de Recetas & Ficha de Ingredientes** | Creación de platos, cabecera con menú desplegable `⋮`, desglose de calorías, macronutrientes y ficha profunda con micronutrientes. | • `capitulo_4_masterclass.mp4`<br>• `capitulo_4_subtitulos.srt` |
 | **05** | **NutriAgenda & Registro Fotográfico** | Planificación en la agenda semanal, descuento automático de stock de despensa y diario fotográfico. | • `capitulo_5_masterclass.mp4`<br>• `capitulo_5_subtitulos.srt` |
-| **06** | **Dashboard de Salud & Explorador OpenFoodFacts** | Métricas consolidadas con Chart.js y visor ultra-rápido de la base de datos de productos de España. | • `capitulo_6_masterclass.mp4`<br>• `capitulo_6_subtitulos.srt` |
+| **06** | **Dashboard de Salud & Explorador BEDCA / OFF** | Métricas de variedad semanal, explorador de base de datos con pestaña de Alimentos Básicos (BEDCA) y OpenFoodFacts. | • `capitulo_6_masterclass.mp4`<br>• `capitulo_6_subtitulos.srt` |
+| **07** | **Alimentos Básicos BEDCA, Pack Mediterráneo & Mealie** | Catálogo de 980 alimentos naturales sin procesar, pack de 12 recetas mediterráneas en 1 clic e integración con servidores Mealie. | • `capitulo_7_masterclass.mp4`<br>• `capitulo_7_subtitulos.srt` |
 
 ---
 

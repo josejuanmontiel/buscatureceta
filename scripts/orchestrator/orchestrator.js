@@ -11,6 +11,7 @@ import { chapter3Data } from './chapters/chapter_3.js';
 import { chapter4Data } from './chapters/chapter_4.js';
 import { chapter5Data } from './chapters/chapter_5.js';
 import { chapter6Data } from './chapters/chapter_6.js';
+import { chapter7Data } from './chapters/chapter_7.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,8 +23,40 @@ const CHAPTER_REGISTRY = {
   3: chapter3Data,
   4: chapter4Data,
   5: chapter5Data,
-  6: chapter6Data
+  6: chapter6Data,
+  7: chapter7Data
 };
+
+import { spawn } from 'child_process';
+
+let devServerProcess = null;
+
+async function ensureServerRunning(baseURL = 'https://localhost:8080') {
+  try {
+    const res = await fetch(`${baseURL}/#home`, { signal: AbortSignal.timeout(1500) });
+    if (res) return;
+  } catch (_) {}
+
+  console.log(`🚀 [Server] Iniciando servidor local en ${baseURL}...`);
+  devServerProcess = spawn('npx', ['vite', '--host', '0.0.0.0', '--port', '8080'], {
+    cwd: ROOT_DIR,
+    stdio: 'ignore',
+    detached: true
+  });
+  devServerProcess.unref();
+
+  // Esperar a que el servidor responda
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    try {
+      const res = await fetch(`${baseURL}/#home`, { signal: AbortSignal.timeout(1000) });
+      if (res) {
+        console.log(`   ✅ Servidor Vite listo en ${baseURL}`);
+        return;
+      }
+    } catch (_) {}
+  }
+}
 
 /**
  * Inicializa la base de datos local y carga datos de prueba para asegurar que todas
@@ -31,28 +64,18 @@ const CHAPTER_REGISTRY = {
  */
 async function initializeAppDatabase(page, baseURL) {
   try {
-    await page.goto(`${baseURL}/#index`);
-    await page.waitForTimeout(1000);
+    await page.goto(`${baseURL}/#home`);
+    await page.waitForTimeout(800);
 
-    // Si la app tiene reset helper expuesto, limpiamos para consistencia
-    await page.evaluate(async () => {
-      if (typeof window.__resetUserData === 'function') {
-        await window.__resetUserData();
-      }
-    });
-
-    // Cargar base de datos de test si no está precargada
-    await page.goto(`${baseURL}/#settings`);
-    await page.waitForTimeout(600);
-
-    const dbInput = await page.$('#database');
-    if (dbInput) {
-      await dbInput.fill('/test_products.tsv.zz');
-      const downloadBtn = await page.$('#download-btn');
-      if (downloadBtn) {
-        await downloadBtn.click();
-        // Esperar a que redirija al grid o pasen unos segundos
-        await page.waitForTimeout(3000);
+    // Cargar pack mediterráneo para que haya recetas completas
+    const packBtn = await page.$('#btn-import-mediterranean-pack');
+    if (packBtn) {
+      await packBtn.click();
+      await page.waitForTimeout(300);
+      const confirmBtn = await page.$('#btn-global-confirm');
+      if (confirmBtn) {
+        await confirmBtn.click();
+        await page.waitForTimeout(800);
       }
     }
   } catch (err) {
@@ -105,12 +128,13 @@ async function processChapter(chapterNum, options = {}) {
 
   // 2. GRABACIÓN DE INTERFAZ CON PLAYWRIGHT
   console.log(`\n📹 [FASE 2/3] Coreografiando navegación y grabando en 1080p...`);
+  const baseURL = options.baseURL || 'https://localhost:8080';
+  await ensureServerRunning(baseURL);
+
   const browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors', '--use-fake-ui-for-media-stream']
   });
-
-  const baseURL = options.baseURL || 'https://localhost:8080';
 
   const context = await browser.newContext({
     baseURL: baseURL,

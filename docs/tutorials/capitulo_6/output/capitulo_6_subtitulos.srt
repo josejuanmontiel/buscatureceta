@@ -1,12 +1,12 @@
 1
-00:00:00,000 --> 00:00:13,104
+00:00:00,000 --> 00:00:13,680
 En el Dashboard consultamos la analítica completa: distribución de macronutrientes, balance energético semanal y estadísticas de consumo. Todos los gráficos se renderizan al instante con Chart.js en el cliente.
 
 2
-00:00:13,104 --> 00:00:25,128
-Por último, el visor de base de datos nos permite explorar cientos de miles de productos de OpenFoodFacts España sin conexión a internet, gracias a las tablas interactivas ultrarrápidas de Tabulator.
+00:00:13,680 --> 00:00:27,168
+El visor de base de datos nos permite alternar entre productos envasados de OpenFoodFacts y casi mil alimentos primarios frescos de BEDCA, con desglose de calorías, proteínas, grasas y minerales sin conexión a internet.
 
 3
-00:00:25,128 --> 00:00:35,880
+00:00:27,168 --> 00:00:38,544
 NutriAgenda demuestra que es posible crear herramientas potentes de nutrición e inventario que respetan al cien por cien la privacidad del usuario. ¡Gracias por ver esta demostración!
 

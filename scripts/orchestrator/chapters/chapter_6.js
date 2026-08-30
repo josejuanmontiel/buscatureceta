@@ -1,11 +1,11 @@
 /**
  * Coreografía Automatizada para el Capítulo 6:
- * «Dashboard de Salud & Explorador OpenFoodFacts — Análisis y Datos Abiertos»
+ * «Dashboard de Salud & Explorador de Alimentos Básicos BEDCA y OpenFoodFacts»
  */
 
 export const chapter6Data = {
   chapterNumber: 6,
-  title: "Dashboard de Salud & Explorador OpenFoodFacts",
+  title: "Dashboard de Salud & Explorador BEDCA / OpenFoodFacts",
   scenes: [
     {
       id: "escena_01_dashboard_metricas",
@@ -21,20 +21,31 @@ export const chapter6Data = {
       }
     },
     {
-      id: "escena_02_explorador_bd",
-      title: "Visor y Búsqueda en la BD OpenFoodFacts",
-      narration: "Por último, el visor de base de datos nos permite explorar cientos de miles de productos de OpenFoodFacts España sin conexión a internet, gracias a las tablas interactivas ultrarrápidas de Tabulator.",
+      id: "escena_02_explorador_bd_y_bedca",
+      title: "Visor y Búsqueda en Alimentos Básicos (BEDCA) y OpenFoodFacts",
+      narration: "El visor de base de datos nos permite alternar entre productos envasados de OpenFoodFacts y casi mil alimentos primarios frescos de BEDCA, con desglose de calorías, proteínas, grasas y minerales sin conexión a internet.",
       action: async (page, durationMs) => {
         await page.goto('/#db-viewer');
         await page.waitForTimeout(800);
-        const searchInput = await page.$('input[type="search"], #db-search, input[placeholder*="Buscar"]');
+
+        // Cambiar a la pestaña de Alimentos Básicos BEDCA
+        const primaryTab = await page.$('label[for="db-primary"]');
+        if (primaryTab) {
+          await primaryTab.hover();
+          await page.waitForTimeout(300);
+          await primaryTab.click();
+          await page.waitForTimeout(500);
+        }
+
+        const searchInput = await page.$('#db-search');
         if (searchInput) {
           await searchInput.click({ force: true });
-          await searchInput.fill('Aceite de oliva');
-          await page.waitForTimeout(600);
+          await searchInput.fill('Calabacín');
+          await page.waitForTimeout(700);
         }
+
         await page.mouse.move(500, 450, { steps: 15 });
-        await page.waitForTimeout(Math.max(500, durationMs - 2000));
+        await page.waitForTimeout(Math.max(500, durationMs - 2800));
       }
     },
     {

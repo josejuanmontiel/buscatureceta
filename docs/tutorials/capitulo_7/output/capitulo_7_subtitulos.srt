@@ -1,0 +1,16 @@
+1
+00:00:00,000 --> 00:00:13,584
+NutriAgenda integra casi mil alimentos básicos de la base de datos oficial BEDCA: frutas, verduras, carnes, pescados y aceites clasificados como alimentos naturales sin procesar, listos para consultar sin internet.
+
+2
+00:00:13,584 --> 00:00:24,648
+Con un solo clic podemos importar el pack completo de doce recetas mediterráneas tradicionales: desde gazpacho andaluz y lentejas estofadas hasta salmón al horno o crema suave de calabacín.
+
+3
+00:00:24,648 --> 00:00:38,136
+Al entrar en cualquier receta y hacer clic en un ingrediente, exploramos su ficha de detalle: nutrientes exactos para la cantidad del plato, vitaminas, minerales destacados, beneficios de salud y sinergias culinarias.
+
+4
+00:00:38,136 --> 00:00:51,168
+Además, nos conectamos directamente con servidores de recetas Mealie. El algoritmo de Smart Match empareja automáticamente los ingredientes importados con los alimentos primarios locales de tu despensa.
+

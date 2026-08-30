@@ -1,12 +1,12 @@
 1
-00:00:00,000 --> 00:00:10,296
-Pasamos a la pestaña de Recetas y abrimos el editor. Aquí podemos diseñar nuestros platos combinando productos escaneados con las existencias reales de nuestra despensa.
+00:00:00,000 --> 00:00:11,976
+Entramos en la pestaña de Recetas y abrimos el editor. Aquí podemos diseñar nuestros platos combinando productos escaneados con alimentos frescos de la despensa y recetas mediterráneas.
 
 2
-00:00:10,296 --> 00:00:20,688
-Bautizamos la receta como 'Bocadillo de Salchichas Saludables', definimos dos raciones y seleccionamos las salchichas de pollo y el pan de molde como ingredientes principales.
+00:00:11,976 --> 00:00:26,088
+Escribimos el nombre del plato, definimos dos raciones y añadimos ingredientes. Al hacer clic sobre cualquier ingrediente, se despliega su ficha de detalle completa con vitaminas, minerales, Nutri-Score y beneficios.
 
 3
-00:00:20,688 --> 00:00:32,520
-El sistema calcula al vuelo el desglose por ración: calorías totales, gramos de proteína, carbohidratos, grasas y el coste exacto en euros. Guardamos la receta y queda lista en nuestro recetario.
+00:00:26,088 --> 00:00:38,928
+El sistema calcula automáticamente las calorías y macronutrientes por ración. Con la cabecera minimalista podemos guardar la receta o acceder al menú de opciones para duplicar o crear listas de compra.
 

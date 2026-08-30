@@ -51,14 +51,15 @@ export function concatMasterclass() {
     3: "De la Cesta a la Cocina: Checkout y Despensa",
     4: "Editor de Recetas & Análisis Nutricional de Macros",
     5: "NutriAgenda, Planificación y Registro Fotográfico",
-    6: "Dashboard de Salud & Explorador OpenFoodFacts"
+    6: "Dashboard de Salud & Explorador OpenFoodFacts",
+    7: "Alimentos Básicos BEDCA, Pack Mediterráneo & Ecosistema Mealie"
   };
 
   console.log(`\n======================================================`);
   console.log(`🎬 CONCATENANDO MASTERCLASS COMPLETA — NUTRIAGENDA`);
   console.log(`======================================================\n`);
 
-  for (let ch = 1; ch <= 6; ch++) {
+  for (let ch = 1; ch <= 7; ch++) {
     const chOutputDir = path.join(tutorialsDir, `capitulo_${ch}/output`);
     const mp4Path = path.join(chOutputDir, `capitulo_${ch}_masterclass.mp4`);
     const srtPath = path.join(chOutputDir, `capitulo_${ch}_subtitulos.srt`);
