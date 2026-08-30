@@ -134,7 +134,8 @@ export function concatMasterclass() {
     ytContent += `${ch.startTimeFormatted} - Capítulo ${ch.chapter}: ${ch.title}\n`;
   }
   ytContent += `\n🔗 **Enlaces del Proyecto:**\n`;
-  ytContent += `- 🌍 Web App: https://josejuanmontiel.github.io/OpenFoodFacts/\n`;
+  ytContent += `- 🌍 Web App: https://buscatureceta.accreativos.com (o https://josejuanmontiel.github.io/buscatureceta/)\n`;
+  ytContent += `- 🎥 Vídeo YouTube: https://youtu.be/6JnIzN3MNX4\n`;
   ytContent += `- 💻 Repositorio: https://github.com/josejuanmontiel/buscatureceta\n`;
 
   fs.writeFileSync(youtubeDescPath, ytContent, 'utf8');

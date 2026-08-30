@@ -13,7 +13,7 @@ flowchart LR
     C --> D[4. Producto Final<br>Masterclass Completa + Visor Web]
 ```
 
-> 📺 **[🌐 Abrir Visor Web Interactivo](./tutorials/visor_masterclass.html)** *(Con reproductor integrado y selector de capítulos)*  
+> 📺 **[🌐 Abrir Visor Web Interactivo](./tutorials/visor_masterclass.html)** • **[🎥 Ver en YouTube](https://youtu.be/6JnIzN3MNX4)**  
 > 📹 **[🎬 Descargar Vídeo Unificado MP4](./tutorials/masterclass_completa_nutriagenda.mp4)** • **[💬 Subtítulos SRT](./tutorials/masterclass_completa_subtitulos.srt)** • **[📝 Ficha de YouTube](./tutorials/YOUTUBE_DESCRIPCION.md)**
 
 ---

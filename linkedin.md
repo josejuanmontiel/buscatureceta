@@ -43,7 +43,7 @@ Al capturar el dato en el momento de la compra, se cierra el ciclo completo sin 
 * 🌐 **Probar la App Web en vivo**: 
   - Producción: [https://buscatureceta.accreativos.com](https://buscatureceta.accreativos.com)
   - GitHub Pages: [https://josejuanmontiel.github.io/buscatureceta/](https://josejuanmontiel.github.io/buscatureceta/)
-* 🎥 **Ver la Masterclass / Demostración en YouTube (3:46 min)**: [https://youtu.be/03f_0AD84B0](https://youtu.be/03f_0AD84B0)
+* 🎥 **Ver la Masterclass / Demostración en YouTube**: [https://youtu.be/6JnIzN3MNX4](https://youtu.be/6JnIzN3MNX4)
 * 💻 **Código Abierto en GitHub**: [https://github.com/josejuanmontiel/buscatureceta](https://github.com/josejuanmontiel/buscatureceta)
 
 ¡Todo feedback, sugerencia o contribución es más que bienvenido! 🚀

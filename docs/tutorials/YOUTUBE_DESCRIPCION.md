@@ -12,5 +12,6 @@ Aprende a dominar NutriAgenda: el gestor nutricional 100% offline-first y privad
 03:55 - Capítulo 7: Alimentos Básicos BEDCA, Pack Mediterráneo & Ecosistema Mealie
 
 🔗 **Enlaces del Proyecto:**
-- 🌍 Web App: https://josejuanmontiel.github.io/OpenFoodFacts/
+- 🌍 Web App: https://buscatureceta.accreativos.com (o https://josejuanmontiel.github.io/buscatureceta/)
+- 🎥 Vídeo YouTube: https://youtu.be/6JnIzN3MNX4
 - 💻 Repositorio: https://github.com/josejuanmontiel/buscatureceta

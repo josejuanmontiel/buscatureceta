@@ -4,7 +4,7 @@
 - 🚀 **Producción:** [https://buscatureceta.accreativos.com](https://buscatureceta.accreativos.com)
 - 🐙 **GitHub Pages:** [https://josejuanmontiel.github.io/buscatureceta/](https://josejuanmontiel.github.io/buscatureceta/) *(Despliegue automatizado por CI/CD)*
 
-**🎥 Vídeo Demostración y Masterclass en YouTube:** [https://youtu.be/03f_0AD84B0](https://youtu.be/03f_0AD84B0)
+**🎥 Vídeo Demostración y Masterclass en YouTube:** [https://youtu.be/6JnIzN3MNX4](https://youtu.be/6JnIzN3MNX4)
 
 ## Motivo
 A raiz de este [este](https://www.youtube.com/watch?v=j5dUzDTQ3mc) video de la fundacion [UAPO](https://www.fundacionuapo.org) y a cosas que ya tenia en la cabeza de hace tiempo:
