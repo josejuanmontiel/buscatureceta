@@ -10,7 +10,7 @@ export async function fetchProductFromOFF(code) {
   if (!code || !/^\d{4,16}$/.test(code.trim())) return undefined;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code.trim()}.json`, {
       signal: controller.signal
     });
@@ -23,6 +23,8 @@ export async function fetchProductFromOFF(code) {
         code: p.code || code.trim(),
         product_name: p.product_name || p.product_name_es || p.generic_name || `Producto ${code}`,
         brands: p.brands || '',
+        quantity: p.quantity || '',
+        product_quantity: p.product_quantity || '',
         categories_tags: p.categories_tags || [],
         nutriments: p.nutriments || {},
         nutriscore_grade: p.nutriscore_grade || '',
@@ -126,7 +128,17 @@ export async function searchProducts(query, limit = 500) {
     .limit(limit)
     .toArray();
 
-  return [...customMatches, ...primaryMatches, ...officialMatches].slice(0, limit);
+  let results = [...customMatches, ...primaryMatches, ...officialMatches];
+
+  // Si no hay resultados locales y la consulta parece un código de barras numérico, intentar buscar online en OFF
+  if (results.length === 0 && /^\d{4,16}$/.test(qLower)) {
+    const offProduct = await getProductByCode(qLower);
+    if (offProduct) {
+      results.push(offProduct);
+    }
+  }
+
+  return results.slice(0, limit);
 }
 
 /**

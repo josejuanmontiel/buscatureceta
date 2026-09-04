@@ -28,11 +28,16 @@
     </header>
 
     <main class="px-3 flex-grow-1">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Mi Despensa</h1>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStockModal">
-          + Añadir Stock
-        </button>
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h1 class="mb-0">Mi Despensa</h1>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-info" id="btn-quick-scan-stock" title="Escanear código de barras para añadir a la despensa">
+            <i class="bi bi-upc-scan"></i> Escanear para añadir
+          </button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStockModal">
+            + Añadir Stock
+          </button>
+        </div>
       </div>
 
       <!-- Pestañas food / nonfood -->
@@ -76,7 +81,17 @@
                 <button class="btn btn-outline-secondary" type="button" id="btn-scan-stock" title="Escanear código"><i class="bi bi-upc-scan"></i></button>
                 <button class="btn btn-outline-secondary" type="button" id="btn-search-stock-product">Buscar</button>
               </div>
-              <div id="stock-product-results" class="list-group mb-2" style="max-height: 150px; overflow-y: auto;"></div>
+              <div id="stock-product-results" class="list-group mb-2" style="max-height: 180px; overflow-y: auto;"></div>
+              
+              <!-- Producto seleccionado / confirmado -->
+              <div id="stock-product-selected-card" class="d-none alert alert-success py-2 px-3 mb-2 small d-flex justify-content-between align-items-center">
+                <div class="me-2 text-truncate">
+                  <div class="fw-bold text-truncate" id="stock-selected-name"></div>
+                  <div class="text-white-50 small" id="stock-selected-details"></div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-light py-0 px-2 flex-shrink-0" id="btn-clear-selected-stock" title="Cambiar producto">✕ Cambiar</button>
+              </div>
+              
               <input type="hidden" id="stock-product-selected">
             </div>
 

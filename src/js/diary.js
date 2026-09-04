@@ -1,9 +1,10 @@
 import * as RecentStore from "./modules/products/RecentStore.js";
 import * as ProductStore from "./modules/products/ProductStore.js";
 import { Modal } from 'bootstrap';
-import { db } from './db/schema.js';
+import { db, MEAL_TYPES, COURSE_TYPES, DIARY_ACTIONS } from './db/schema.js';
 import * as DiaryStore from './modules/diary/DiaryStore.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
+import * as MealTemplateStore from './modules/diary/MealTemplateStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
 import * as PantryStore from './modules/pantry/PantryStore.js';
 import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
@@ -13,10 +14,15 @@ import { globalEvents } from './modules/core/EventEmitter.js';
 let mealModal;
 let diaryPhotoModal;
 let itemDetailModal;
+let checkInModal;
+let saveTemplateModal;
+let mealHistoryModal;
+let activeDetailEntryId = null;
 let currentDate = new Date();
 let currentSelectedDate = null;
 let diaryPhotoCapturedBlob = null;
 let diaryCameraStream = null;
+let mealTray = [];
 
 const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -24,6 +30,15 @@ export async function initView() {
   mealModal = new Modal(document.getElementById('mealModal'));
   diaryPhotoModal = new Modal(document.getElementById('diaryPhotoModal'));
   itemDetailModal = new Modal(document.getElementById('itemDetailModal'));
+  checkInModal = new Modal(document.getElementById('mealCheckInModal'));
+  saveTemplateModal = new Modal(document.getElementById('saveTemplateModal'));
+  mealHistoryModal = new Modal(document.getElementById('mealHistoryModal'));
+
+  document.getElementById('btn-view-meal-history')?.addEventListener('click', () => {
+    if (activeDetailEntryId) {
+      window.showMealHistory(activeDetailEntryId);
+    }
+  });
 
   await renderWeek(currentDate);
   await updateDiaryPhotoBadge();
@@ -51,7 +66,14 @@ export async function initView() {
     renderWeek(currentDate);
   });
 
-  document.getElementById('btn-save-meal').addEventListener('click', saveMeal);
+  document.getElementById('btn-save-meal').addEventListener('click', () => saveMeal('consumed'));
+  document.getElementById('btn-save-planned')?.addEventListener('click', () => saveMeal('planned'));
+  document.getElementById('btn-add-to-tray')?.addEventListener('click', addCurrentItemToTray);
+  document.getElementById('btn-load-template')?.addEventListener('click', loadSelectedTemplate);
+  document.getElementById('btn-save-as-template')?.addEventListener('click', openSaveTemplateModal);
+  document.getElementById('btn-do-save-template')?.addEventListener('click', doSaveTemplate);
+  document.getElementById('btn-confirm-checkin')?.addEventListener('click', confirmCheckIn);
+
   document.getElementById('btn-search-meal-product').addEventListener('click', searchProduct);
   document.getElementById('btn-scan-meal')?.addEventListener('click', () => {
     window.location.href = "/scan.html?return=%23diary&action=addMeal";
@@ -103,9 +125,15 @@ async function renderWeek(date) {
     let dayKcal = 0;
 
     entries.forEach(entry => {
-      entry.items.forEach(item => {
-        byMeal[entry.mealType].push({ ...item, entryId: entry.id });
-        dayKcal += item.nutrition?.kcal || 0;
+      (entry.items || []).forEach(item => {
+        if (item.status !== 'skipped') {
+          dayKcal += item.nutrition?.kcal || 0;
+        }
+        byMeal[entry.mealType]?.push({
+          ...item,
+          entryId: entry.id,
+          entryStatus: entry.status || 'consumed'
+        });
       });
     });
 
@@ -135,16 +163,24 @@ async function renderWeek(date) {
 }
 
 function renderMealSlot(label, mealType, items, dayKey) {
-  if (items.length === 0) return '';
+  if (!items || items.length === 0) return '';
+
+  const hasPlanned = items.some(i => i.status === 'planned' || i.entryStatus === 'planned');
+  const primaryEntryId = items[0]?.entryId;
+
   return `
     <div class="mb-2">
-      <div class="meal-type-label">${label}</div>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="meal-type-label">${label}</span>
+        ${hasPlanned && primaryEntryId ? `<button class="btn btn-xs btn-outline-warning btn-quick-checkin" onclick="event.stopPropagation(); window.openMealCheckIn(${primaryEntryId})" title="Confirmar consumo de esta comida">✓ Comer</button>` : ''}
+      </div>
       ${items.map(i => {
         let icon = '';
+        const course = COURSE_TYPES[i.course] || COURSE_TYPES.main;
         let kcal = Math.round(i.nutrition?.kcal || 0);
-        let action = `window.openItemDetail(${i.entryId}, '${i.name?.replace(/'/g, "\\'")}', ${kcal}, ${i.nutrition?.proteins_g||0}, ${i.nutrition?.carbs_g||0}, ${i.nutrition?.fat_g||0}, ${i.photoId || 'null'})`;
+        let action = `window.openItemDetail(${i.entryId}, '${(i.name||'').replace(/'/g, "\\'")}', ${kcal}, ${i.nutrition?.proteins_g||0}, ${i.nutrition?.carbs_g||0}, ${i.nutrition?.fat_g||0}, ${i.photoId || 'null'})`;
         let textClass = '';
-        let kcalText = kcal;
+        let kcalText = `${kcal} kcal`;
 
         if (i.type === 'photo') {
           icon = '📷 ';
@@ -153,12 +189,19 @@ function renderMealSlot(label, mealType, items, dayKey) {
           kcalText = 'Resolver';
         } else if (i.type === 'custom_macros') {
           icon = '✨ ';
+        } else {
+          icon = `<span class="course-badge me-1" title="${course.label}">${course.icon}</span>`;
         }
 
+        const isPlanned = i.status === 'planned' || i.entryStatus === 'planned';
+        const isSkipped = i.status === 'skipped';
+        const slotClass = isSkipped ? 'text-decoration-line-through opacity-50' : (isPlanned ? 'status-planned' : 'status-consumed');
+        const statusBadge = isPlanned ? '<span class="badge badge-planned ms-1" style="font-size:0.65em;">⏳ Plan</span>' : '';
+
         return `
-        <div class="meal-slot d-flex justify-content-between align-items-start" onclick="${action}">
-          <span class="me-1 ${textClass}" style="min-width: 0; flex: 1; white-space: pre-line; word-break: break-word;" title="${i.name}">${icon}${i.name}</span>
-          <span class="text-warning small mt-1" style="white-space: nowrap;">${kcalText}</span>
+        <div class="meal-slot d-flex justify-content-between align-items-start ${slotClass}" onclick="${action}">
+          <span class="me-1 ${textClass}" style="min-width: 0; flex: 1; white-space: pre-line; word-break: break-word;" title="${i.name}">${icon}${i.name}${statusBadge}</span>
+          <span class="text-warning small mt-1 flex-shrink-0" style="white-space: nowrap;">${kcalText}</span>
         </div>
         `;
       }).join('')}
@@ -172,9 +215,14 @@ window.openMealModal = async function(dayKey) {
   document.getElementById('meal-date').value = dayKey;
   document.getElementById('meal-form').reset();
   document.getElementById('meal-type').value = getDefaultMealType();
+  const courseSel = document.getElementById('meal-course-select');
+  if (courseSel) courseSel.value = 'main';
   document.getElementById('meal-product-results').innerHTML = '';
   document.getElementById('meal-product-selected').value = '';
   
+  mealTray = [];
+  renderMealTray();
+
   // Cargar opciones de recetas
   const recipes = await RecipeStore.getAllRecipes();
   const select = document.getElementById('meal-recipe-select');
@@ -183,8 +231,289 @@ window.openMealModal = async function(dayKey) {
 
   document.getElementById('meal-recipe-ingredients-container').style.display = 'none';
 
+  await populateTemplateSelect();
+
   mealModal.show();
 };
+
+async function populateTemplateSelect() {
+  const tplSelect = document.getElementById('meal-template-select');
+  if (!tplSelect) return;
+  const templates = await MealTemplateStore.getAllTemplates();
+  tplSelect.innerHTML = '<option value="">-- Cargar Menú / Plantilla --</option>' +
+    templates.map(t => `<option value="${t.id}">${t.name} (${t.items?.length || 0} platos)</option>`).join('');
+}
+
+function renderMealTray() {
+  const container = document.getElementById('meal-tray-items');
+  const emptyMsg = document.getElementById('meal-tray-empty');
+  const countBadge = document.getElementById('tray-count');
+  const kcalBadge = document.getElementById('tray-total-kcal');
+  if (!container) return;
+
+  if (countBadge) countBadge.textContent = mealTray.length;
+  let totalKcal = 0;
+  mealTray.forEach(it => {
+    totalKcal += (it.nutrition?.kcal || 0);
+  });
+  if (kcalBadge) kcalBadge.textContent = `${Math.round(totalKcal)} kcal`;
+
+  if (mealTray.length === 0) {
+    if (emptyMsg) emptyMsg.style.display = 'block';
+    container.innerHTML = '';
+    return;
+  }
+
+  if (emptyMsg) emptyMsg.style.display = 'none';
+  container.innerHTML = mealTray.map((it, idx) => {
+    const course = COURSE_TYPES[it.course] || COURSE_TYPES.main;
+    const kcal = Math.round(it.nutrition?.kcal || 0);
+    return `
+      <div class="tray-item d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2 text-truncate me-2">
+          <span class="course-badge">${course.icon} ${course.label}</span>
+          <span class="small fw-semibold text-truncate" title="${it.name}">${it.name}</span>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+          <span class="badge bg-secondary small">${kcal} kcal</span>
+          <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="window.removeTrayItem(${idx})" title="Quitar">&times;</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.removeTrayItem = function(index) {
+  mealTray.splice(index, 1);
+  renderMealTray();
+};
+
+async function getCurrentConfiguredItem() {
+  const activeTab = document.querySelector('#mealTabs .active')?.id || 'tab-recipe';
+  const courseSel = document.getElementById('meal-course-select');
+  const course = courseSel ? courseSel.value : 'main';
+
+  if (activeTab === 'tab-recipe') {
+    const recipeId = parseInt(document.getElementById('meal-recipe-select').value);
+    const amountVal = parseFloat(document.getElementById('meal-recipe-amount').value);
+    const unit = document.getElementById('meal-recipe-unit').value;
+    
+    if (!recipeId) throw new Error('Selecciona una receta');
+    if (!amountVal || amountVal <= 0) throw new Error('Introduce una cantidad válida');
+    
+    const recipe = await RecipeStore.getRecipeById(recipeId);
+    if (!recipe) throw new Error('Error al cargar receta');
+    
+    let servings = 0;
+    if (unit === 'grams') {
+      let totalGrams = 0;
+      for (const ing of recipe.ingredients) {
+        const g = NutritionCalc.toGrams(ing.amount, ing.unit);
+        if (g !== null) totalGrams += g;
+      }
+      if (totalGrams === 0) throw new Error('La receta no tiene ingredientes pesables. Usa raciones en su lugar.');
+      
+      const fraction = amountVal / totalGrams;
+      servings = fraction * recipe.servings;
+    } else {
+      servings = amountVal;
+    }
+    
+    const customIngredients = [];
+    document.querySelectorAll('.recipe-ing-row').forEach(row => {
+      const code = row.dataset.code;
+      const name = row.dataset.name;
+      const ingUnit = row.dataset.unit;
+      const input = row.querySelector('.ing-amount-input');
+      const amount = parseFloat(input?.value) || 0;
+      if (amount > 0 && code !== "null" && code !== "undefined") {
+        customIngredients.push({
+          productCode: code,
+          productName: name,
+          amount,
+          unit: ingUnit
+        });
+      }
+    });
+
+    const nutrition = await NutritionCalc.calculateTotalNutrition(customIngredients);
+    
+    return {
+      course,
+      type: 'recipe',
+      recipeId: recipe.id,
+      productCode: null,
+      name: recipe.name,
+      servings,
+      customIngredients,
+      nutrition
+    };
+  } else {
+    // Producto
+    const code = document.getElementById('meal-product-selected').value;
+    const grams = parseFloat(document.getElementById('meal-product-grams').value);
+    
+    if (!code) throw new Error('Busca y selecciona un producto');
+    if (!grams || grams <= 0) throw new Error('Introduce los gramos consumidos');
+    
+    const product = await ProductStore.getProductByCode(code);
+    if (!product) throw new Error('Error al cargar producto');
+    
+    const nutrition = await NutritionCalc.calculateTotalNutrition([
+      { productCode: code, amount: grams, unit: 'g' }
+    ]);
+
+    return {
+      course,
+      type: 'product',
+      recipeId: null,
+      productCode: code,
+      name: product.product_name || `Prod ${code}`,
+      servings: grams / 100,
+      nutrition
+    };
+  }
+}
+
+async function addCurrentItemToTray() {
+  try {
+    const item = await getCurrentConfiguredItem();
+    mealTray.push(item);
+    renderMealTray();
+    showToast(`Añadido: ${item.name}`, 'success');
+
+    // Limpiar inputs del producto/receta para el siguiente plato
+    document.getElementById('meal-product-selected').value = '';
+    document.getElementById('meal-product-search').value = '';
+    document.getElementById('meal-product-results').innerHTML = '';
+    document.getElementById('meal-recipe-select').value = '';
+    document.getElementById('meal-recipe-ingredients-container').style.display = 'none';
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function loadSelectedTemplate() {
+  const tplId = parseInt(document.getElementById('meal-template-select').value);
+  if (!tplId) return;
+
+  const tpl = await MealTemplateStore.getTemplateById(tplId);
+  if (!tpl || !tpl.items || tpl.items.length === 0) {
+    return alert('La plantilla seleccionada no contiene platos');
+  }
+
+  tpl.items.forEach(it => {
+    mealTray.push({ ...it });
+  });
+  renderMealTray();
+  showToast(`Plantilla "${tpl.name}" cargada`, 'info');
+}
+
+async function openSaveTemplateModal() {
+  if (mealTray.length === 0) {
+    try {
+      const it = await getCurrentConfiguredItem();
+      mealTray.push(it);
+      renderMealTray();
+    } catch {
+      return alert('Añade al menos un plato a la bandeja para guardar una plantilla');
+    }
+  }
+
+  document.getElementById('template-name-input').value = '';
+  saveTemplateModal.show();
+}
+
+async function doSaveTemplate() {
+  const name = document.getElementById('template-name-input').value.trim();
+  if (!name) return alert('Introduce un nombre para la plantilla');
+
+  const mealType = document.getElementById('meal-type').value;
+  try {
+    await MealTemplateStore.saveMealTemplate({
+      name,
+      mealType,
+      items: mealTray
+    });
+    saveTemplateModal.hide();
+    showToast(`Plantilla "${name}" guardada`, 'success');
+    await populateTemplateSelect();
+  } catch (err) {
+    alert('Error al guardar plantilla: ' + err.message);
+  }
+}
+
+async function deductMealItemsFromPantry(items) {
+  for (const item of items) {
+    if (item.status === 'skipped') continue;
+    if (item.type === 'recipe') {
+      if (item.customIngredients && item.customIngredients.length > 0) {
+        for (const ing of item.customIngredients) {
+          await PantryStore.consumeStock(ing.productCode, ing.amount, 'consumed_me', ing.unit || 'g');
+        }
+      } else if (item.recipeId) {
+        await PantryStore.consumeRecipeIngredients(item.recipeId, item.servings, 'consumed_me');
+      }
+    } else if (item.type === 'product' && item.productCode) {
+      await PantryStore.consumeStock(item.productCode, item.servings * 100, 'consumed_me', 'g');
+    }
+  }
+}
+
+window.openMealCheckIn = async function(entryId) {
+  const entry = await db.diary.get(entryId);
+  if (!entry) return;
+
+  document.getElementById('checkin-entry-id').value = entryId;
+  const mealLabel = MEAL_TYPES[entry.mealType] || entry.mealType;
+  document.getElementById('checkInModalTitle').textContent = `🍽️ Confirmar ${mealLabel} (${entry.date})`;
+
+  const container = document.getElementById('checkInItemsList');
+  container.innerHTML = (entry.items || []).map((it, idx) => {
+    const course = COURSE_TYPES[it.course] || COURSE_TYPES.main;
+    const kcal = Math.round(it.nutrition?.kcal || 0);
+    const isChecked = it.status !== 'skipped';
+    return `
+      <label class="list-group-item d-flex justify-content-between align-items-center" style="cursor: pointer;">
+        <div class="d-flex align-items-center gap-2">
+          <input class="form-check-input me-1 checkin-item-cb" type="checkbox" data-index="${idx}" ${isChecked ? 'checked' : ''}>
+          <span>${course.icon} <strong>${it.name}</strong></span>
+        </div>
+        <span class="badge bg-secondary">${kcal} kcal</span>
+      </label>
+    `;
+  }).join('');
+
+  document.getElementById('checkin-ate-at-home').checked = entry.ate_at_home ?? true;
+  checkInModal.show();
+};
+
+async function confirmCheckIn() {
+  const entryId = parseInt(document.getElementById('checkin-entry-id').value);
+  if (!entryId) return;
+
+  const entry = await db.diary.get(entryId);
+  if (!entry) return;
+
+  const checkboxes = document.querySelectorAll('.checkin-item-cb');
+  const consumedIndices = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) consumedIndices.push(parseInt(cb.dataset.index));
+  });
+
+  const ateAtHome = document.getElementById('checkin-ate-at-home').checked;
+
+  await DiaryStore.confirmMealConsumption(entryId, { consumedIndices, ateAtHome });
+
+  if (ateAtHome) {
+    const consumedItems = (entry.items || []).filter((_, idx) => consumedIndices.includes(idx));
+    await deductMealItemsFromPantry(consumedItems);
+  }
+
+  checkInModal.hide();
+  showToast('¡Ingesta confirmada como consumida!', 'success');
+  await renderWeek(currentDate);
+}
 
 async function updateRecipeIngredientsPreview() {
   const recipeId = parseInt(document.getElementById('meal-recipe-select').value);
@@ -240,6 +569,7 @@ async function updateRecipeIngredientsPreview() {
 }
 
 window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId, isUnresolvedPhoto = false) {
+  activeDetailEntryId = entryId;
   document.getElementById('itemDetailTitle').textContent = name;
   document.getElementById('itemDetailKcal').textContent = Math.round(kcal);
   document.getElementById('itemDetailProt').textContent = Math.round(prot);
@@ -269,6 +599,62 @@ window.openItemDetail = function(entryId, name, kcal, prot, carbs, fat, photoId,
   };
   
   itemDetailModal.show();
+};
+
+window.showMealHistory = async function(entryId) {
+  if (!entryId) return;
+  if (itemDetailModal) itemDetailModal.hide();
+
+  const container = document.getElementById('mealHistoryTimeline');
+  if (!container) return;
+  container.innerHTML = '<div class="text-muted small">Cargando historial...</div>';
+
+  if (mealHistoryModal) mealHistoryModal.show();
+
+  const versions = await DiaryStore.getEntryVersions(entryId);
+
+  if (!versions || versions.length === 0) {
+    container.innerHTML = `
+      <div class="alert alert-secondary small py-2">
+        ℹ️ No hay versiones previas registradas para esta comida. Cualquier ajuste o confirmación posterior quedará registrado automáticamente aquí.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = versions.map((v, idx) => {
+    const actionMeta = DIARY_ACTIONS[v.action] || { label: v.action, icon: '📌' };
+    const timeFormatted = new Date(v.timestamp).toLocaleString('es-ES', {
+      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
+    const isLatest = idx === versions.length - 1;
+    const badgeBorder = isLatest ? '#20c997' : '#0dcaf0';
+
+    const itemsHtml = (v.items || []).map(item => {
+      const courseIcon = COURSE_TYPES[item.course]?.icon || '🍲';
+      const isSkipped = item.status === 'skipped';
+      return `
+        <div class="small ${isSkipped ? 'text-decoration-line-through opacity-50' : 'text-light'}">
+          ${courseIcon} ${item.name} ${isSkipped ? '<span class="badge bg-secondary ms-1">omitido</span>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="timeline-item">
+        <div class="timeline-badge" style="border-color: ${badgeBorder};">
+          ${actionMeta.icon}
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="fw-semibold small">${actionMeta.label} <span class="badge bg-dark border border-secondary text-info">v${v.versionNumber || 1}</span></span>
+          <span class="text-muted" style="font-size: 0.75em;">${timeFormatted}</span>
+        </div>
+        <div class="p-2 rounded bg-dark border border-secondary mb-2">
+          ${itemsHtml || '<span class="text-muted small">Sin platos</span>'}
+        </div>
+      </div>
+    `;
+  }).join('');
 };
 
 window.removeMealItem = async function(entryId) {
@@ -365,92 +751,22 @@ window.selectProduct = function(code, name) {
   RecentStore.markAsUsed(code);
 };
 
-async function saveMeal() {
+async function saveMeal(targetStatus = 'consumed') {
+  const finalStatus = (typeof targetStatus === 'string') ? targetStatus : 'consumed';
   const date = document.getElementById('meal-date').value;
   const mealType = document.getElementById('meal-type').value;
-  const activeTab = document.querySelector('#mealTabs .active').id;
-  
-  let item = null;
 
-  if (activeTab === 'tab-recipe') {
-    const recipeId = parseInt(document.getElementById('meal-recipe-select').value);
-    const amountVal = parseFloat(document.getElementById('meal-recipe-amount').value);
-    const unit = document.getElementById('meal-recipe-unit').value;
-    
-    if (!recipeId) return alert('Selecciona una receta');
-    if (!amountVal || amountVal <= 0) return alert('Introduce una cantidad válida');
-    
-    const recipe = await RecipeStore.getRecipeById(recipeId);
-    if (!recipe) return alert('Error al cargar receta');
-    
-    let servings = 0;
-    if (unit === 'grams') {
-      let totalGrams = 0;
-      for (const ing of recipe.ingredients) {
-        const g = NutritionCalc.toGrams(ing.amount, ing.unit);
-        if (g !== null) totalGrams += g;
-      }
-      if (totalGrams === 0) return alert('La receta no tiene ingredientes pesables. Usa raciones en su lugar.');
-      
-      const fraction = amountVal / totalGrams;
-      servings = fraction * recipe.servings;
-    } else {
-      servings = amountVal;
-    }
-    
-    // Leer los ingredientes personalizados del DOM (los que el usuario pudo editar)
-    const customIngredients = [];
-    document.querySelectorAll('.recipe-ing-row').forEach(row => {
-      const code = row.dataset.code;
-      const name = row.dataset.name;
-      const ingUnit = row.dataset.unit;
-      const input = row.querySelector('.ing-amount-input');
-      const amount = parseFloat(input.value) || 0;
-      if (amount > 0 && code !== "null" && code !== "undefined") {
-        customIngredients.push({
-          productCode: code,
-          productName: name,
-          amount,
-          unit: ingUnit
-        });
-      }
-    });
+  let itemsToSave = [];
 
-    // Calcular la nutrición en base a los ingredientes personalizados leídos del DOM
-    const nutrition = await NutritionCalc.calculateTotalNutrition(customIngredients);
-    
-    item = {
-      type: 'recipe',
-      recipeId: recipe.id,
-      productCode: null,
-      name: recipe.name,
-      servings, // sirve como metadato, pero la nutrición ya está calculada exactamente
-      customIngredients, // guardamos el desglose exacto
-      nutrition
-    };
-    
+  if (mealTray.length > 0) {
+    itemsToSave = [...mealTray];
   } else {
-    // Producto
-    const code = document.getElementById('meal-product-selected').value;
-    const grams = parseFloat(document.getElementById('meal-product-grams').value);
-    
-    if (!code) return alert('Busca y selecciona un producto');
-    
-    const product = await ProductStore.getProductByCode(code);
-    if (!product) return alert('Error al cargar producto');
-    
-    const nutrition = await NutritionCalc.calculateTotalNutrition([
-      { productCode: code, amount: grams, unit: 'g' }
-    ]);
-
-    item = {
-      type: 'product',
-      recipeId: null,
-      productCode: code,
-      name: product.product_name || `Prod ${code}`,
-      servings: grams / 100, // asumiendo 1 ración = 100g para productos sueltos
-      nutrition
-    };
+    try {
+      const singleItem = await getCurrentConfiguredItem();
+      itemsToSave = [singleItem];
+    } catch (err) {
+      return alert(err.message);
+    }
   }
 
   const context = {
@@ -460,27 +776,20 @@ async function saveMeal() {
     notes: ''
   };
 
+  const deductPantry = document.getElementById('meal-deduct-pantry').checked;
+
   await DiaryStore.addDiaryEntry({
     date,
     mealType,
-    items: [item],
-    context
+    items: itemsToSave,
+    context,
+    status: finalStatus,
+    ate_at_home: deductPantry
   });
 
-  // Integración con Despensa
-  const deductPantry = document.getElementById('meal-deduct-pantry').checked;
-  if (deductPantry) {
-    if (item.type === 'recipe') {
-      if (item.customIngredients && item.customIngredients.length > 0) {
-        for (const ing of item.customIngredients) {
-          await PantryStore.consumeStock(ing.productCode, ing.amount, 'consumed_me', ing.unit || 'g');
-        }
-      } else {
-        await PantryStore.consumeRecipeIngredients(item.recipeId, item.servings, 'consumed_me');
-      }
-    } else if (item.type === 'product' && item.productCode) {
-      await PantryStore.consumeStock(item.productCode, item.servings * 100, 'consumed_me', 'g'); 
-    }
+  // Solo descontar de despensa si es consumido en el momento
+  if (finalStatus === 'consumed' && deductPantry) {
+    await deductMealItemsFromPantry(itemsToSave);
   }
 
   mealModal.hide();

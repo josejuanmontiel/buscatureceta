@@ -1,4 +1,5 @@
 import { db } from '../../db/schema.js';
+import * as PantryStore from '../pantry/PantryStore.js';
 
 /**
  * Tablas que se van a exportar.
@@ -8,6 +9,8 @@ const TABLES_TO_BACKUP = [
   'recipes',
   'recipeVersions',
   'diary',
+  'diaryVersions',
+  'mealTemplates',
   'goals',
   'pantry',
   'pantryLog',
@@ -277,3 +280,85 @@ export async function clearUserData() {
     }
   });
 }
+
+/**
+ * Descarga cualquier objeto JS como archivo JSON en el navegador
+ * @param {Object} dataObject
+ * @param {string} filename
+ */
+export function downloadJsonFile(dataObject, filename) {
+  const jsonStr = JSON.stringify(dataObject, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Exportar snapshot limpio del inventario de despensa
+ * @returns {Promise<Object>}
+ */
+export async function exportPantrySnapshot() {
+  const items = await PantryStore.getPantryInventory();
+  return {
+    schemaVersion: '1.0',
+    type: 'pantry_snapshot',
+    exportedAt: new Date().toISOString(),
+    totalItems: items.length,
+    items: items.map(i => ({
+      id: i.id,
+      productCode: i.productCode,
+      productName: i.productName || i.product_name,
+      amount: i.amount,
+      unit: i.unit,
+      pantryZone: i.pantryZone || 'food'
+    }))
+  };
+}
+
+/**
+ * Exportar historial completo de ingestas y sus versiones de cambio
+ * @returns {Promise<Object>}
+ */
+export async function exportDiaryHistory() {
+  const diaryEntries = await db.diary.toArray();
+  const diaryVersions = db.diaryVersions ? await db.diaryVersions.toArray() : [];
+
+  return {
+    schemaVersion: '1.0',
+    type: 'diary_history',
+    exportedAt: new Date().toISOString(),
+    entriesCount: diaryEntries.length,
+    versionsCount: diaryVersions.length,
+    diary: diaryEntries,
+    diaryVersions: diaryVersions
+  };
+}
+
+/**
+ * Exportar paquete unificado para PrimaryFoods (Despensa + Diario + Versiones + Productos Propios)
+ * @returns {Promise<Object>}
+ */
+export async function exportPrimaryFoodsPackage() {
+  const pantrySnapshot = await exportPantrySnapshot();
+  const diaryHistory = await exportDiaryHistory();
+  const mealTemplates = db.mealTemplates ? await db.mealTemplates.toArray() : [];
+  const customProducts = db.customProducts ? await db.customProducts.toArray() : [];
+
+  return {
+    schemaVersion: '1.0',
+    app: 'buscatureceta',
+    exportedAt: new Date().toISOString(),
+    pantry: pantrySnapshot.items,
+    diary: diaryHistory.diary,
+    diaryVersions: diaryHistory.diaryVersions,
+    mealTemplates,
+    customProducts
+  };
+}
+

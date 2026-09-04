@@ -35,20 +35,88 @@
       color: #6ea8fe;
     }
     .meal-slot {
-      background: #444;
-      padding: 5px;
-      border-radius: 4px;
+      background: #333942;
+      padding: 6px 8px;
+      border-radius: 6px;
       margin-bottom: 5px;
       font-size: 0.85em;
       cursor: pointer;
+      border-left: 3px solid #0d6efd;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
     .meal-slot:hover {
-      background: #555;
+      background: #3d4450;
+    }
+    .meal-slot.status-planned {
+      border-left: 3px dashed #ffc107;
+      background: rgba(255, 193, 7, 0.08);
+    }
+    .meal-slot.status-consumed {
+      border-left: 3px solid #198754;
     }
     .meal-type-label {
       font-size: 0.75em;
       color: #aaa;
       text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .course-badge {
+      font-size: 0.72em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #ddd;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .badge-planned {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+      border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+    .badge-consumed {
+      background: rgba(25, 135, 84, 0.2);
+      color: #20c997;
+      border: 1px solid rgba(25, 135, 84, 0.4);
+    }
+    .btn-quick-checkin {
+      padding: 1px 6px;
+      font-size: 0.7em;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+    .tray-item {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 6px 10px;
+      margin-bottom: 4px;
+    }
+    .timeline-item {
+      position: relative;
+      padding-left: 26px;
+      margin-bottom: 16px;
+      border-left: 2px solid rgba(255, 255, 255, 0.15);
+    }
+    .timeline-item:last-child {
+      border-left-color: transparent;
+      margin-bottom: 0;
+    }
+    .timeline-badge {
+      position: absolute;
+      left: -11px;
+      top: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      background: #212529;
+      border: 2px solid #0dcaf0;
     }
   </style>
 </head>
@@ -106,29 +174,66 @@
 
   <!-- Modal para Registrar Comida -->
   <div class="modal fade" id="mealModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="mealModalTitle">Registrar Comida</h5>
+          <h5 class="modal-title" id="mealModalTitle">🍽️ Registrar Comida / Planificar Ingesta</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <form id="meal-form">
             <input type="hidden" id="meal-date">
             
-            <div class="mb-3">
-              <label for="meal-type" class="form-label">Tipo de comida</label>
-              <select class="form-select" id="meal-type">
-                <option value="breakfast">Desayuno</option>
-                <option value="lunch" selected>Comida</option>
-                <option value="snack">Merienda</option>
-                <option value="dinner">Cena</option>
-              </select>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label for="meal-type" class="form-label small fw-bold">Tipo de comida</label>
+                <select class="form-select" id="meal-type">
+                  <option value="breakfast">Desayuno</option>
+                  <option value="midmorning">Almuerzo</option>
+                  <option value="lunch" selected>Comida</option>
+                  <option value="snack">Merienda</option>
+                  <option value="dinner">Cena</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-info">⚡ Cargar Plantilla / Menú</label>
+                <div class="input-group">
+                  <select class="form-select" id="meal-template-select">
+                    <option value="">-- Sin plantilla --</option>
+                  </select>
+                  <button class="btn btn-outline-info" type="button" id="btn-load-template" title="Aplicar plantilla">Cargar</button>
+                </div>
+              </div>
             </div>
 
+            <!-- Bandeja de Platos de la Ingesta -->
             <div class="mb-3">
-              <label class="form-label">¿Qué has comido?</label>
-              
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label small fw-bold text-light mb-0">Platos de esta Ingesta (<span id="tray-count">0</span>):</label>
+                <span id="tray-total-kcal" class="badge bg-dark border border-warning text-warning">0 kcal</span>
+              </div>
+              <div id="meal-tray-container" class="p-2 rounded bg-dark border border-secondary" style="min-height: 55px;">
+                <div id="meal-tray-empty" class="text-muted small text-center py-2">Añade platos abajo o selecciona una plantilla</div>
+                <div id="meal-tray-items"></div>
+              </div>
+            </div>
+
+            <div class="card bg-dark border-secondary p-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
+                <span class="fw-bold small text-info">Configurar plato a añadir:</span>
+                <div class="d-flex align-items-center gap-1">
+                  <label class="small text-muted me-1">Curso:</label>
+                  <select class="form-select form-select-sm" id="meal-course-select" style="width: auto;">
+                    <option value="appetizer">🍸 Aperitivo</option>
+                    <option value="starter">🥗 Primero / Entrante</option>
+                    <option value="main" selected>🍲 Principal / Segundo</option>
+                    <option value="dessert">🍰 Postre</option>
+                    <option value="drink">🥤 Bebida / Café</option>
+                    <option value="snack">🥪 Snack / Extra</option>
+                  </select>
+                </div>
+              </div>
+
               <!-- Tabs para Receta o Producto -->
               <ul class="nav nav-tabs mb-2" id="mealTabs" role="tablist">
                 <li class="nav-item" role="presentation">
@@ -145,7 +250,7 @@
                   <select class="form-select mb-2" id="meal-recipe-select">
                     <option value="">-- Selecciona receta --</option>
                   </select>
-                  <label class="form-label mt-2">Cantidad consumida</label>
+                  <label class="form-label mt-1 small">Cantidad consumida</label>
                   <div class="input-group mb-2">
                     <input type="number" class="form-control" id="meal-recipe-amount" value="1" min="0.1" step="0.1">
                     <select class="form-select" id="meal-recipe-unit" style="max-width: 120px;">
@@ -154,9 +259,9 @@
                     </select>
                   </div>
                   
-                  <div id="meal-recipe-ingredients-container" style="display: none;" class="mt-3 p-2 bg-dark rounded border border-secondary">
+                  <div id="meal-recipe-ingredients-container" style="display: none;" class="mt-2 p-2 bg-black rounded border border-secondary">
                     <label class="form-label small text-info mb-1">Ajuste manual de ingredientes</label>
-                    <div id="meal-recipe-ingredients" style="max-height: 150px; overflow-y: auto;">
+                    <div id="meal-recipe-ingredients" style="max-height: 120px; overflow-y: auto;">
                       <!-- Injected via JS -->
                     </div>
                   </div>
@@ -183,33 +288,89 @@
                   <div id="meal-product-results" class="list-group mb-2" style="max-height: 100px; overflow-y: auto;"></div>
                   <input type="hidden" id="meal-product-selected">
                   
-                  <label class="form-label mt-2">Gramos consumidos</label>
+                  <label class="form-label mt-1 small">Gramos consumidos</label>
                   <input type="number" class="form-control" id="meal-product-grams" value="100" min="1">
                 </div>
+              </div>
+
+              <div class="mt-2 text-end">
+                <button type="button" class="btn btn-sm btn-outline-info" id="btn-add-to-tray">+ Añadir este plato al menú</button>
               </div>
             </div>
 
             <details class="mb-3">
-              <summary class="form-label text-info" style="cursor:pointer;">Opciones opcionales (Hambre, notas...)</summary>
+              <summary class="form-label text-info small" style="cursor:pointer;">Opciones opcionales (Hambre, notas...)</summary>
               <div class="mt-2 border border-secondary p-2 rounded bg-dark">
-                <label class="form-label small">Hambre antes de comer</label>
+                <label class="form-label small mb-1">Hambre antes de comer</label>
                 <input type="range" class="form-range" id="meal-hunger" min="1" max="10" value="5">
                 <div class="d-flex justify-content-between"><small>Poca</small><small>Mucha</small></div>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" id="meal-deduct-pantry" checked>
+                  <label class="form-check-label small" for="meal-deduct-pantry">
+                    Descontar automáticamente de mi Despensa al consumir
+                  </label>
+                </div>
               </div>
             </details>
-
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="meal-deduct-pantry" checked>
-              <label class="form-check-label" for="meal-deduct-pantry">
-                Descontar automáticamente de mi Despensa
-              </label>
-            </div>
             
           </form>
         </div>
+        <div class="modal-footer d-flex justify-content-between flex-wrap gap-2">
+          <div>
+            <button type="button" class="btn btn-outline-warning btn-sm" id="btn-save-as-template" title="Guardar como Plantilla de Menú">⭐ Guardar como Plantilla</button>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btn-save-planned">⏳ Guardar Planificado</button>
+            <button type="button" class="btn btn-success btn-sm" id="btn-save-meal">✓ Guardar Consumido</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Quick Check-In -->
+  <div class="modal fade" id="mealCheckInModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="checkInModalTitle">🍽️ Confirmar Ingesta Consumida</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="checkin-entry-id">
+          <p class="text-muted small mb-2" id="checkInModalSubtitle">Selecciona los platos que has comido realmente:</p>
+          <div id="checkInItemsList" class="list-group mb-3"></div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="checkin-ate-at-home" checked>
+            <label class="form-check-label small" for="checkin-ate-at-home">
+              Cocinado en casa (descontar ingredientes de Despensa)
+            </label>
+          </div>
+        </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btn-save-meal">Guardar Ingesta</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-confirm-checkin">✓ Confirmar Consumo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Guardar Plantilla de Menú -->
+  <div class="modal fade" id="saveTemplateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">⭐ Guardar Plantilla</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label small">Nombre del Menú / Plantilla:</label>
+          <input type="text" class="form-control form-control-sm mb-2" id="template-name-input" placeholder="Ej: Menú Paella de Domingo">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-do-save-template">Guardar</button>
         </div>
       </div>
     </div>
@@ -286,9 +447,34 @@
           <div id="itemDetailPhotoContainer" class="text-center mb-1" style="display:none;">
              <a id="itemDetailPhotoLink" href="#" class="btn btn-outline-info btn-sm">🖼️ Ver foto original</a>
           </div>
+
+          <div class="mt-3 pt-2 border-top border-secondary">
+            <button class="btn btn-outline-info btn-sm w-100" type="button" id="btn-view-meal-history">
+              📜 Historial de Cambios / Revisiones
+            </button>
+          </div>
         </div>
         <div class="modal-footer justify-content-between">
           <button type="button" class="btn btn-outline-danger btn-sm" id="btn-delete-item">🗑️ Borrar</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Historial de Revisiones / Cambios -->
+  <div class="modal fade" id="mealHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="mealHistoryModalTitle">📜 Historial de Revisiones</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Trazabilidad desde la planificación inicial hasta el consumo real:</p>
+          <div id="mealHistoryTimeline" class="timeline"></div>
+        </div>
+        <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>

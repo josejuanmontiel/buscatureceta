@@ -8,6 +8,15 @@ import { seedDemoData } from './modules/demo/demoData.js';
 export async function initView() {
   const btnExport = document.getElementById('btn-export');
   if (btnExport) btnExport.addEventListener('click', handleExport);
+
+  const btnExportPF = document.getElementById('btn-export-primaryfoods');
+  if (btnExportPF) btnExportPF.addEventListener('click', handleExportPrimaryFoods);
+
+  const btnExportPantry = document.getElementById('btn-export-pantry');
+  if (btnExportPantry) btnExportPantry.addEventListener('click', handleExportPantry);
+
+  const btnExportDiary = document.getElementById('btn-export-diary-history');
+  if (btnExportDiary) btnExportDiary.addEventListener('click', handleExportDiaryHistory);
   
   const btnImport = document.getElementById('btn-import');
   if (btnImport) btnImport.addEventListener('click', handleImport);
@@ -170,6 +179,75 @@ async function handleExport() {
   } catch (err) {
     console.error('Error al exportar:', err);
     showToast('Error al exportar: ' + err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function handleExportPrimaryFoods() {
+  const btn = document.getElementById('btn-export-primaryfoods');
+  if (!btn) return;
+  const originalText = btn.textContent;
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Exportando paquete...';
+
+    const pkg = await BackupStore.exportPrimaryFoodsPackage();
+    const dateStr = new Date().toISOString().split('T')[0];
+    BackupStore.downloadJsonFile(pkg, `primaryfoods_package_${dateStr}.json`);
+
+    showToast('📦 Paquete para PrimaryFoods exportado con éxito', 'success');
+  } catch (err) {
+    console.error('Error exportando paquete PrimaryFoods:', err);
+    showToast('Error al exportar paquete: ' + err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function handleExportPantry() {
+  const btn = document.getElementById('btn-export-pantry');
+  if (!btn) return;
+  const originalText = btn.textContent;
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Exportando despensa...';
+
+    const snapshot = await BackupStore.exportPantrySnapshot();
+    const dateStr = new Date().toISOString().split('T')[0];
+    BackupStore.downloadJsonFile(snapshot, `pantry_snapshot_${dateStr}.json`);
+
+    showToast('🥫 Inventario de despensa exportado', 'success');
+  } catch (err) {
+    console.error('Error exportando despensa:', err);
+    showToast('Error al exportar despensa: ' + err.message, 'danger');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function handleExportDiaryHistory() {
+  const btn = document.getElementById('btn-export-diary-history');
+  if (!btn) return;
+  const originalText = btn.textContent;
+
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Exportando historial...';
+
+    const history = await BackupStore.exportDiaryHistory();
+    const dateStr = new Date().toISOString().split('T')[0];
+    BackupStore.downloadJsonFile(history, `diary_history_${dateStr}.json`);
+
+    showToast('📅 Histórico de diario y revisiones exportado', 'success');
+  } catch (err) {
+    console.error('Error exportando diario:', err);
+    showToast('Error al exportar diario: ' + err.message, 'danger');
   } finally {
     btn.disabled = false;
     btn.textContent = originalText;

@@ -65,7 +65,7 @@ db.version(3).stores({
   recipes: '++id, name, source, externalId, *tags',
   diary: '++id, date, mealType',
   goals: '++id, nutrient',
-  
+
   /**
    * pantry — Inventario físico
    * 
@@ -97,7 +97,7 @@ db.version(4).stores({
   goals: '++id, nutrient',
   pantry: '++id, productCode',
   pantryLog: '++id, productCode, date, reason',
-  
+
   /**
    * cart — Carrito de la compra actual
    */
@@ -119,7 +119,7 @@ db.version(5).stores({
   pantryLog: '++id, productCode, date, reason',
   cart: '++id, productCode',
   priceHistory: '++id, productCode, date',
-  
+
   /**
    * pendingUploads — Cola de imágenes a subir a la API oficial
    * 
@@ -273,6 +273,54 @@ db.version(11).stores({
   shoppingLists: '++id, status'
 });
 
+// ── v12: Ingestas Multi-Plato y Plantillas de Menús ───────────────────────────
+db.version(12).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType, status',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode, pantryZone',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date',
+  shoppingLists: '++id, status',
+  /**
+   * mealTemplates — Plantillas de menús/ingestas completas (aperitivo + principal + postre...)
+   */
+  mealTemplates: '++id, name, mealType, *tags'
+});
+
+// ── v13: Historial de Cambios en el Diario (Trazabilidad Plan -> Ajuste -> Realidad)
+db.version(13).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType, status',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode, pantryZone',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date',
+  shoppingLists: '++id, status',
+  mealTemplates: '++id, name, mealType, *tags',
+  /**
+   * diaryVersions — Historial cronológico de versiones y cambios de ingestas
+   * Permite trazabilidad: plan_created -> plan_adjusted -> consumed
+   */
+  diaryVersions: '++id, diaryEntryId, date, mealType, action, timestamp'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**
@@ -376,15 +424,39 @@ export const MEAL_TYPES = {
  * Usados para calcular el índice de variedad semanal.
  */
 export const FOOD_GROUPS = {
-  legumes:      { label: 'Legumbres',       icon: '🫘', tags: ['en:legumes', 'en:pulses'] },
+  legumes: { label: 'Legumbres', icon: '🫘', tags: ['en:legumes', 'en:pulses'] },
   leafy_greens: { label: 'Verdura de hoja', icon: '🥬', tags: ['en:leafy-vegetables'] },
-  cruciferous:  { label: 'Crucíferas',      icon: '🥦', tags: ['en:brassicas'] },
-  fruits:       { label: 'Frutas',          icon: '🍎', tags: ['en:fruits'] },
-  whole_cereals:{ label: 'Cereales integ.', icon: '🌾', tags: ['en:whole-grain-foods'] },
-  fish:         { label: 'Pescado',         icon: '🐟', tags: ['en:fish-and-seafood'] },
-  meat:         { label: 'Carne',           icon: '🥩', tags: ['en:meats'] },
-  dairy:        { label: 'Lácteos',         icon: '🥛', tags: ['en:dairy-products'] },
-  nuts_seeds:   { label: 'Frutos secos',    icon: '🥜', tags: ['en:nuts', 'en:seeds'] },
-  eggs:         { label: 'Huevos',          icon: '🥚', tags: ['en:eggs'] },
-  oils:         { label: 'Aceites',         icon: '🫒', tags: ['en:plant-oils'] },
+  cruciferous: { label: 'Crucíferas', icon: '🥦', tags: ['en:brassicas'] },
+  fruits: { label: 'Frutas', icon: '🍎', tags: ['en:fruits'] },
+  whole_cereals: { label: 'Cereales integ.', icon: '🌾', tags: ['en:whole-grain-foods'] },
+  fish: { label: 'Pescado', icon: '🐟', tags: ['en:fish-and-seafood'] },
+  meat: { label: 'Carne', icon: '🥩', tags: ['en:meats'] },
+  dairy: { label: 'Lácteos', icon: '🥛', tags: ['en:dairy-products'] },
+  nuts_seeds: { label: 'Frutos secos', icon: '🥜', tags: ['en:nuts', 'en:seeds'] },
+  eggs: { label: 'Huevos', icon: '🥚', tags: ['en:eggs'] },
+  oils: { label: 'Aceites', icon: '🫒', tags: ['en:plant-oils'] },
 };
+
+/**
+ * Roles o cursos de plato dentro de una ingesta
+ */
+export const COURSE_TYPES = {
+  appetizer: { id: 'appetizer', label: 'Aperitivo', icon: '🍸', order: 1 },
+  starter:   { id: 'starter',   label: 'Primero / Entrante', icon: '🥗', order: 2 },
+  main:      { id: 'main',      label: 'Principal / Segundo', icon: '🍲', order: 3 },
+  dessert:   { id: 'dessert',   label: 'Postre', icon: '🍰', order: 4 },
+  drink:     { id: 'drink',     label: 'Bebida / Café', icon: '🥤', order: 5 },
+  snack:     { id: 'snack',     label: 'Snack / Extra', icon: '🥪', order: 6 },
+};
+
+/**
+ * Acciones de trazabilidad en el diario (ciclo de vida de una comida)
+ */
+export const DIARY_ACTIONS = {
+  plan_created:  { id: 'plan_created',  label: 'Plan creado',   icon: '📝' },
+  plan_adjusted: { id: 'plan_adjusted', label: 'Plan ajustado', icon: '✏️' },
+  consumed:      { id: 'consumed',      label: 'Consumido',     icon: '🍽️' },
+  deleted:       { id: 'deleted',       label: 'Eliminado',     icon: '🗑️' },
+};
+
+

@@ -21,17 +21,16 @@ export async function initView() {
   const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
   const codeFromUrl = urlParams.get('code');
   const actionFromUrl = urlParams.get('action');
-  if (codeFromUrl && actionFromUrl !== 'addStock') {
+
+  if (codeFromUrl && actionFromUrl === 'addStock') {
+    window.history.replaceState({}, '', '/#pantry');
+    addStockModal.show();
+    resolveScannedCodeForStock(codeFromUrl);
+  } else if (codeFromUrl) {
     document.getElementById("pantry-search").value = codeFromUrl;
     await loadPantry(codeFromUrl);
   } else {
     await loadPantry();
-  }
-
-  if (codeFromUrl && actionFromUrl === 'addStock') {
-    addStockModal.show();
-    document.getElementById('stock-product-search').value = codeFromUrl;
-    setTimeout(searchProduct, 500);
   }
 
   // Buscador filtro despensa
@@ -39,7 +38,7 @@ export async function initView() {
     loadPantry(e.target.value);
   });
 
-  // Escáner
+  // Escáner general despensa
   const scanPantryBtn = document.getElementById('scan-pantry-btn');
   if (scanPantryBtn) {
     scanPantryBtn.addEventListener('click', () => {
@@ -47,17 +46,32 @@ export async function initView() {
     });
   }
 
+  // Escáner directo desde cabecera para añadir stock
+  document.getElementById('btn-quick-scan-stock')?.addEventListener('click', () => {
+    window.location.href = '/scan.html?return=%23pantry&action=addStock';
+  });
+
+  // Escáner dentro del modal Añadir Stock
   document.getElementById('btn-scan-stock')?.addEventListener('click', () => {
     window.location.href = '/scan.html?return=%23pantry&action=addStock';
   });
 
+  // Limpiar selección de producto
+  document.getElementById('btn-clear-selected-stock')?.addEventListener('click', clearSelectedProduct);
+
+  // Limpiar formulario al cerrar modal
+  document.getElementById('addStockModal')?.addEventListener('hidden.bs.modal', () => {
+    clearSelectedProduct();
+    document.getElementById('stock-product-results').innerHTML = '';
+  });
+
   // Buscador del modal Añadir Stock (tiempo real + Enter)
-  document.getElementById('btn-search-stock-product').addEventListener('click', searchProduct);
+  document.getElementById('btn-search-stock-product').addEventListener('click', () => searchProduct());
   let stockSearchTimeout;
   const stockInput = document.getElementById('stock-product-search');
   stockInput.addEventListener('input', () => {
     clearTimeout(stockSearchTimeout);
-    stockSearchTimeout = setTimeout(searchProduct, 400);
+    stockSearchTimeout = setTimeout(() => searchProduct(), 400);
   });
   stockInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); searchProduct(); }
@@ -96,14 +110,30 @@ export async function initView() {
 async function loadPantry(query = '') {
   const items = await PantryStore.getPantryInventory(currentZone);
   const container = document.getElementById('pantry-list');
+  const qTrim = query ? query.trim() : '';
   
-  const filtered = query 
-    ? items.filter(i => i.productName.toLowerCase().includes(query.toLowerCase()) || i.productCode.includes(query))
+  const filtered = qTrim 
+    ? items.filter(i => i.productName.toLowerCase().includes(qTrim.toLowerCase()) || i.productCode.includes(qTrim))
     : items;
 
   if (filtered.length === 0) {
     const zoneLabel = currentZone === 'food' ? 'alimentos' : 'artículos no alimentarios';
-    container.innerHTML = `<div class="col-12 text-center mt-5"><p class="text-muted">Sin ${zoneLabel} en la despensa.</p></div>`;
+    if (qTrim) {
+      container.innerHTML = `
+        <div class="col-12 text-center mt-4">
+          <div class="card p-4 mx-auto border-secondary" style="max-width: 480px; background: rgba(255,255,255,0.04);">
+            <i class="bi bi-box-seam fs-1 text-warning mb-2"></i>
+            <h5>Sin existencias en la despensa</h5>
+            <p class="text-muted small mb-3">No se encontraron ${zoneLabel} con la búsqueda "<strong>${qTrim}</strong>".</p>
+            <button class="btn btn-primary" onclick="window.openAddStockForCode('${qTrim.replace(/'/g, "\\'")}')">
+              <i class="bi bi-plus-lg me-1"></i> Añadir a mi Despensa
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `<div class="col-12 text-center mt-5"><p class="text-muted">Sin ${zoneLabel} en la despensa.</p></div>`;
+    }
     return;
   }
 
@@ -130,41 +160,218 @@ async function loadPantry(query = '') {
   `).join('');
 }
 
+async function resolveScannedCodeForStock(code) {
+  if (!code) return;
+  document.getElementById('stock-product-search').value = code;
+  const container = document.getElementById('stock-product-results');
+  container.innerHTML = `
+    <div class="list-group-item text-center py-3 text-info">
+      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+      Buscando producto en catálogo y Open Food Facts...
+    </div>
+  `;
+
+  try {
+    const product = await ProductStore.getProductByCode(code);
+    if (product) {
+      await window.selectProduct(product.code, product.product_name, product);
+    } else {
+      renderUncataloguedProductUI(code);
+    }
+  } catch (err) {
+    console.error('Error al resolver código:', err);
+    renderUncataloguedProductUI(code);
+  }
+}
+
+function renderUncataloguedProductUI(code) {
+  const container = document.getElementById('stock-product-results');
+  container.innerHTML = `
+    <div class="list-group-item list-group-item-warning p-3">
+      <div class="d-flex align-items-center mb-2">
+        <i class="bi bi-exclamation-triangle-fill text-warning me-2 fs-5"></i>
+        <div>
+          <strong>Producto no encontrado en catálogo</strong>
+          <div class="text-muted small">Código: <code>${code}</code></div>
+        </div>
+      </div>
+      <p class="small text-muted mb-2">No se encontró en Open Food Facts ni en tu base de datos. Asigna un nombre para añadirlo a tu despensa:</p>
+      <div class="input-group input-group-sm">
+        <input type="text" id="input-new-custom-name" class="form-control" placeholder="Ej: Leche desnatada, Manzanas..." value="Producto ${code}">
+        <button class="btn btn-success" type="button" id="btn-create-custom-product">
+          <i class="bi bi-check-lg"></i> Asignar
+        </button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btn-create-custom-product')?.addEventListener('click', async () => {
+    const name = document.getElementById('input-new-custom-name').value.trim() || `Producto ${code}`;
+    await window.createAndSelectCustomProduct(code, name);
+  });
+}
+
+window.createAndSelectCustomProduct = async function(code, name) {
+  const custom = await ProductStore.addCustomProduct({
+    code: code,
+    product_name: name,
+    nutriscore_grade: 'unknown'
+  });
+  await window.selectProduct(custom.code, custom.product_name, custom);
+};
+
+window.openAddStockForCode = function(code) {
+  addStockModal.show();
+  resolveScannedCodeForStock(code);
+};
+
 async function searchProduct() {
   const query = document.getElementById('stock-product-search').value.trim();
-  if (!query) return;
+  if (!query) {
+    document.getElementById('stock-product-results').innerHTML = '';
+    return;
+  }
+
+  const container = document.getElementById('stock-product-results');
+  container.innerHTML = `
+    <div class="list-group-item text-center py-2 text-info">
+      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+      Buscando...
+    </div>
+  `;
 
   const qLower = query.toLowerCase();
   const results = await ProductStore.searchProducts(qLower, 10);
 
-  const container = document.getElementById('stock-product-results');
+  if (results.length === 0) {
+    if (/^\d{4,16}$/.test(query)) {
+      renderUncataloguedProductUI(query);
+    } else {
+      container.innerHTML = `
+        <div class="list-group-item text-center text-muted small py-2">
+          No se encontraron productos coincidentes.
+        </div>
+      `;
+    }
+    return;
+  }
+
+  // Si es un código numérico exacto y coincide exactamente el código
+  const exactMatch = results.find(p => p.code === query || p.real_code === query);
+  if (exactMatch && /^\d{4,16}$/.test(query)) {
+    await window.selectProduct(exactMatch.code, exactMatch.product_name, exactMatch);
+    return;
+  }
+
   container.innerHTML = results.map(p => `
     <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-            onclick="window.selectProduct('${p.code}', '${p.product_name?.replace(/'/g, "\\'")}')">
-      ${p.product_name || 'Sin nombre'} <small class="text-muted">${p.code}</small>
+            onclick="window.selectProduct('${p.code}', '${(p.product_name || 'Sin nombre').replace(/'/g, "\\'")}')">
+      <div class="text-truncate me-2 text-start">
+        <strong>${p.product_name || 'Sin nombre'}</strong>
+        ${p.brands ? `<small class="text-muted d-block">${p.brands}</small>` : ''}
+      </div>
+      <small class="text-muted text-nowrap">${p.code}</small>
     </button>
   `).join('');
 }
 
-window.selectProduct = function(code, name) {
+window.selectProduct = async function(code, name, product = null) {
   document.getElementById('stock-product-selected').value = code;
-  document.getElementById('stock-product-search').value = name;
+  document.getElementById('stock-product-search').value = name || '';
   document.getElementById('stock-product-results').innerHTML = '';
+
+  if (!product) {
+    product = await ProductStore.getProductByCode(code);
+  }
+
+  const card = document.getElementById('stock-product-selected-card');
+  const nameEl = document.getElementById('stock-selected-name');
+  const detailsEl = document.getElementById('stock-selected-details');
+
+  if (card && nameEl && detailsEl) {
+    nameEl.textContent = name || product?.product_name || `Producto ${code}`;
+    const details = [];
+    if (product?.brands) details.push(product.brands);
+    if (code) details.push(`Ref: ${code}`);
+    if (product?.quantity) details.push(`Envase: ${product.quantity}`);
+    detailsEl.textContent = details.join(' • ');
+    card.classList.remove('d-none');
+  }
+
+  if (product) {
+    suggestStockAmountAndUnit(product);
+  }
+
   RecentStore.markAsUsed(code);
 };
 
+function suggestStockAmountAndUnit(product) {
+  const amountInput = document.getElementById('stock-amount');
+  const unitSelect = document.getElementById('stock-unit');
+  if (!amountInput || !unitSelect) return;
+
+  const qStr = (product.quantity || '').toLowerCase();
+  const pq = parseFloat(product.product_quantity);
+
+  if (qStr.includes('ml') || qStr.includes('cl') || qStr.includes('l')) {
+    unitSelect.value = 'ml';
+    if (!isNaN(pq) && pq > 0) {
+      amountInput.value = pq < 10 && qStr.includes('l') ? pq * 1000 : pq;
+    } else if (qStr.includes('1 l') || qStr.includes('1l')) {
+      amountInput.value = 1000;
+    }
+  } else if (qStr.includes('kg') || qStr.includes('g')) {
+    unitSelect.value = 'g';
+    if (!isNaN(pq) && pq > 0) {
+      amountInput.value = pq < 10 && qStr.includes('kg') ? pq * 1000 : pq;
+    } else if (qStr.includes('1 kg') || qStr.includes('1kg')) {
+      amountInput.value = 1000;
+    }
+  } else if (qStr.includes('ud') || qStr.includes('unid') || qStr.includes('pack')) {
+    unitSelect.value = 'unidad';
+    amountInput.value = 1;
+  }
+}
+
+function clearSelectedProduct() {
+  document.getElementById('stock-product-selected').value = '';
+  document.getElementById('stock-product-search').value = '';
+  const card = document.getElementById('stock-product-selected-card');
+  if (card) card.classList.add('d-none');
+}
+
 async function saveStock() {
-  const code = document.getElementById('stock-product-selected').value;
+  let code = document.getElementById('stock-product-selected').value;
   const amount = parseFloat(document.getElementById('stock-amount').value);
   const unit = document.getElementById('stock-unit').value;
   
-  if (!code) return showToast('Selecciona un producto primero', 'warning');
+  if (!code) {
+    const searchVal = document.getElementById('stock-product-search').value.trim();
+    if (searchVal) {
+      if (/^\d{4,16}$/.test(searchVal)) {
+        const p = await ProductStore.getProductByCode(searchVal);
+        if (p) {
+          code = p.code;
+        } else {
+          await ProductStore.addCustomProduct({
+            code: searchVal,
+            product_name: `Producto ${searchVal}`,
+            nutriscore_grade: 'unknown'
+          });
+          code = searchVal;
+        }
+      }
+    }
+  }
+
+  if (!code) return showToast('Selecciona o busca un producto primero', 'warning');
   if (!amount || amount <= 0) return showToast('Cantidad inválida', 'warning');
 
   // El stock añadido manualmente respeta la zona activa
   await PantryStore.addStock(code, amount, unit, currentZone);
+  showToast('Stock añadido correctamente a la despensa', 'success');
   
   addStockModal.hide();
+  clearSelectedProduct();
   document.getElementById('add-stock-form').reset();
   await loadPantry();
 }
