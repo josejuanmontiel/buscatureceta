@@ -160,6 +160,8 @@ async function loadPantry(query = '') {
   `).join('');
 }
 
+let activeStockLookupPromise = null;
+
 async function resolveScannedCodeForStock(code) {
   if (!code) return;
   document.getElementById('stock-product-search').value = code;
@@ -171,17 +173,33 @@ async function resolveScannedCodeForStock(code) {
     </div>
   `;
 
-  try {
-    const product = await ProductStore.getProductByCode(code);
-    if (product) {
-      await window.selectProduct(product.code, product.product_name, product);
-    } else {
-      renderUncataloguedProductUI(code);
-    }
-  } catch (err) {
-    console.error('Error al resolver código:', err);
-    renderUncataloguedProductUI(code);
+  const btnSave = document.getElementById('btn-save-stock');
+  if (btnSave) {
+    btnSave.disabled = true;
+    btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Obteniendo producto...';
   }
+
+  activeStockLookupPromise = (async () => {
+    try {
+      const product = await ProductStore.getProductByCode(code);
+      if (product) {
+        await window.selectProduct(product.code, product.product_name, product);
+      } else {
+        renderUncataloguedProductUI(code);
+      }
+    } catch (err) {
+      console.error('Error al resolver código:', err);
+      renderUncataloguedProductUI(code);
+    } finally {
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.innerHTML = 'Añadir';
+      }
+      activeStockLookupPromise = null;
+    }
+  })();
+
+  await activeStockLookupPromise;
 }
 
 function renderUncataloguedProductUI(code) {
@@ -337,16 +355,41 @@ function clearSelectedProduct() {
   document.getElementById('stock-product-search').value = '';
   const card = document.getElementById('stock-product-selected-card');
   if (card) card.classList.add('d-none');
+  const btnSave = document.getElementById('btn-save-stock');
+  if (btnSave) {
+    btnSave.disabled = false;
+    btnSave.innerHTML = 'Añadir';
+  }
 }
 
 async function saveStock() {
+  // Si hay una búsqueda activa en curso (ej. acabamos de volver de escanear), esperamos a que termine
+  if (activeStockLookupPromise) {
+    const btnSave = document.getElementById('btn-save-stock');
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Añadiendo...';
+    }
+    await activeStockLookupPromise;
+  }
+
   let code = document.getElementById('stock-product-selected').value;
   const amount = parseFloat(document.getElementById('stock-amount').value);
   const unit = document.getElementById('stock-unit').value;
   
   if (!code) {
+    // Si se mostró la interfaz de producto no catalogado y el usuario escribió nombre directo:
+    const uncataloguedInput = document.getElementById('input-new-custom-name');
     const searchVal = document.getElementById('stock-product-search').value.trim();
-    if (searchVal) {
+    if (uncataloguedInput && searchVal) {
+      const customName = uncataloguedInput.value.trim() || `Producto ${searchVal}`;
+      const custom = await ProductStore.addCustomProduct({
+        code: searchVal,
+        product_name: customName,
+        nutriscore_grade: 'unknown'
+      });
+      code = custom.code;
+    } else if (searchVal) {
       if (/^\d{4,16}$/.test(searchVal)) {
         const p = await ProductStore.getProductByCode(searchVal);
         if (p) {

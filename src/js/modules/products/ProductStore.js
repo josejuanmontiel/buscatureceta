@@ -11,7 +11,8 @@ export async function fetchProductFromOFF(code) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code.trim()}.json`, {
+    const fields = 'code,product_name,product_name_es,generic_name,brands,quantity,product_quantity,categories_tags,nutriments,nutriscore_grade,nova_group,additives_tags,image_url,image_front_url';
+    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code.trim()}.json?fields=${fields}`, {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
