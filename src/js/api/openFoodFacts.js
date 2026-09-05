@@ -35,6 +35,7 @@ export async function uploadImage(barcode, imageBlob, type, userId, password) {
   formData.append('user_id', userId);
   formData.append('password', password);
   formData.append('imagefield', type);
+  formData.append('lang', 'es');
   formData.append(`imgupload_${type}`, imageBlob, `${barcode}_${type}.jpg`);
 
   const response = await fetch(`${API_BASE_URL}/cgi/product_image_upload.pl`, {
@@ -53,6 +54,41 @@ export async function uploadImage(barcode, imageBlob, type, userId, password) {
   }
 
   return data;
+}
+
+/**
+ * Actualiza los datos textuales de un producto (nombre, idioma) en OpenFoodFacts.
+ * @param {string} barcode 
+ * @param {Object} fields - Ej: { product_name: 'Nombre', lang: 'es' }
+ * @param {string} userId 
+ * @param {string} password 
+ */
+export async function updateProductDetails(barcode, fields, userId, password) {
+  try {
+    const formData = new FormData();
+    formData.append('code', barcode);
+    formData.append('user_id', userId);
+    formData.append('password', password);
+
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, value);
+      }
+    }
+
+    const response = await fetch(`${API_BASE_URL}/cgi/product_jqm2.pl`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.status === 1 || data.status === 'status ok';
+    }
+  } catch (err) {
+    console.warn('[OFF] No se pudieron sincronizar los metadatos de texto:', err);
+  }
+  return false;
 }
 
 /**
@@ -210,6 +246,15 @@ export async function retryUpload(id) {
     await db.pendingUploads.update(item.id, { status: 'uploading' });
     const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
     await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
+
+    // Enviar nombre e idioma del producto a OpenFoodFacts si están definidos
+    if (item.productName && !item.productName.startsWith('Producto ')) {
+      await updateProductDetails(item.barcode, {
+        product_name: item.productName,
+        lang: 'es'
+      }, userId, password);
+    }
+
     await db.pendingUploads.update(item.id, {
       status: 'done',
       uploadedAt: new Date().toISOString(),
@@ -247,6 +292,14 @@ export async function syncPendingUploads(onProgress) {
 
       const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
       await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
+
+      // Enviar nombre e idioma del producto a OpenFoodFacts si están definidos
+      if (item.productName && !item.productName.startsWith('Producto ')) {
+        await updateProductDetails(item.barcode, {
+          product_name: item.productName,
+          lang: 'es'
+        }, userId, password);
+      }
 
       await db.pendingUploads.update(item.id, {
         status: 'done',

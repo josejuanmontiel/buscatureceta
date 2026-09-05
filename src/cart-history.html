@@ -52,9 +52,14 @@
           <div id="qd-badges" class="mb-3"></div>
           <h6>Información Nutricional (por 100g/ml)</h6>
           <ul class="list-group list-group-flush mb-3" id="qd-nutrition"></ul>
-          <a id="qd-off-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm d-none">
-            🌍 Ver en OpenFoodFacts
-          </a>
+          <div class="d-flex flex-wrap gap-2">
+            <a id="qd-off-link" href="#" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm d-none">
+              🌍 Ver en OpenFoodFacts
+            </a>
+            <button id="qd-off-contribute-btn" type="button" class="btn btn-outline-warning btn-sm d-none">
+              <i class="bi bi-camera me-1"></i>📷 Aportar fotos a OFF
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -149,6 +154,129 @@
 
   <!-- Input oculto para adjuntar/cambiar ticket desde una compra existente -->
   <input type="file" id="cart-item-ticket-file-input" accept="image/*" capture="environment" class="d-none">
+
+  <!-- Modal Aportar Foto a OpenFoodFacts desde Histórico -->
+  <div class="modal fade" id="modal-history-off-capture" tabindex="-1" aria-labelledby="modalHistoryOffTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modalHistoryOffTitle">
+            <i class="bi bi-camera-fill text-warning me-2"></i>
+            <span id="history-off-heading">Aportar Foto a OpenFoodFacts</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-start">
+          <div class="row g-2 mb-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label form-label-sm">Código de barras</label>
+              <input type="text" id="history-off-barcode" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: 841000...">
+            </div>
+            <div class="col-12 col-md-5">
+              <label class="form-label form-label-sm">Nombre del producto</label>
+              <input type="text" id="history-off-product-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Nombre descriptivo">
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label form-label-sm">Tipo de foto OFF</label>
+              <select id="history-off-image-type" class="form-select form-select-sm bg-dark text-white border-secondary">
+                <option value="front">Etiqueta frontal</option>
+                <option value="ingredients">Ingredientes</option>
+                <option value="nutrition">Información nutricional</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Botones de captura / selección -->
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 bg-black rounded border border-secondary">
+            <span class="small text-muted me-1"><i class="bi bi-image"></i> Foto:</span>
+            <button type="button" class="btn btn-outline-info btn-sm" id="btn-history-off-camera">
+              <i class="bi bi-camera me-1"></i> 📷 Abrir cámara
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="btn-history-off-file">
+              <i class="bi bi-folder2-open me-1"></i> 📁 Galería / Archivo
+            </button>
+            <input type="file" id="history-off-file-input" accept="image/*" class="d-none">
+            <span id="history-off-image-status" class="small text-info ms-auto"></span>
+          </div>
+
+          <!-- Visor de cámara en directo -->
+          <div id="history-off-camera-container" class="mb-3 d-none">
+            <video id="history-off-capture-video" autoplay playsinline class="w-100 rounded border border-info" style="max-height: 260px; object-fit: cover;"></video>
+            <div class="d-flex gap-2 mt-2">
+              <button type="button" class="btn btn-info btn-sm flex-grow-1" id="btn-history-off-take-snapshot">
+                <i class="bi bi-circle-fill text-danger me-1"></i> Capturar Fotograma
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-history-off-close-camera">
+                Cerrar cámara
+              </button>
+            </div>
+          </div>
+
+          <!-- Toolbar y lienzo del Cropper -->
+          <div id="history-off-cropper-section">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 bg-black rounded border border-secondary">
+              <div class="btn-group btn-group-sm" role="group" id="history-off-aspect-group">
+                <button type="button" class="btn btn-outline-light active" data-aspect="free">Libre</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="1:1">1:1</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="4:3">4:3</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="3:4">3:4</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="16:9">16:9</button>
+              </div>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-warning" id="btn-history-off-rotate" title="Rotar 90°">
+                  <i class="bi bi-arrow-clockwise"></i> 90°
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-history-off-reset-crop" title="Reiniciar recorte">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Canvas del Cropper -->
+            <div class="position-relative text-center bg-black rounded p-1 border border-secondary mb-2">
+              <canvas id="history-off-cropper-canvas" class="img-fluid rounded" style="max-height: 380px; width: 100%; object-fit: contain; cursor: crosshair; touch-action: none;"></canvas>
+              <div class="small text-muted mt-1"><i class="bi bi-arrows-move"></i> Arrastra el recuadro para recortar la zona</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm" id="btn-history-off-save">
+            <i class="bi bi-cloud-arrow-up me-1"></i> Guardar en cola OFF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Asistente Desempacar Compra -->
+  <div class="modal fade" id="modal-history-unpacking-assistant" tabindex="-1" aria-labelledby="modalUnpackingTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modalUnpackingTitle">
+            <i class="bi bi-box-seam text-info me-2"></i>
+            <span id="unpacking-modal-title">📦 Desempacar Compra: Aportar a OpenFoodFacts</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-start">
+          <p class="small text-muted mb-3">
+            Revisa los productos comprados según los vas sacando de la bolsa en casa. Puedes sacar fotos del frontal, ingredientes y tabla nutricional para enriquecer la base de datos abierta.
+          </p>
+          <div id="unpacking-items-list" class="d-flex flex-column gap-2">
+            <!-- Rellenado dinámicamente -->
+          </div>
+        </div>
+        <div class="modal-footer border-secondary justify-content-between">
+          <a href="#off-contributions" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-globe-americas me-1"></i> Ir a Cola de Subidas OFF
+          </a>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/cart-history.js"></script>

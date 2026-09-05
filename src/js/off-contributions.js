@@ -17,6 +17,7 @@ import {
 import { ImageCropper } from './modules/ui/ImageCropper.js';
 import { showToast } from './modules/ui/UI.js';
 import { Modal } from 'bootstrap';
+import { db } from './db/schema.js';
 
 let currentFilter = 'all';
 let searchQuery = '';
@@ -30,6 +31,18 @@ let modalCameraStream = null;
 
 export async function initView() {
   initEventListeners();
+
+  // Si venimos de historial con ?barcode=... o hash #off-contributions?barcode=...
+  // prefiltrar por ese código de barras
+  const urlSearch = new URLSearchParams(window.location.search);
+  const hashSearch = new URLSearchParams((window.location.hash.split('?')[1] || ''));
+  const preBarcode = urlSearch.get('barcode') || hashSearch.get('barcode') || '';
+  if (preBarcode) {
+    searchQuery = preBarcode.toLowerCase();
+    const searchInput = document.getElementById('off-search-input');
+    if (searchInput) searchInput.value = preBarcode;
+  }
+
   await loadUploads();
   await updateStats();
 }
@@ -166,6 +179,26 @@ async function loadUploads() {
 
   const allItems = await getAllUploads();
 
+  // Construir mapa barcode → carts del historial
+  let cartsByBarcode = new Map();
+  try {
+    const allCarts = await db.cartHistory.toArray();
+    allCarts.forEach(cart => {
+      (cart.items || []).forEach(item => {
+        const rawCode = item.productCode || '';
+        const cleanCode = rawCode.startsWith('GENERIC_') ? rawCode.replace(/^GENERIC_/, '') : rawCode;
+        const isNumeric = /^\d{8,14}$/.test(cleanCode);
+        const effectiveBarcode = isNumeric ? cleanCode : (rawCode.startsWith('GENERIC_') ? rawCode : '');
+        if (effectiveBarcode) {
+          if (!cartsByBarcode.has(effectiveBarcode)) cartsByBarcode.set(effectiveBarcode, []);
+          cartsByBarcode.get(effectiveBarcode).push({ id: cart.id, date: cart.date, supermarket: cart.supermarket });
+        }
+      });
+    });
+  } catch (e) {
+    console.warn('[OFF] Error leyendo cartHistory:', e);
+  }
+
   // Filtrado
   const filtered = allItems.filter(item => {
     // Filtro por estado
@@ -241,6 +274,20 @@ async function loadUploads() {
             <span>Código: ${codeLink}</span>
             <span class="mx-2">•</span>
             <span>Fecha: ${createdDate}</span>
+            ${(() => {
+              const relatedCarts = cartsByBarcode.get(item.barcode) || [];
+              if (relatedCarts.length === 0) return '';
+              // Tomar el cart más reciente
+              const latest = relatedCarts.sort((a,b) => b.date - a.date)[0];
+              const dateStr = new Date(latest.date).toLocaleDateString();
+              const supStr = latest.supermarket ? `${latest.supermarket} ` : '';
+              const allLinks = relatedCarts.map(c => {
+                const ds = new Date(c.date).toLocaleDateString();
+                const sp = c.supermarket ? `${c.supermarket} ` : '';
+                return `<a href="javascript:void(0)" onclick="window.navigateToCartHistory(${c.id})" class="text-warning text-decoration-none" title="Ver compra del ${ds}">📦 ${sp}(${ds})</a>`;
+              }).join(' · ');
+              return `<span class="mx-2">•</span><span>${allLinks}</span>`;
+            })()}
           </div>
 
           ${item.lastError ? `
@@ -603,3 +650,31 @@ function handleSaveCredentials() {
   showToast('✅ Credenciales OFF guardadas', 'success');
   if (credsModalInstance) credsModalInstance.hide();
 }
+
+// ── Navegación bidireccional OFF ↔ Historial de Compras ───────────────────
+
+/**
+ * Navega al Historial de Compras y hace scroll / resalta el cart indicado.
+ * Funciona tanto en modo SPA (hash routing) como en páginas independientes.
+ */
+window.navigateToCartHistory = function(cartId) {
+  const isSPA = document.getElementById('app-view') !== null;
+  if (isSPA) {
+    // Navegamos a la vista y tras cargarla hacemos scroll al cart
+    window.location.hash = 'cart-history';
+    // Esperar que la vista se monte y luego scrollear
+    const tryScroll = (attempts = 0) => {
+      const cartEl = document.getElementById(`cart-${cartId}`);
+      if (cartEl) {
+        cartEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        cartEl.classList.add('highlight-cart');
+        setTimeout(() => cartEl.classList.remove('highlight-cart'), 2500);
+      } else if (attempts < 20) {
+        setTimeout(() => tryScroll(attempts + 1), 150);
+      }
+    };
+    setTimeout(() => tryScroll(), 300);
+  } else {
+    window.location.href = `cart-history.html#cart-${cartId}`;
+  }
+};

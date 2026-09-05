@@ -5,6 +5,8 @@ import * as ProductStore from './modules/products/ProductStore.js';
 import * as CartStore from './modules/cart/CartStore.js';
 import { showToast } from './modules/ui/UI.js';
 import { Modal } from 'bootstrap';
+import { saveImageToPendingUploads } from './api/openFoodFacts.js';
+import { ImageCropper } from './modules/ui/ImageCropper.js';
 
 let currentZoom = 1;
 let currentRotation = 0;
@@ -12,9 +14,15 @@ let historyQuickTicketBlob = null;
 let historyQuickTicketThumbBlob = null;
 let targetCartIdForTicket = null;
 
+let historyCropperInstance = null;
+let historyOriginalBlob = null;
+let historyAspect = 'free';
+let historyModalStream = null;
+
 export async function initView() {
     initHistoryTicketHandlers();
     initTicketViewerControls();
+    initHistoryOffHandlers();
     await renderHistory();
     await renderChart();
 }
@@ -277,6 +285,16 @@ async function renderHistory() {
         return;
     }
 
+    // Mapa de fotos en cola de OpenFoodFacts agrupadas por código de barras
+    const allUploads = await db.pendingUploads.toArray();
+    const uploadsByBarcode = new Map();
+    allUploads.forEach(u => {
+        if (!uploadsByBarcode.has(u.barcode)) {
+            uploadsByBarcode.set(u.barcode, []);
+        }
+        uploadsByBarcode.get(u.barcode).push(u);
+    });
+
     list.innerHTML = carts.map((cart, index) => {
         const dateStr = new Date(cart.date).toLocaleDateString();
         const timeStr = new Date(cart.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -344,8 +362,9 @@ async function renderHistory() {
                         </div>
                         <label class="form-label small">Notas extras</label>
                         <textarea class="form-control form-control-sm bg-secondary text-white border-secondary mb-2" id="notes-${cart.id}" rows="2" placeholder="Notas sobre la compra...">${cart.notes || ''}</textarea>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2">
                             <button class="btn btn-sm btn-success flex-grow-1" onclick="window.saveCartMeta(${cart.id})">Guardar Cambios</button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="window.openUnpackingAssistant(${cart.id})" title="Desempacar compra y aportar fotos a OpenFoodFacts"><i class="bi bi-box-seam me-1"></i>📦 Desempacar OFF</button>
                             <button class="btn btn-sm btn-outline-info" onclick="window.createListFromHistory(${cart.id})" title="Crear Lista de Compra">🛒 Lista</button>
                         </div>
                     </div>
@@ -371,6 +390,28 @@ async function renderHistory() {
                                   : '';
                                 const safeItemName = (item.productName || item.productCode).replace(/'/g, "\\'").replace(/"/g, '&quot;');
                                 const histItemKey = `hist-${cart.id}-${itemIdx}`;
+
+                                // Calcular código de barras real para OFF
+                                const rawCode = item.productCode || '';
+                                const cleanCode = rawCode.startsWith('GENERIC_') ? rawCode.replace(/^GENERIC_/, '') : rawCode;
+                                const isNumeric = /^\d{8,14}$/.test(cleanCode);
+                                const effectiveBarcode = isNumeric ? cleanCode : (rawCode.startsWith('GENERIC_') ? rawCode : '');
+                                const uploads = (effectiveBarcode && uploadsByBarcode.get(effectiveBarcode)) || [];
+
+                                let offBadge = '';
+                                if (uploads.length > 0) {
+                                    const doneCount = uploads.filter(u => u.status === 'done').length;
+                                    const pendingCount = uploads.length - doneCount;
+                                    const goOffLink = `<a href="javascript:void(0)" onclick="window.navigateToOFFZone('${effectiveBarcode}')" class="ms-1 text-decoration-none" title="Ver en zona OFF" style="font-size:0.65rem;">🌍↗</a>`;
+                                    if (doneCount > 0 && pendingCount === 0) {
+                                        offBadge = `<span class="badge bg-success" style="cursor:pointer; font-size: 0.7rem;" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', 'ingredients')" title="Subido a OpenFoodFacts (${doneCount} foto${doneCount > 1 ? 's' : ''}). Clic para añadir más">✅ OFF (${doneCount})</span>${goOffLink}`;
+                                    } else {
+                                        offBadge = `<span class="badge bg-warning text-dark" style="cursor:pointer; font-size: 0.7rem;" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', 'ingredients')" title="${uploads.length} foto(s) en cola OFF. Clic para añadir más">⏳ OFF (${uploads.length})</span>${goOffLink}`;
+                                    }
+                                } else if (effectiveBarcode) {
+                                    offBadge = `<button type="button" class="btn btn-outline-info btn-sm py-0 px-1" style="font-size: 0.7rem;" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', 'front')" title="Aportar fotos de este producto a OpenFoodFacts"><i class="bi bi-camera me-1"></i>📷 OFF</button>`;
+                                }
+
                                 // Nombre: genéricos muestran botón de edición, otros van a quickDetail
                                 const nameSpan = isGeneric
                                     ? `<span class="text-truncate text-warning" id="hname-display-${histItemKey}">${item.productName || item.productCode}</span>
@@ -378,9 +419,10 @@ async function renderHistory() {
                                     : `<span class="text-truncate text-info" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.productCode}', '${safeItemName}')">${item.productName || item.productCode}</span>`;
                                 return `
                                 <li class="list-group-item bg-dark text-white px-0 py-2 d-flex justify-content-between align-items-center small border-secondary flex-wrap gap-1">
-                                    <div class="d-flex align-items-center gap-1" style="max-width: 48%; min-width: 0;" id="hname-wrapper-${histItemKey}">
+                                    <div class="d-flex align-items-center gap-1 flex-wrap" style="max-width: 52%; min-width: 0;" id="hname-wrapper-${histItemKey}">
                                       ${nameSpan}
                                       ${zoneBadge}
+                                      ${offBadge}
                                     </div>
                                     <div class="d-flex align-items-center gap-2" style="flex-shrink:0;">
                                       <span class="small text-muted">${item.amount}${item.unit} ×</span>
@@ -564,6 +606,20 @@ window.showProductQuickDetail = async function(code, name) {
         offLink.classList.add('d-none');
     }
 
+    // Botón Aportar fotos a OFF
+    const offContributeBtn = document.getElementById('qd-off-contribute-btn');
+    if (offContributeBtn) {
+        if (realCode) {
+            offContributeBtn.classList.remove('d-none');
+            offContributeBtn.onclick = () => {
+                Modal.getInstance(modal)?.hide();
+                window.historyContributeToOFF(realCode, product?.product_name || name, 'front');
+            };
+        } else {
+            offContributeBtn.classList.add('d-none');
+        }
+    }
+
     Modal.getOrCreateInstance(modal).show();
 };
 
@@ -711,5 +767,304 @@ window.confirmRenameHistoryItem = async function(key, productCode, cartId) {
         await renderHistory();
     } catch (e) {
         showToast('Error al renombrar: ' + e.message, 'danger');
+    }
+};
+
+// ── Integración con OpenFoodFacts desde el Historial de Compras ──────────────
+
+function initHistoryOffHandlers() {
+    // Cámara en modal OFF
+    document.getElementById('btn-history-off-camera')?.addEventListener('click', startHistoryOffCamera);
+    document.getElementById('btn-history-off-take-snapshot')?.addEventListener('click', takeHistoryOffSnapshot);
+    document.getElementById('btn-history-off-close-camera')?.addEventListener('click', stopHistoryOffCamera);
+
+    // Archivo / Galería en modal OFF
+    document.getElementById('btn-history-off-file')?.addEventListener('click', () => {
+        document.getElementById('history-off-file-input')?.click();
+    });
+    document.getElementById('history-off-file-input')?.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setHistoryOffImage(file, file.name);
+        e.target.value = '';
+    });
+
+    // Toolbar del Cropper
+    document.getElementById('btn-history-off-rotate')?.addEventListener('click', () => {
+        if (historyCropperInstance) historyCropperInstance.rotateClockwise();
+    });
+    document.getElementById('btn-history-off-reset-crop')?.addEventListener('click', () => {
+        if (historyCropperInstance) historyCropperInstance.resetCrop();
+    });
+    document.getElementById('history-off-aspect-group')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-aspect]');
+        if (!btn) return;
+        historyAspect = btn.getAttribute('data-aspect');
+        document.querySelectorAll('#history-off-aspect-group button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (historyCropperInstance) historyCropperInstance.setAspectRatio(historyAspect);
+    });
+
+    // Guardar foto en la cola
+    document.getElementById('btn-history-off-save')?.addEventListener('click', handleSaveHistoryOffPhoto);
+
+    // Limpieza al cerrar modal
+    const modalEl = document.getElementById('modal-history-off-capture');
+    if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            stopHistoryOffCamera();
+            if (historyCropperInstance) {
+                historyCropperInstance.destroy();
+                historyCropperInstance = null;
+            }
+            historyOriginalBlob = null;
+            const statusEl = document.getElementById('history-off-image-status');
+            if (statusEl) statusEl.textContent = '';
+        });
+    }
+}
+
+async function startHistoryOffCamera() {
+    const videoEl = document.getElementById('history-off-capture-video');
+    const container = document.getElementById('history-off-camera-container');
+    if (!videoEl || !container) return;
+
+    try {
+        stopHistoryOffCamera();
+        historyModalStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        videoEl.srcObject = historyModalStream;
+        container.classList.remove('d-none');
+    } catch (err) {
+        showToast('No se pudo acceder a la cámara: ' + err.message, 'warning');
+        document.getElementById('history-off-file-input')?.click();
+    }
+}
+
+function stopHistoryOffCamera() {
+    if (historyModalStream) {
+        historyModalStream.getTracks().forEach(t => t.stop());
+        historyModalStream = null;
+    }
+    document.getElementById('history-off-camera-container')?.classList.add('d-none');
+}
+
+function takeHistoryOffSnapshot() {
+    const videoEl = document.getElementById('history-off-capture-video');
+    if (!videoEl) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoEl.videoWidth || 800;
+    canvas.height = videoEl.videoHeight || 600;
+    canvas.getContext('2d').drawImage(videoEl, 0, 0);
+
+    stopHistoryOffCamera();
+
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            showToast('Error al capturar la imagen', 'danger');
+            return;
+        }
+        setHistoryOffImage(blob, 'Foto tomada con cámara');
+    }, 'image/jpeg', 0.92);
+}
+
+function setHistoryOffImage(blob, label = '') {
+    historyOriginalBlob = blob;
+    const statusEl = document.getElementById('history-off-image-status');
+    if (statusEl) statusEl.textContent = label ? `✓ ${label}` : '';
+
+    const canvas = document.getElementById('history-off-cropper-canvas');
+    if (!canvas) return;
+    if (historyCropperInstance) historyCropperInstance.destroy();
+
+    historyCropperInstance = new ImageCropper({
+        canvas,
+        image: blob,
+        aspectRatio: historyAspect
+    });
+}
+
+async function handleSaveHistoryOffPhoto() {
+    const barcodeInput = document.getElementById('history-off-barcode');
+    const nameInput = document.getElementById('history-off-product-name');
+    const typeInput = document.getElementById('history-off-image-type');
+
+    const barcode = barcodeInput?.value.trim();
+    const productName = nameInput?.value.trim();
+    const type = typeInput?.value || 'front';
+
+    if (!barcode) {
+        showToast('Debes indicar el código de barras del producto', 'warning');
+        barcodeInput?.focus();
+        return;
+    }
+
+    if (!historyCropperInstance && !historyOriginalBlob) {
+        showToast('Debes tomar o seleccionar una foto antes de guardar', 'warning');
+        return;
+    }
+
+    try {
+        let croppedBlob = null;
+        let cropConfig = null;
+
+        if (historyCropperInstance) {
+            croppedBlob = await historyCropperInstance.getCroppedBlob('image/jpeg', 0.88);
+            cropConfig = historyCropperInstance.getCropData();
+        } else if (historyOriginalBlob) {
+            croppedBlob = historyOriginalBlob;
+        }
+
+        await saveImageToPendingUploads(
+            barcode,
+            croppedBlob,
+            type,
+            productName,
+            historyOriginalBlob || croppedBlob,
+            cropConfig
+        );
+
+        showToast(`✅ Foto de "${productName || barcode}" guardada en la cola OFF`, 'success');
+
+        const modalEl = document.getElementById('modal-history-off-capture');
+        if (modalEl) {
+            Modal.getInstance(modalEl)?.hide();
+        }
+
+        await renderHistory();
+    } catch (err) {
+        console.error(err);
+        showToast('Error al guardar foto: ' + err.message, 'danger');
+    }
+}
+
+window.historyContributeToOFF = function(barcode = '', productName = '', suggestedType = 'front') {
+    const modalEl = document.getElementById('modal-history-off-capture');
+    if (!modalEl) return;
+
+    document.getElementById('history-off-barcode').value = barcode || '';
+    document.getElementById('history-off-product-name').value = productName || '';
+    document.getElementById('history-off-image-type').value = suggestedType || 'front';
+    document.getElementById('history-off-heading').textContent = productName ? `Aportar Foto: ${productName}` : 'Aportar Foto a OpenFoodFacts';
+
+    const statusEl = document.getElementById('history-off-image-status');
+    if (statusEl) statusEl.textContent = 'Selecciona o captura una foto';
+
+    if (historyCropperInstance) {
+        historyCropperInstance.destroy();
+        historyCropperInstance = null;
+    }
+    historyOriginalBlob = null;
+    const canvas = document.getElementById('history-off-cropper-canvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    Modal.getOrCreateInstance(modalEl).show();
+};
+
+window.openUnpackingAssistant = async function(cartId) {
+    const cart = await db.cartHistory.get(cartId);
+    if (!cart) return;
+
+    const modalEl = document.getElementById('modal-history-unpacking-assistant');
+    if (!modalEl) return;
+
+    const titleEl = document.getElementById('unpacking-modal-title');
+    if (titleEl) {
+        const dateStr = new Date(cart.date).toLocaleDateString();
+        titleEl.textContent = `📦 Desempacar Compra: ${cart.supermarket || 'Supermercado'} (${dateStr})`;
+    }
+
+    const allUploads = await db.pendingUploads.toArray();
+    const uploadsByBarcode = new Map();
+    allUploads.forEach(u => {
+        if (!uploadsByBarcode.has(u.barcode)) uploadsByBarcode.set(u.barcode, []);
+        uploadsByBarcode.get(u.barcode).push(u);
+    });
+
+    const items = cart.items || [];
+    const container = document.getElementById('unpacking-items-list');
+    if (!container) return;
+
+    if (items.length === 0) {
+        container.innerHTML = '<div class="alert alert-secondary small">Esta compra no tiene productos desglosados para desempacar.</div>';
+    } else {
+        container.innerHTML = items.map((item) => {
+            const rawCode = item.productCode || '';
+            const cleanCode = rawCode.startsWith('GENERIC_') ? rawCode.replace(/^GENERIC_/, '') : rawCode;
+            const isNumeric = /^\d{8,14}$/.test(cleanCode);
+            const effectiveBarcode = isNumeric ? cleanCode : (rawCode.startsWith('GENERIC_') ? rawCode : '');
+            const safeItemName = (item.productName || item.productCode).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            const uploads = (effectiveBarcode && uploadsByBarcode.get(effectiveBarcode)) || [];
+            const doneCount = uploads.filter(u => u.status === 'done').length;
+            const pendingCount = uploads.length - doneCount;
+
+            let statusBadge = '';
+            let nextType = 'front';
+            if (uploads.length > 0) {
+                const types = uploads.map(u => u.type);
+                if (!types.includes('ingredients')) nextType = 'ingredients';
+                else if (!types.includes('nutrition')) nextType = 'nutrition';
+                else nextType = 'front';
+
+                if (doneCount > 0 && pendingCount === 0) {
+                    statusBadge = `<span class="badge bg-success">✅ En OFF (${doneCount} foto${doneCount > 1 ? 's' : ''})</span>`;
+                } else {
+                    statusBadge = `<span class="badge bg-warning text-dark">⏳ En cola OFF (${uploads.length} foto${uploads.length > 1 ? 's' : ''})</span>`;
+                }
+            } else {
+                statusBadge = `<span class="badge bg-secondary">Sin fotos</span>`;
+            }
+
+            return `
+                <div class="card bg-black border-secondary p-2 d-flex flex-row justify-content-between align-items-center gap-2">
+                    <div class="overflow-hidden">
+                        <div class="fw-bold text-white text-truncate" style="max-width: 340px;">${item.productName || item.productCode}</div>
+                        <div class="small text-muted">
+                            <code>${effectiveBarcode || 'Sin código'}</code> • ${item.amount} ${item.unit} (${item.price ? (item.amount * item.price).toFixed(2) + '€' : ''})
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        ${statusBadge}
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', '${nextType}')" title="Aportar o añadir foto a OpenFoodFacts">
+                            <i class="bi bi-camera-plus me-1"></i>+ Foto
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    Modal.getOrCreateInstance(modalEl).show();
+};
+
+// ── Navegación bidireccional: Historial → Zona OFF ─────────────────────────
+
+/**
+ * Navega a la zona de contribuciones OFF pre-filtrando por el código de barras dado.
+ * Funciona tanto en modo SPA (hash routing) como en páginas independientes.
+ */
+window.navigateToOFFZone = function(barcode) {
+    const isSPA = document.getElementById('app-view') !== null;
+    if (isSPA) {
+        // En SPA: cambiar hash e inyectar el barcode en el search input tras montar la vista
+        window.location.hash = `off-contributions?barcode=${encodeURIComponent(barcode)}`;
+        const tryFill = (attempts = 0) => {
+            const searchInput = document.getElementById('off-search-input');
+            if (searchInput) {
+                searchInput.value = barcode;
+                searchInput.dispatchEvent(new Event('input'));
+            } else if (attempts < 20) {
+                setTimeout(() => tryFill(attempts + 1), 150);
+            }
+        };
+        setTimeout(() => tryFill(), 300);
+    } else {
+        window.location.href = `off-contributions.html?barcode=${encodeURIComponent(barcode)}`;
     }
 };

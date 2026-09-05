@@ -307,3 +307,16 @@ app-menu {
   }
 }
 
+/* ── Highlight temporal al navegar desde zona OFF ── */
+@keyframes highlightPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
+  50%  { box-shadow: 0 0 0 8px rgba(250, 204, 21, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+}
+
+.highlight-cart {
+  animation: highlightPulse 0.8s ease-out 3;
+  border-color: #facc15 !important;
+}
+
+
