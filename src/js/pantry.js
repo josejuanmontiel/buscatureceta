@@ -23,25 +23,13 @@ export async function initView() {
     moveZoneModal = new Modal(moveZoneEl);
   }
 
-  const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
-  const codeFromUrl = urlParams.get('code');
-  const actionFromUrl = urlParams.get('action');
-
-  if (codeFromUrl && actionFromUrl === 'addStock') {
-    window.history.replaceState({}, '', '/#pantry');
-    addStockModal.show();
-    resolveScannedCodeForStock(codeFromUrl);
-  } else if (codeFromUrl) {
-    document.getElementById("pantry-search").value = codeFromUrl;
-    await loadPantry(codeFromUrl);
-  } else {
-    await loadPantry();
+  // Buscador filtro despensa (registrar antes de cualquier await)
+  const pantrySearchInput = document.getElementById('pantry-search');
+  if (pantrySearchInput) {
+    const handleSearch = (e) => loadPantry(e.target.value);
+    pantrySearchInput.addEventListener('input', handleSearch);
+    pantrySearchInput.addEventListener('change', handleSearch);
   }
-
-  // Buscador filtro despensa
-  document.getElementById('pantry-search').addEventListener('input', (e) => {
-    loadPantry(e.target.value);
-  });
 
   // Escáner general despensa
   const scanPantryBtn = document.getElementById('scan-pantry-btn');
@@ -77,17 +65,19 @@ export async function initView() {
     searchProduct();
   });
   const stockInput = document.getElementById('stock-product-search');
-  stockInput.addEventListener('input', () => {
-    clearTimeout(stockSearchTimeout);
-    stockSearchTimeout = setTimeout(() => searchProduct(), 400);
-  });
-  stockInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
+  if (stockInput) {
+    stockInput.addEventListener('input', () => {
       clearTimeout(stockSearchTimeout);
-      searchProduct();
-    }
-  });
+      stockSearchTimeout = setTimeout(() => searchProduct(), 400);
+    });
+    stockInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(stockSearchTimeout);
+        searchProduct();
+      }
+    });
+  }
 
   document.getElementById('btn-save-stock').addEventListener('click', saveStock);
   document.getElementById('btn-confirm-consume').addEventListener('click', confirmConsume);
@@ -98,7 +88,7 @@ export async function initView() {
       document.querySelectorAll('#pantry-zone-tabs button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentZone = btn.dataset.zone;
-      await loadPantry(document.getElementById('pantry-search').value.trim());
+      await loadPantry(document.getElementById('pantry-search')?.value.trim());
     });
   });
 
@@ -108,21 +98,47 @@ export async function initView() {
       const code = document.getElementById('move-zone-product-code').value;
       await PantryStore.moveToZone(code, 'food');
       moveZoneModal.hide();
-      await loadPantry(document.getElementById('pantry-search').value.trim());
+      await loadPantry(document.getElementById('pantry-search')?.value.trim());
     });
     document.getElementById('btn-move-to-nonfood')?.addEventListener('click', async () => {
       const code = document.getElementById('move-zone-product-code').value;
       await PantryStore.moveToZone(code, 'nonfood');
       moveZoneModal.hide();
-      await loadPantry(document.getElementById('pantry-search').value.trim());
+      await loadPantry(document.getElementById('pantry-search')?.value.trim());
     });
+  }
+
+  const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
+  const codeFromUrl = urlParams.get('code');
+  const actionFromUrl = urlParams.get('action');
+
+  if (codeFromUrl && actionFromUrl === 'addStock') {
+    window.history.replaceState({}, '', '/#pantry');
+    addStockModal.show();
+    resolveScannedCodeForStock(codeFromUrl);
+  } else if (codeFromUrl) {
+    if (pantrySearchInput) pantrySearchInput.value = codeFromUrl;
+    await loadPantry(codeFromUrl);
+  } else {
+    await loadPantry();
   }
 }
 
-async function loadPantry(query = '') {
+let pantryLoadSeq = 0;
+
+async function loadPantry(query) {
+  pantryLoadSeq++;
+  const currentSeq = pantryLoadSeq;
+
+  const searchInput = document.getElementById('pantry-search');
+  const effectiveQuery = query !== undefined ? query : (searchInput ? searchInput.value : '');
+  const qTrim = effectiveQuery ? effectiveQuery.trim() : '';
+
   const items = await PantryStore.getPantryInventory(currentZone);
+  if (currentSeq !== pantryLoadSeq) return;
+
   const container = document.getElementById('pantry-list');
-  const qTrim = query ? query.trim() : '';
+  if (!container) return;
   
   const filtered = qTrim 
     ? items.filter(i => i.productName.toLowerCase().includes(qTrim.toLowerCase()) || i.productCode.includes(qTrim))

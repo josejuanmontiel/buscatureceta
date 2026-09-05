@@ -82,6 +82,9 @@ export async function initView() {
   document.getElementById('btn-confirm-checkin')?.addEventListener('click', confirmCheckIn);
 
   document.getElementById('btn-search-meal-product').addEventListener('click', searchProduct);
+  document.getElementById('meal-search-pantry-only')?.addEventListener('change', () => {
+    searchProduct();
+  });
   document.getElementById('meal-product-search')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -347,15 +350,19 @@ function renderMealTray() {
   container.innerHTML = mealTray.map((it, idx) => {
     const course = COURSE_TYPES[it.course] || COURSE_TYPES.main;
     const kcal = Math.round(it.nutrition?.kcal || 0);
+    const amountText = it.type === 'recipe'
+      ? `${it.servings} rac.`
+      : `${Math.round(it.servings * 100)}g`;
     return `
-      <div class="tray-item d-flex justify-content-between align-items-center">
+      <div class="tray-item d-flex justify-content-between align-items-center py-2 px-2 mb-1 rounded bg-black bg-opacity-50 border border-secondary">
         <div class="d-flex align-items-center gap-2 text-truncate me-2">
-          <span class="course-badge">${course.icon} ${course.label}</span>
-          <span class="small fw-semibold text-truncate" title="${it.name}">${it.name}</span>
+          <span class="course-badge" style="font-size: 0.8rem;">${course.icon} ${course.label}</span>
+          <span class="small fw-semibold text-truncate text-light" title="${it.name}">${it.name}</span>
+          <span class="text-muted small">(${amountText})</span>
         </div>
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
           <span class="badge bg-secondary small">${kcal} kcal</span>
-          <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" onclick="window.removeTrayItem(${idx})" title="Quitar">&times;</button>
+          <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" onclick="window.removeTrayItem(${idx})" title="Quitar plato">&times;</button>
         </div>
       </div>
     `;
@@ -485,6 +492,12 @@ async function addCurrentItemToTray() {
     if (searchInput) searchInput.value = '';
     renderRecipeSelectOptions(loadedRecipes);
     document.getElementById('meal-recipe-ingredients-container').style.display = 'none';
+
+    // Desplazar suavemente hacia la bandeja para que el usuario vea el plato añadido inmediatamente
+    const trayEl = document.getElementById('meal-tray-wrapper');
+    if (trayEl) {
+      trayEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   } catch (err) {
     showToast(err.message, 'warning');
   }
@@ -766,7 +779,8 @@ window.removeMealItem = async function(entryId) {
 
 async function searchProduct() {
   const query = document.getElementById('meal-product-search').value.trim();
-  if (!query) return;
+  const searchPantryOnly = document.getElementById('meal-search-pantry-only')?.checked;
+  if (!query && !searchPantryOnly) return;
 
   const spinner = document.getElementById('meal-search-spinner');
   if (spinner) spinner.classList.remove('d-none');
@@ -778,22 +792,37 @@ async function searchProduct() {
 
   try {
     const qLower = query.toLowerCase();
-    const searchPantryOnly = document.getElementById('meal-search-pantry-only')?.checked;
     
     let results = [];
     if (searchPantryOnly) {
-      const pantryItems = await db.pantry.toArray();
-      const pantryCodes = Array.from(new Set(pantryItems.map(item => item.productCode)));
+      // 1. Obtener directamente los alimentos en despensa (zona food) con stock > 0
+      const pantryInventory = await PantryStore.getPantryInventory('food');
       
-      if (/^\d+$/.test(query)) {
-        if (pantryCodes.includes(query)) {
-          const p = await ProductStore.getProductByCode(query);
-          if (p) results = [p];
-        }
-      } else {
-        const pResults = await ProductStore.searchProducts(qLower, 50);
-        results = pResults.filter(p => pantryCodes.includes(p.code));
-      }
+      // 2. Filtrar directamente sobre los productos que el usuario realmente tiene
+      const filteredPantry = query
+        ? pantryInventory.filter(item => {
+            const nameMatch = item.productName && item.productName.toLowerCase().includes(qLower);
+            const codeMatch = item.productCode && item.productCode.includes(query);
+            return nameMatch || codeMatch;
+          })
+        : pantryInventory;
+
+      // 3. Obtener los productos completos con sus datos nutricionales
+      const matchedCodes = filteredPantry.map(i => i.productCode);
+      const fullProducts = await ProductStore.getProductsByCodes(matchedCodes);
+      const fullProductsMap = new Map(fullProducts.map(p => [p.code, p]));
+
+      results = filteredPantry.map(item => {
+        const fullP = fullProductsMap.get(item.productCode) || {};
+        return {
+          ...fullP,
+          code: item.productCode,
+          product_name: item.productName || fullP.product_name || `Producto ${item.productCode}`,
+          brands: fullP.brands || '',
+          pantryAmount: item.amount,
+          pantryUnit: item.unit
+        };
+      });
     } else {
       if (/^\d+$/.test(query)) {
         const p = await ProductStore.getProductByCode(query);
@@ -805,16 +834,21 @@ async function searchProduct() {
 
     let html = '';
     if (results.length === 0) {
-      html = '<div class="list-group-item text-muted small py-2">Sin resultados. Puedes crearlo con el botón "+ Genérico rápido" de arriba.</div>';
+      html = searchPantryOnly
+        ? '<div class="list-group-item text-muted small py-2">No tienes productos en tu despensa que coincidan con la búsqueda.</div>'
+        : '<div class="list-group-item text-muted small py-2">Sin resultados. Puedes crearlo con el botón "+ Genérico rápido" de arriba.</div>';
     } else {
       html = results.map(p => {
         const safeName = (p.product_name || 'Sin nombre').replace(/"/g, '&quot;');
         const safeBrand = p.brands ? p.brands.replace(/"/g, '&quot;') : '';
+        const stockBadge = p.pantryAmount !== undefined 
+          ? `<span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 ms-1">Stock: ${p.pantryAmount} ${p.pantryUnit || 'g'}</span>`
+          : '';
         return `
         <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2">
           <button type="button" class="btn btn-link text-white text-decoration-none p-0 text-start flex-grow-1 text-truncate me-2 btn-product-row"
                   data-code="${p.code}" data-name="${safeName}">
-            <div class="small fw-semibold text-truncate">${safeName}</div>
+            <div class="small fw-semibold text-truncate">${safeName} ${stockBadge}</div>
             <small class="text-muted">${safeBrand ? safeBrand + ' • ' : ''}${p.code}</small>
           </button>
           <div class="d-flex align-items-center gap-1 flex-shrink-0">
