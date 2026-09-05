@@ -295,6 +295,17 @@ async function renderHistory() {
         uploadsByBarcode.get(u.barcode).push(u);
     });
 
+    // Mapa de zona de despensa por código de producto (para mostrar badge no-alimentario correcto)
+    const pantryZoneByCode = new Map();
+    try {
+        const allPantry = await db.pantry.toArray();
+        allPantry.forEach(p => {
+            if (p.productCode) pantryZoneByCode.set(p.productCode, p.pantryZone || 'food');
+        });
+    } catch (e) {
+        console.warn('[cart-history] Error leyendo despensa:', e);
+    }
+
     list.innerHTML = carts.map((cart, index) => {
         const dateStr = new Date(cart.date).toLocaleDateString();
         const timeStr = new Date(cart.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -385,9 +396,16 @@ async function renderHistory() {
                         <ul class="list-group list-group-flush mb-3">
                             ${items.map((item, itemIdx) => {
                                 const isGeneric = item.productCode.startsWith('GENERIC_');
-                                const zoneBadge = isGeneric
-                                  ? '<span class="badge bg-secondary ms-1" title="No alimentario">🧹</span>'
-                                  : '';
+
+                                // Badge de zona: solo 🧹 si la despensa lo clasifica como no-alimentario
+                                // Si es genérico pero sin zona conocida → 📦 neutro
+                                const pantryZone = pantryZoneByCode.get(item.productCode);
+                                let zoneBadge = '';
+                                if (pantryZone === 'nonfood') {
+                                    zoneBadge = '<span class="badge bg-secondary ms-1" title="Producto no alimentario">🧹</span>';
+                                } else if (isGeneric && !pantryZone) {
+                                    zoneBadge = '<span class="badge bg-dark border border-secondary ms-1" style="font-size:0.65rem;" title="Añadido sin código de barras">📦</span>';
+                                }
                                 const safeItemName = (item.productName || item.productCode).replace(/'/g, "\\'").replace(/"/g, '&quot;');
                                 const histItemKey = `hist-${cart.id}-${itemIdx}`;
 
@@ -431,9 +449,6 @@ async function renderHistory() {
                                         <span class="input-group-text bg-secondary text-white border-0 py-0 px-1 small">€</span>
                                       </div>
                                       <span class="small fw-bold text-info" style="min-width: 55px; text-align: right;">= ${(item.amount * item.price).toFixed(2)}€</span>
-                                      <button class="btn btn-outline-info btn-sm py-0 px-1" title="Mover zona en despensa" onclick="window.moveItemZone('${item.productCode}', '${safeItemName}')">
-                                        ↔
-                                      </button>
                                       <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Eliminar producto de esta compra" onclick="window.handleRemoveHistoryItem(${cart.id}, ${itemIdx})">
                                         ✕
                                       </button>
