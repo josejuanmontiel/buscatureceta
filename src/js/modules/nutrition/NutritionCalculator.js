@@ -81,11 +81,25 @@ export async function calculateTotalNutrition(ingredients) {
   };
 
   for (const ingredient of ingredients) {
-    const grams = toGrams(ingredient.amount, ingredient.unit);
-    if (grams === null) continue; // unidad no calculable
-
+    let grams = toGrams(ingredient.amount, ingredient.unit);
     const product = await ProductStore.getProductByCode(ingredient.productCode);
-    if (!product) continue; // producto no en IndexedDB
+    if (grams === null && (ingredient.unit === 'unidad' || ingredient.unit === 'ud')) {
+      if (product?.unit_weight) {
+        grams = ingredient.amount * product.unit_weight;
+      } else if (product?.package_units && product?.product_quantity) {
+        const pq = parseFloat(product.product_quantity);
+        if (!isNaN(pq) && pq > 0) {
+          grams = ingredient.amount * (pq / product.package_units);
+        }
+      } else if (product?.product_quantity) {
+        const pq = parseFloat(product.product_quantity);
+        if (!isNaN(pq) && pq > 0) {
+          grams = ingredient.amount * pq;
+        }
+      }
+    }
+
+    if (grams === null || !product) continue;
 
     for (const [field, offKey] of Object.entries(OFF_FIELD_MAP)) {
       const per100 = parseFloat(product[offKey]);

@@ -9,6 +9,11 @@ let addStockModal, consumeStockModal, productDetailModal, moveZoneModal;
 let currentZone = 'food'; // zona activa por defecto
 
 export async function initView() {
+  currentZone = 'food';
+  document.querySelectorAll('#pantry-zone-tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.zone === 'food');
+  });
+
   addStockModal = new Modal(document.getElementById('addStockModal'));
   consumeStockModal = new Modal(document.getElementById('consumeStockModal'));
   productDetailModal = new Modal(document.getElementById('productDetailModal'));
@@ -66,15 +71,22 @@ export async function initView() {
   });
 
   // Buscador del modal Añadir Stock (tiempo real + Enter)
-  document.getElementById('btn-search-stock-product').addEventListener('click', () => searchProduct());
   let stockSearchTimeout;
+  document.getElementById('btn-search-stock-product').addEventListener('click', () => {
+    clearTimeout(stockSearchTimeout);
+    searchProduct();
+  });
   const stockInput = document.getElementById('stock-product-search');
   stockInput.addEventListener('input', () => {
     clearTimeout(stockSearchTimeout);
     stockSearchTimeout = setTimeout(() => searchProduct(), 400);
   });
   stockInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); searchProduct(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(stockSearchTimeout);
+      searchProduct();
+    }
   });
 
   document.getElementById('btn-save-stock').addEventListener('click', saveStock);
@@ -138,21 +150,37 @@ async function loadPantry(query = '') {
   }
 
   container.innerHTML = filtered.map(item => `
-    <div class="col-md-6 col-lg-4">
-      <div class="pantry-card d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="window.openProductDetail(event, '${item.productCode}', ${item.amount}, '${item.unit}')">
-        <div class="me-3" style="flex: 1; min-width: 0;" title="${item.productName}">
-          <h5 class="mb-1 text-wrap text-break">${item.productName}</h5>
-          <small class="text-muted">${item.productCode}${item.productQuantity ? ' - ' + item.productQuantity : ''}</small>
-        </div>
-        <div class="text-end" style="flex-shrink: 0;">
-          <div class="d-flex align-items-center justify-content-end gap-2">
-            <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="-100g / -1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', -1, '${item.unit}')">-</button>
-            <h4 class="mb-0 text-success">${item.amount} <small class="fs-6">${item.unit}</small></h4>
-            <button class="btn btn-sm btn-outline-secondary py-0 px-2" title="+100g / +1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', 1, '${item.unit}')">+</button>
+    <div class="col-12 col-md-6 col-xl-4 mb-3">
+      <div class="pantry-card d-flex flex-column gap-2 h-100" style="cursor: pointer;" onclick="window.openProductDetail(event, '${item.productCode}', ${item.amount}, '${item.unit}')">
+        <!-- Línea superior: Nombre del producto a todo el ancho y stock destacado -->
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="flex-grow-1 min-w-0" title="${item.productName}">
+            <h5 class="mb-1 text-light fw-bold text-break lh-sm">${item.productName}</h5>
+            <div class="text-muted small d-flex flex-wrap gap-2 align-items-center mt-1">
+              <span>🏷️ ${item.productCode}</span>
+              ${item.productQuantity ? `<span>· ${item.productQuantity}</span>` : ''}
+              <span class="badge ${item.pantryZone === 'nonfood' ? 'bg-secondary' : 'bg-success bg-opacity-25 text-success'} border border-opacity-25">
+                ${item.pantryZone === 'nonfood' ? '🧴 No alimento' : '🥦 Alimento'}
+              </span>
+              ${item.packageUnits ? `<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">📦 ${item.packageUnits} uds/pack${item.unitWeight ? ` (~${item.unitWeight}g/ud)` : ''}</span>` : ''}
+            </div>
           </div>
-          <div class="d-flex gap-2 mt-2 justify-content-end">
-            <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); window.openMoveModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}')">↔ Zona</button>
-            <button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); window.openConsumeModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}', ${item.amount}, '${item.unit}')">Detalles / Retirar</button>
+          <!-- Stock actual visible -->
+          <div class="text-end flex-shrink-0 ms-2">
+            <div class="fs-4 fw-bold text-success lh-1">${item.amount} <small class="fs-6 text-muted">${item.unit}</small></div>
+          </div>
+        </div>
+
+        <!-- Línea inferior: Controles de ajuste rápido y botones de acción -->
+        <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-50 mt-auto flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-1">
+            <button class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" title="-100g / -1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', -1, '${item.unit}')">−</button>
+            <span class="text-muted small px-1">Rápido</span>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" title="+100g / +1 ud" onclick="event.stopPropagation(); window.quickAdjust('${item.productCode}', 1, '${item.unit}')">+</button>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-info py-1 px-2" onclick="event.stopPropagation(); window.openMoveModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}')" title="Mover de zona">↔ Zona</button>
+            <button class="btn btn-sm btn-outline-warning py-1 px-2" onclick="event.stopPropagation(); window.openConsumeModal('${item.productCode}', '${item.productName?.replace(/'/g, "\\'")}', ${item.amount}, '${item.unit}')" title="Detalles o retirar">Detalles / Retirar</button>
           </div>
         </div>
       </div>
@@ -223,8 +251,19 @@ function renderUncataloguedProductUI(code) {
     </div>
   `;
   document.getElementById('btn-create-custom-product')?.addEventListener('click', async () => {
-    const name = document.getElementById('input-new-custom-name').value.trim() || `Producto ${code}`;
-    await window.createAndSelectCustomProduct(code, name);
+    const btnCreate = document.getElementById('btn-create-custom-product');
+    if (btnCreate) {
+      btnCreate.disabled = true;
+      btnCreate.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Asignando...';
+    }
+    const inputEl = document.getElementById('input-new-custom-name');
+    const name = inputEl ? inputEl.value.trim() || `Producto ${code}` : `Producto ${code}`;
+    activeStockLookupPromise = window.createAndSelectCustomProduct(code, name);
+    try {
+      await activeStockLookupPromise;
+    } finally {
+      activeStockLookupPromise = null;
+    }
   });
 }
 
@@ -409,13 +448,17 @@ async function saveStock() {
   if (!code) return showToast('Selecciona o busca un producto primero', 'warning');
   if (!amount || amount <= 0) return showToast('Cantidad inválida', 'warning');
 
+  const packageUnitsInput = document.getElementById('stock-package-units');
+  const packageUnits = packageUnitsInput && packageUnitsInput.value ? parseInt(packageUnitsInput.value, 10) : null;
+
   // El stock añadido manualmente respeta la zona activa
-  await PantryStore.addStock(code, amount, unit, currentZone);
+  await PantryStore.addStock(code, amount, unit, currentZone, packageUnits);
   showToast('Stock añadido correctamente a la despensa', 'success');
   
   addStockModal.hide();
   clearSelectedProduct();
   document.getElementById('add-stock-form').reset();
+  if (packageUnitsInput) packageUnitsInput.value = '';
   await loadPantry();
 }
 
@@ -481,6 +524,58 @@ window.openProductDetail = async function(event, code, amount, unit) {
     }
   }
   document.getElementById('detail-nutriscore-nova').innerHTML = nutriscoreHtml;
+
+  // Manejo de unidades por paquete y peso unitario estimado
+  const pantryItem = await db.pantry.where('productCode').equals(code).first();
+  const currentUnits = pantryItem?.packageUnits || product?.package_units || null;
+  const currentWeight = pantryItem?.unitWeight || product?.unit_weight || null;
+
+  const packageUnitsBadge = document.getElementById('detail-package-units-badge');
+  const packageUnitsInput = document.getElementById('detail-input-package-units');
+  const unitWeightHint = document.getElementById('detail-unit-weight-hint');
+
+  if (packageUnitsBadge) {
+    if (currentUnits) {
+      packageUnitsBadge.className = 'badge bg-info text-dark';
+      packageUnitsBadge.textContent = `${currentUnits} uds/pack${currentWeight ? ` (~${currentWeight}g/ud)` : ''}`;
+    } else {
+      packageUnitsBadge.className = 'badge bg-secondary';
+      packageUnitsBadge.textContent = 'Sin definir';
+    }
+  }
+  if (packageUnitsInput) {
+    packageUnitsInput.value = currentUnits || '';
+  }
+  if (unitWeightHint) {
+    if (currentUnits && currentWeight) {
+      unitWeightHint.textContent = `Cada unidad equivale aprox. a ${currentWeight}g/ml para conversiones en recetas.`;
+    } else {
+      unitWeightHint.textContent = 'Indica cuántas unidades contiene el envase para poder descontarlo por unidades en las recetas.';
+    }
+  }
+
+  const btnSaveUnits = document.getElementById('btn-save-detail-package-units');
+  if (btnSaveUnits) {
+    btnSaveUnits.onclick = async () => {
+      const val = parseInt(packageUnitsInput.value, 10);
+      if (!val || val <= 0) {
+        showToast('Introduce un número de unidades válido', 'warning');
+        return;
+      }
+      await PantryStore.updatePackageUnits(code, val);
+      showToast('Unidades por paquete actualizadas', 'success');
+
+      const updatedItem = await db.pantry.where('productCode').equals(code).first();
+      if (packageUnitsBadge) {
+        packageUnitsBadge.className = 'badge bg-info text-dark';
+        packageUnitsBadge.textContent = `${val} uds/pack${updatedItem?.unitWeight ? ` (~${updatedItem.unitWeight}g/ud)` : ''}`;
+      }
+      if (unitWeightHint && updatedItem?.unitWeight) {
+        unitWeightHint.textContent = `Cada unidad equivale aprox. a ${updatedItem.unitWeight}g/ml para conversiones en recetas.`;
+      }
+      await loadPantry(document.getElementById('pantry-search')?.value.trim() || '');
+    };
+  }
 
   const nutritionList = document.getElementById('detail-nutrition-list');
   if (product && product['energy-kcal_100g'] !== undefined) {

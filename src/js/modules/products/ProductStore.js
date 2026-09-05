@@ -161,3 +161,7 @@ export async function updateCustomProduct(code, updates) {
   return await db.customProducts.get(code);
 }
 
+if (typeof window !== 'undefined') {
+  window.ProductStore = { addCustomProduct, getProductByCode, getProductsByCodes, searchProducts, updateCustomProduct };
+}
+

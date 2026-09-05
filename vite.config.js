@@ -104,6 +104,7 @@ export default defineConfig({
         settings: path.resolve(__dirname, 'src/settings.html'),
         'cart-history': path.resolve(__dirname, 'src/cart-history.html'),
         additives: path.resolve(__dirname, 'src/additives.html'),
+        'off-contributions': path.resolve(__dirname, 'src/off-contributions.html'),
       }
     },
   },

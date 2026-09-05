@@ -16,6 +16,7 @@ import { db } from './db/schema.js';
 import * as RecipeStore from './modules/recipes/RecipeStore.js';
 import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import * as NutritionCalc from './modules/nutrition/NutritionCalculator.js';
+import * as DiaryStore from './modules/diary/DiaryStore.js';
 import { showToast, confirmModal, compressImage } from './modules/ui/UI.js';
 
 // ─── Estado local ─────────────────────────────────────────────────────────────
@@ -28,6 +29,7 @@ let pendingRestoreVersionId = null;
 let restoreModal = null;
 let aiImportModal = null;
 let smartMatchModal = null;
+let planRecipeModal = null;
 let changeIngredientModal = null;
 let mergeConflictModal = null;
 let ingredientDetailModal = null;
@@ -184,6 +186,29 @@ function bindEvents() {
   document.getElementById('btn-merge-replace').addEventListener('click', () => mergeIngredients('replace'));
   document.getElementById('btn-merge-append').addEventListener('click', () => mergeIngredients('append'));
 
+  const planEl = document.getElementById('planRecipeModal');
+  if (planEl) {
+    planRecipeModal = new Modal(planEl);
+  }
+
+  document.getElementById('btn-plan-in-diary')?.addEventListener('click', () => {
+    if (!recipeId) return;
+    openPlanModalForCurrentRecipe();
+  });
+
+  document.getElementById('btn-quick-date-today')?.addEventListener('click', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('plan-date').value = today;
+  });
+
+  document.getElementById('btn-quick-date-tomorrow')?.addEventListener('click', () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    document.getElementById('plan-date').value = d.toISOString().split('T')[0];
+  });
+
+  document.getElementById('btn-do-plan-recipe')?.addEventListener('click', doPlanFromEditor);
+
   // Eliminar
   document.getElementById('btn-delete-recipe').addEventListener('click', async () => {
     if (!recipeId) return;
@@ -234,12 +259,88 @@ function bindEvents() {
     }));
     try {
       await ShoppingStore.createList(name, items);
-      showToast('Lista de compra creada. Ve al carro para verla.', 'success');
-      setTimeout(() => { window.location.hash = '#grid'; }, 1000);
+      showToast(`Lista de la compra creada con ${items.length} productos. Abriendo Carrito...`, 'success');
+      setTimeout(() => {
+        window.location.hash = '#grid';
+      }, 800);
     } catch (e) {
       showToast('Error al crear la lista: ' + e.message, 'danger');
     }
   });
+
+  async function openPlanModalForCurrentRecipe() {
+    if (!recipeId) return;
+    const recipe = await RecipeStore.getRecipeById(recipeId);
+    if (!recipe) return;
+
+    document.getElementById('plan-recipe-id').value = recipe.id;
+    document.getElementById('plan-recipe-name').textContent = recipe.name;
+    
+    const kcal = Math.round(recipe.nutritionPerServing?.kcal || 0);
+    document.getElementById('plan-recipe-nutrition').textContent = kcal > 0 ? `${kcal} kcal por ración` : 'Nutrición pendiente';
+    document.getElementById('plan-recipe-servings-badge').textContent = `${recipe.servings || 1} rac. en receta`;
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('plan-date').value = today;
+    document.getElementById('plan-meal-type').value = 'lunch';
+    document.getElementById('plan-course').value = 'main';
+    document.getElementById('plan-servings').value = 1;
+    document.getElementById('planStatusPlanned').checked = true;
+    document.getElementById('plan-deduct-pantry').checked = true;
+
+    if (planRecipeModal) planRecipeModal.show();
+  }
+
+  async function doPlanFromEditor() {
+    const targetId = parseInt(document.getElementById('plan-recipe-id').value);
+    if (!targetId) return;
+
+    const recipe = await RecipeStore.getRecipeById(targetId);
+    if (!recipe) return;
+
+    const date = document.getElementById('plan-date').value;
+    if (!date) return showToast('Selecciona una fecha válida', 'warning');
+
+    const mealType = document.getElementById('plan-meal-type').value;
+    const course = document.getElementById('plan-course').value;
+    const servings = parseFloat(document.getElementById('plan-servings').value) || 1;
+    const status = document.querySelector('input[name="planStatusRadio"]:checked')?.value || 'planned';
+    const deductPantry = document.getElementById('plan-deduct-pantry').checked;
+
+    let nutrition = null;
+    if (recipe.nutritionPerServing) {
+      nutrition = NutritionCalc.scaleNutrition(recipe.nutritionPerServing, servings);
+    } else if (recipe.ingredients && recipe.ingredients.length > 0) {
+      nutrition = await NutritionCalc.calculateTotalNutrition(recipe.ingredients);
+    }
+
+    const diaryItem = {
+      course,
+      type: 'recipe',
+      recipeId: recipe.id,
+      productCode: null,
+      name: recipe.name,
+      servings,
+      nutrition: nutrition || { kcal: 0, proteins_g: 0, carbs_g: 0, fat_g: 0, fiber_g: 0, sugars_g: 0, salt_g: 0, saturated_fat_g: 0 }
+    };
+
+    await DiaryStore.addDiaryEntry({
+      date,
+      mealType,
+      items: [diaryItem],
+      status,
+      ate_at_home: deductPantry
+    });
+
+    if (status === 'consumed' && deductPantry) {
+      await PantryStore.consumeRecipeIngredients(recipe.id, servings, 'consumed_me');
+    }
+
+    if (planRecipeModal) planRecipeModal.hide();
+
+    const actionText = status === 'planned' ? 'planificada' : 'registrada como consumida';
+    showToast(`¡"${recipe.name}" ${actionText} para el ${date}!`, 'success');
+  }
 
   // Buscador de ingredientes
   document.getElementById('btn-search-ingredient').addEventListener('click', searchIngredient);
@@ -465,6 +566,11 @@ window._changeAmount = function(idx, val) {
   updateNutrition();
 };
 
+window._changeUnit = function(idx, val) {
+  currentIngredients[idx].unit = val;
+  updateNutrition();
+};
+
 function renderIngredients() {
   const container = document.getElementById('ingredient-list');
   if (currentIngredients.length === 0) {
@@ -488,7 +594,11 @@ function renderIngredients() {
       <div class="d-flex align-items-center gap-2">
         <input type="number" class="form-control form-control-sm text-end" style="width:75px;"
                value="${ing.amount}" min="0" step="any" onchange="window._changeAmount(${i}, this.value)">
-        <span class="small text-muted" style="min-width:25px;">${ing.unit}</span>
+        <select class="form-select form-select-sm bg-dark text-white border-secondary py-0 px-1" style="width:70px; font-size:0.8rem;" onchange="window._changeUnit(${i}, this.value)">
+          <option value="g" ${ing.unit === 'g' || !ing.unit ? 'selected' : ''}>g</option>
+          <option value="ml" ${ing.unit === 'ml' ? 'selected' : ''}>ml</option>
+          <option value="unidad" ${ing.unit === 'unidad' || ing.unit === 'ud' ? 'selected' : ''}>ud</option>
+        </select>
         <button class="btn-remove-ing" onclick="window._removeIngredient(${i})" title="Eliminar">✕</button>
       </div>
     </div>`;

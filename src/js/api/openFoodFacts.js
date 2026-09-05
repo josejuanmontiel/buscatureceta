@@ -51,6 +51,16 @@ export async function uploadImage(barcode, imageBlob, type, userId, password) {
 }
 
 /**
+ * Guarda credenciales OFF en localStorage.
+ * @param {string} userId 
+ * @param {string} password 
+ */
+export function saveCredentials(userId, password) {
+  if (userId) localStorage.setItem('off_user', userId.trim());
+  if (password) localStorage.setItem('off_password', password.trim());
+}
+
+/**
  * Guarda una imagen en la cola local pendingUploads y crea el producto
  * localmente (con nombre provisional) para que sea utilizable de inmediato.
  *
@@ -58,38 +68,164 @@ export async function uploadImage(barcode, imageBlob, type, userId, password) {
  * @param {Blob} imageBlob
  * @param {'front'|'ingredients'|'nutrition'} type
  * @param {string} [productName] - Nombre provisional del producto
+ * @param {Blob} [originalBlob] - Imagen original sin recortar opcional
+ * @param {Object} [cropConfig] - Configuración del recorte { aspect, rotation, cropRect }
  */
-export async function saveImageToPendingUploads(barcode, imageBlob, type = 'front', productName = '') {
+export async function saveImageToPendingUploads(barcode, imageBlob, type = 'front', productName = '', originalBlob = null, cropConfig = null) {
   // Persistir la imagen como ArrayBuffer en Dexie
   const arrayBuffer = await imageBlob.arrayBuffer();
+  let originalBuffer = null;
+  if (originalBlob) {
+    originalBuffer = await originalBlob.arrayBuffer();
+  }
 
-  await db.pendingUploads.add({
+  // Buscar si ya existe el producto para obtener su nombre si no viene
+  const existingProduct = await db.products.get(barcode);
+  const finalName = productName || (existingProduct ? existingProduct.product_name : '') || `Producto ${barcode}`;
+
+  const recordId = await db.pendingUploads.add({
     barcode,
+    productName: finalName,
     type,
     imageData: arrayBuffer,
+    originalImageData: originalBuffer || arrayBuffer,
+    cropConfig: cropConfig || null,
     mimeType: imageBlob.type || 'image/jpeg',
     status: 'pending',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   });
 
   // Crear producto local mínimo si no existe ya
-  const existing = await db.products.get(barcode);
-  if (!existing) {
+  if (!existingProduct) {
     await db.products.add({
       code: barcode,
-      product_name: productName || `Producto ${barcode}`,
+      product_name: finalName,
       _localOnly: true,
     });
+  } else if (productName && existingProduct.product_name !== productName) {
+    await db.products.update(barcode, { product_name: productName });
   }
 
-  console.log(`[OFF] Imagen guardada en cola local para ${barcode} (${type})`);
+  console.log(`[OFF] Imagen guardada en cola local para ${barcode} (${type}) id: ${recordId}`);
+  return recordId;
+}
+
+/**
+ * Actualiza un registro existente en la cola de subidas.
+ * @param {number} id
+ * @param {Object} data
+ */
+export async function updateUpload(id, data) {
+  const updates = { ...data, updatedAt: new Date().toISOString() };
+  if (updates.imageBlob) {
+    updates.imageData = await updates.imageBlob.arrayBuffer();
+    updates.mimeType = updates.imageBlob.type || 'image/jpeg';
+    delete updates.imageBlob;
+  }
+  if (updates.originalBlob) {
+    updates.originalImageData = await updates.originalBlob.arrayBuffer();
+    delete updates.originalBlob;
+  }
+  await db.pendingUploads.update(id, updates);
+  
+  // Si cambia el nombre de producto, sincronizar en db.products
+  if (data.productName && data.barcode) {
+    const existing = await db.products.get(data.barcode);
+    if (existing) {
+      await db.products.update(data.barcode, { product_name: data.productName });
+    }
+  }
+}
+
+/**
+ * Obtiene un registro de la cola por su ID.
+ * @param {number} id
+ * @returns {Promise<Object|null>}
+ */
+export async function getUploadById(id) {
+  return db.pendingUploads.get(Number(id));
+}
+
+/**
+ * Obtiene todas las fotos asociadas a un código de barras.
+ * @param {string} barcode
+ * @returns {Promise<Array>}
+ */
+export async function getUploadsByBarcode(barcode) {
+  return db.pendingUploads.where('barcode').equals(barcode).toArray();
+}
+
+/**
+ * Obtiene todas las subidas de la cola (ordenadas de más reciente a más antigua).
+ * @returns {Promise<Array>}
+ */
+export async function getAllUploads() {
+  const items = await db.pendingUploads.toArray();
+  return items.sort((a, b) => (b.id || 0) - (a.id || 0));
+}
+
+/**
+ * Obtiene estadísticas de la cola de subidas OFF.
+ * @returns {Promise<{pending: number, failed: number, done: number, total: number}>}
+ */
+export async function getOffStats() {
+  const all = await db.pendingUploads.toArray();
+  let pending = 0;
+  let failed = 0;
+  let done = 0;
+
+  for (const item of all) {
+    if (item.status === 'pending' || item.status === 'uploading') pending++;
+    else if (item.status === 'failed') failed++;
+    else if (item.status === 'done') done++;
+  }
+
+  return {
+    pending,
+    failed,
+    done,
+    total: all.length,
+  };
+}
+
+/**
+ * Reintenta subir un único registro específico.
+ * @param {number} id
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function retryUpload(id) {
+  const item = await db.pendingUploads.get(Number(id));
+  if (!item) {
+    throw new Error(`Subida con ID ${id} no encontrada.`);
+  }
+
+  const { userId, password } = getCredentials();
+  try {
+    await db.pendingUploads.update(item.id, { status: 'uploading' });
+    const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
+    await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
+    await db.pendingUploads.update(item.id, {
+      status: 'done',
+      uploadedAt: new Date().toISOString(),
+      lastError: null,
+    });
+    return { success: true };
+  } catch (err) {
+    console.error(`[OFF Retry] Error al reintentar ID ${id}:`, err);
+    await db.pendingUploads.update(item.id, {
+      status: 'failed',
+      lastError: err.message || 'Error desconocido al subir a OpenFoodFacts',
+    });
+    return { success: false, error: err.message };
+  }
 }
 
 /**
  * Procesa la cola de pendingUploads y sube cada imagen a la API OFF.
  * Actualiza el campo `status` de cada registro según el resultado.
  *
- * @param {Function} [onProgress] - Callback (processed, total)
+ * @param {Function} [onProgress] - Callback (processed, total, ok, failed)
  * @returns {Promise<{ok: number, failed: number}>}
  */
 export async function syncPendingUploads(onProgress) {
@@ -104,10 +240,14 @@ export async function syncPendingUploads(onProgress) {
     try {
       await db.pendingUploads.update(item.id, { status: 'uploading' });
 
-      const blob = new Blob([item.imageData], { type: item.mimeType });
-      await uploadImage(item.barcode, blob, item.type, userId, password);
+      const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
+      await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
 
-      await db.pendingUploads.update(item.id, { status: 'done', uploadedAt: new Date().toISOString() });
+      await db.pendingUploads.update(item.id, {
+        status: 'done',
+        uploadedAt: new Date().toISOString(),
+        lastError: null,
+      });
       ok++;
     } catch (err) {
       console.error(`[OFF Sync] Fallo al subir ${item.barcode}:`, err);
@@ -124,7 +264,7 @@ export async function syncPendingUploads(onProgress) {
 }
 
 /**
- * Devuelve el número de subidas pendientes.
+ * Devuelve el número de subidas pendientes o fallidas.
  * @returns {Promise<number>}
  */
 export async function countPendingUploads() {
@@ -144,5 +284,5 @@ export async function getPendingUploads() {
  * @param {number} id
  */
 export async function deletePendingUpload(id) {
-  return db.pendingUploads.delete(id);
+  return db.pendingUploads.delete(Number(id));
 }

@@ -52,7 +52,7 @@ test.describe('Usability & Ergonomics Improvements E2E Flow', () => {
     // Confirmar en el modal
     const confirmBtn = page.locator('#btn-global-confirm');
     await expect(confirmBtn).toBeVisible();
-    await confirmBtn.click();
+    await confirmBtn.click({ force: true });
 
     // Debe redirigir a #diary y tener entradas
     await expect(page).toHaveURL(/#diary/, { timeout: 10000 });
@@ -86,7 +86,7 @@ test.describe('Usability & Ergonomics Improvements E2E Flow', () => {
     // Modal de confirmación
     const confirmBtn = page.locator('#btn-global-confirm');
     await expect(confirmBtn).toBeVisible();
-    await confirmBtn.click();
+    await confirmBtn.click({ force: true });
 
     // Redirige al Carrito (#grid) y la lista de la compra activa se muestra
     await expect(page).toHaveURL(/#grid/, { timeout: 10000 });

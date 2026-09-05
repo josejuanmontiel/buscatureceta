@@ -10,6 +10,7 @@ class AppMenu extends HTMLElement {
       { id: 'recipes',      icon: '📖', text: 'Recetas' },
       { id: 'diary',        icon: '📅', text: 'Agenda' },
       { id: 'meal-photos',  icon: '📷', text: 'Fotos de comidas', badgeId: 'nav-photo-badge' },
+      { id: 'off-contributions', icon: '🌍', text: 'Contribuciones OFF', badgeId: 'nav-off-badge' },
       // Grupo Estadísticas
       { group: true, icon: '📊', text: 'Estadísticas', children: [
         { id: 'dashboard',    icon: '📈', text: 'Dashboard' },

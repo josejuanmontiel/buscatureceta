@@ -4,12 +4,24 @@ import { db, migrateFromLegacyDB } from './db/schema.js';
 import * as CartStore from './modules/cart/CartStore.js';
 import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
 import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
-import { saveImageToPendingUploads, syncPendingUploads, countPendingUploads } from './api/openFoodFacts.js';
+import {
+    saveImageToPendingUploads,
+    updateUpload,
+    getUploadsByBarcode,
+    deletePendingUpload,
+    countPendingUploads,
+    getOffStats
+} from './api/openFoodFacts.js';
+import { ImageCropper } from './modules/ui/ImageCropper.js';
 import { Modal } from 'bootstrap';
 import { showToast, confirmModal, triggerScanFeedback } from './modules/ui/UI.js';
 
 let currentScannedProduct = null;
 let capturedImageBlob = null;
+let originalImageBlob = null;
+let cropperInstance = null;
+let currentEditingUploadId = null;
+let currentCropConfig = null;
 let unknownBarcode = null;
 
 let currentCartTicketBlob = null;
@@ -71,14 +83,36 @@ export async function initView() {
         console.log("Base de datos borrada con éxito.");
     });
 
-    // Botones del panel de captura de foto
+    // Botones del panel de captura de foto y recorte OFF
     document.getElementById('btn-capture-photo')?.addEventListener('click', startCapture);
-    document.getElementById('btn-retake-photo')?.addEventListener('click', startCapture);
+    document.getElementById('btn-take-snapshot')?.addEventListener('click', takeSnapshot);
+    document.getElementById('btn-close-camera')?.addEventListener('click', stopCamera);
+    document.getElementById('btn-upload-file')?.addEventListener('click', () => {
+        document.getElementById('unknown-file-input')?.click();
+    });
+    document.getElementById('unknown-file-input')?.addEventListener('change', handleFileSelected);
+    document.getElementById('btn-apply-crop')?.addEventListener('click', handleApplyCrop);
+    document.getElementById('btn-skip-crop')?.addEventListener('click', handleSkipCrop);
+    document.getElementById('btn-recrop-photo')?.addEventListener('click', handleReCrop);
+    document.getElementById('btn-retake-photo')?.addEventListener('click', () => {
+        resetCropAndCaptureNew();
+    });
+    document.getElementById('btn-crop-rotate')?.addEventListener('click', () => {
+        if (cropperInstance) cropperInstance.rotateClockwise();
+    });
+    document.getElementById('btn-crop-reset')?.addEventListener('click', () => {
+        if (cropperInstance) cropperInstance.resetCrop();
+    });
+    document.getElementById('crop-aspect-group')?.addEventListener('click', handleAspectClick);
+    document.getElementById('btn-add-new-photo-for-code')?.addEventListener('click', () => {
+        resetCropAndCaptureNew();
+    });
     document.getElementById('btn-save-photo')?.addEventListener('click', handleSaveUnknownProduct);
     document.getElementById('btn-cancel-capture')?.addEventListener('click', hideUnknownPanel);
 
-    // Mostrar badge inicial si existe en esta vista
+    // Mostrar badge inicial si existe en esta vista y actualizar banner de cola
     await updateSyncBadge();
+    await updateCartOffBanner();
 
     // Leer parámetro URL si venimos del scanner
     const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
@@ -143,7 +177,7 @@ async function handleSearch() {
 
         // Si se encuentra, añadir directamente al carro
         currentScannedProduct = result.product;
-        await CartStore.addToCart(result.product.code, 1, result.lastPrice || 0, 'unidad');
+        await CartStore.addToCart(result.product.code, 1, result.lastPrice || 0, 'unidad', result.product.package_units || null);
         RecentStore.markAsUsed(result.product.code);
         triggerScanFeedback();
 
@@ -234,8 +268,8 @@ async function updateCartUI() {
                         <button class="btn btn-sm btn-outline-danger" onclick="window.removeFromCart(${item.id})"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
-                <div class="d-flex align-items-center w-100 gap-2" id="cart-item-${item.id}">
-                    <div class="input-group input-group-sm w-50">
+                <div class="d-flex align-items-center w-100 gap-2 flex-wrap" id="cart-item-${item.id}">
+                    <div class="input-group input-group-sm" style="flex: 1 1 120px;">
                         <input type="number" class="form-control bg-dark text-white border-secondary cart-amount-input" value="${item.amount}" min="0" step="any" onchange="window.updateCartItem(${item.id})">
                         <select class="form-select bg-secondary text-white border-secondary cart-unit-select" style="max-width: 75px;" onchange="window.updateCartItem(${item.id})">
                             <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg</option>
@@ -246,9 +280,13 @@ async function updateCartUI() {
                             <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml</option>
                         </select>
                     </div>
-                    <div class="input-group input-group-sm w-50">
+                    <div class="input-group input-group-sm" style="flex: 1 1 90px;">
                         <input type="number" class="form-control bg-dark text-white border-secondary cart-price-input" value="${item.price}" min="0" step="0.01" onchange="window.updateCartItem(${item.id})">
                         <span class="input-group-text bg-secondary text-white border-secondary">€</span>
+                    </div>
+                    <div class="input-group input-group-sm" style="flex: 1 1 90px;" title="Unidades por paquete (opcional)">
+                        <input type="number" class="form-control bg-dark text-white border-secondary cart-pack-units-input" value="${item.packageUnits || ''}" placeholder="Uds/pack" min="1" step="1" onchange="window.updateCartItem(${item.id})">
+                        <span class="input-group-text bg-secondary text-white-50 border-secondary small py-0 px-1">uds</span>
                     </div>
                 </div>
             </div>
@@ -306,14 +344,19 @@ window.toggleShoppingItem = async function(listId, codeOrName) {
     await updateShoppingListUI();
 };
 
-window.triggerOFFUpload = function(code) {
+window.triggerOFFUpload = async function(code) {
     capturedImageBlob = null;
-    ProductStore.getProductByCode(code).then(p => {
-        const barcodeToUse = p?.real_code || (code.startsWith('GENERIC_') ? code.replace(/^GENERIC_/, '') : code);
-        unknownBarcode = barcodeToUse;
-        showUnknownProductPanel(barcodeToUse);
-        if (p) document.getElementById('unknown-product-name').value = p.product_name.replace(/^Producto /, '');
-    });
+    originalImageBlob = null;
+    currentEditingUploadId = null;
+    currentCropConfig = null;
+    const p = await ProductStore.getProductByCode(code);
+    const barcodeToUse = p?.real_code || (code.startsWith('GENERIC_') ? code.replace(/^GENERIC_/, '') : code);
+    unknownBarcode = barcodeToUse;
+    await showUnknownProductPanel(barcodeToUse);
+    if (p && document.getElementById('unknown-product-name')) {
+        document.getElementById('unknown-product-name').value = p.product_name.replace(/^Producto /, '');
+    }
+    document.getElementById('unknown-product-panel')?.scrollIntoView({ behavior: 'smooth' });
 };
 
 window.updateCartItem = async function(id) {
@@ -323,7 +366,9 @@ window.updateCartItem = async function(id) {
     const price = container.querySelector('.cart-price-input').value;
     const unitSelect = container.querySelector('.cart-unit-select');
     const unit = unitSelect ? unitSelect.value : undefined;
-    await CartStore.updateCartItem(id, amount, price, unit);
+    const packUnitsInput = container.querySelector('.cart-pack-units-input');
+    const packageUnits = packUnitsInput ? (parseInt(packUnitsInput.value, 10) || null) : undefined;
+    await CartStore.updateCartItem(id, amount, price, unit, packageUnits);
     await updateCartUI();
 };
 
@@ -594,6 +639,8 @@ async function handleSaveBulkItem() {
     const zone = document.getElementById('bulk-zone').value || 'food';
     const nutriscore = document.getElementById('bulk-nutriscore').value || 'a';
     const saveCustom = document.getElementById('bulk-save-custom').checked;
+    const packageUnitsInput = document.getElementById('bulk-package-units');
+    const packageUnits = packageUnitsInput && packageUnitsInput.value ? parseInt(packageUnitsInput.value, 10) : null;
 
     let code = document.getElementById('bulk-selected-code').value;
 
@@ -615,11 +662,12 @@ async function handleSaveBulkItem() {
             pantryZone: zone,
             nutriscore_grade: nutriscore,
             ingredients_text: '',
-            is_custom: true
+            is_custom: true,
+            package_units: packageUnits || undefined
         });
     }
 
-    await CartStore.addToCart(code, amount, unitPrice, unit);
+    await CartStore.addToCart(code, amount, unitPrice, unit, packageUnits);
     RecentStore.markAsUsed(code);
 
     // Marcar en la lista de compra activa si coincide
@@ -851,24 +899,130 @@ function updateCartTicketUI() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Panel de producto desconocido y captura de foto
+// Panel de producto desconocido / OFF: captura, recorte y re-edición
 // ─────────────────────────────────────────────────────────────────────────────
 
-function showUnknownProductPanel(barcode) {
+let currentAspect = 'free';
+
+async function showUnknownProductPanel(barcode) {
+    unknownBarcode = barcode;
     document.getElementById('unknown-barcode-label').textContent = barcode;
     document.getElementById('unknown-product-panel').classList.remove('d-none');
     document.getElementById('add-to-cart-panel').classList.add('d-none');
     document.getElementById('assistant-alert').classList.add('d-none');
+
+    // Resetear modos
+    currentEditingUploadId = null;
+    document.getElementById('unknown-edit-mode-badge').style.display = 'none';
+    document.getElementById('unknown-panel-title').textContent = 'Contribuir foto a OpenFoodFacts';
+    document.getElementById('btn-save-photo-text').textContent = '💾 Guardar en cola OFF';
+
+    // Cargar fotos existentes en cola para este barcode si las hay
+    await refreshExistingPhotosForBarcode(barcode);
+
+    // Limpiar vistas de recorte/cámara
+    resetCropAndCaptureNew();
+}
+
+async function refreshExistingPhotosForBarcode(barcode) {
+    const existingSection = document.getElementById('unknown-existing-section');
+    const existingList = document.getElementById('unknown-existing-list');
+    if (!existingSection || !existingList) return;
+
+    const items = await getUploadsByBarcode(barcode);
+    if (!items || items.length === 0) {
+        existingSection.classList.add('d-none');
+        existingList.innerHTML = '';
+        return;
+    }
+
+    existingSection.classList.remove('d-none');
+    existingList.innerHTML = items.map(item => {
+        const typeLabels = { front: 'Etiqueta', ingredients: 'Ingredientes', nutrition: 'Nutrición' };
+        const typeLabel = typeLabels[item.type] || item.type;
+        const statusBadge = item.status === 'done'
+            ? '<span class="badge bg-success">Subida</span>'
+            : item.status === 'failed'
+            ? '<span class="badge bg-danger" title="' + (item.lastError || '') + '">Error</span>'
+            : '<span class="badge bg-warning text-dark">Pendiente</span>';
+
+        const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
+        const thumbUrl = URL.createObjectURL(blob);
+
+        return `
+            <div class="card bg-secondary text-white p-1 d-flex flex-row align-items-center gap-2" style="min-width: 220px; font-size: 0.8rem;">
+                <img src="${thumbUrl}" alt="${typeLabel}" class="rounded" style="width: 50px; height: 50px; object-fit: cover; cursor: pointer;" onclick="window.open('${thumbUrl}', '_blank')">
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="fw-bold text-truncate">${typeLabel}</div>
+                    <div class="mb-1">${statusBadge}</div>
+                </div>
+                <div class="d-flex flex-column gap-1">
+                    <button type="button" class="btn btn-warning btn-xs py-0 px-1" onclick="window.editQueuedUpload(${item.id})" title="Editar / Re-recortar">
+                        <i class="bi bi-crop"></i> Editar
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1" onclick="window.deleteQueuedUpload(${item.id})" title="Eliminar de la cola">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.editQueuedUpload = async function(id) {
+    const { getUploadById } = await import('./api/openFoodFacts.js');
+    const item = await getUploadById(id);
+    if (!item) return;
+
+    currentEditingUploadId = item.id;
+    document.getElementById('unknown-edit-mode-badge').style.display = 'inline-block';
+    document.getElementById('unknown-panel-title').textContent = `Editando foto (${item.type}) para ${item.barcode}`;
+    document.getElementById('btn-save-photo-text').textContent = '💾 Actualizar foto';
+    if (item.productName) {
+        document.getElementById('unknown-product-name').value = item.productName;
+    }
+    if (item.type) {
+        document.getElementById('unknown-image-type').value = item.type;
+    }
+
+    const imgBuffer = item.originalImageData || item.imageData;
+    originalImageBlob = new Blob([imgBuffer], { type: item.mimeType || 'image/jpeg' });
+    startCropper(originalImageBlob);
+};
+
+window.deleteQueuedUpload = async function(id) {
+    if (!confirm('¿Eliminar esta foto de la cola de subidas?')) return;
+    await deletePendingUpload(id);
+    showToast('Foto eliminada de la cola', 'info');
+    if (unknownBarcode) {
+        await refreshExistingPhotosForBarcode(unknownBarcode);
+    }
+    await updateSyncBadge();
+    await updateCartOffBanner();
+};
+
+function resetCropAndCaptureNew() {
+    stopCamera();
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+    capturedImageBlob = null;
+    originalImageBlob = null;
+    currentCropConfig = null;
+
+    document.getElementById('unknown-source-buttons').classList.remove('d-none');
+    document.getElementById('camera-container').classList.add('d-none');
+    document.getElementById('unknown-cropper-container').classList.add('d-none');
     document.getElementById('photo-preview-container').classList.add('d-none');
     document.getElementById('btn-save-photo').classList.add('d-none');
-    document.getElementById('btn-retake-photo').classList.add('d-none');
 }
 
 function hideUnknownPanel() {
     document.getElementById('unknown-product-panel').classList.add('d-none');
-    capturedImageBlob = null;
+    resetCropAndCaptureNew();
     unknownBarcode = null;
-    stopCamera();
+    currentEditingUploadId = null;
 }
 
 let stream = null;
@@ -879,36 +1033,117 @@ async function startCapture() {
 
     try {
         stopCamera();
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
         videoEl.srcObject = stream;
         cameraContainer.classList.remove('d-none');
-        document.getElementById('btn-capture-photo').textContent = '📸 Hacer foto';
-        document.getElementById('btn-capture-photo').onclick = takeSnapshot;
+        document.getElementById('unknown-source-buttons').classList.add('d-none');
+        document.getElementById('unknown-cropper-container').classList.add('d-none');
+        document.getElementById('photo-preview-container').classList.add('d-none');
     } catch (err) {
-        alert('No se pudo acceder a la cámara: ' + err.message);
+        showToast('No se pudo acceder a la cámara: ' + err.message, 'warning');
+        // Si falla la cámara, sugerir subir archivo
+        document.getElementById('unknown-file-input')?.click();
     }
 }
 
 function takeSnapshot() {
     const videoEl = document.getElementById('capture-video');
     const canvas = document.createElement('canvas');
-    canvas.width = videoEl.videoWidth;
-    canvas.height = videoEl.videoHeight;
+    canvas.width = videoEl.videoWidth || 800;
+    canvas.height = videoEl.videoHeight || 600;
     canvas.getContext('2d').drawImage(videoEl, 0, 0);
 
     stopCamera();
     document.getElementById('camera-container').classList.add('d-none');
 
     canvas.toBlob((blob) => {
-        capturedImageBlob = blob;
-        const preview = document.getElementById('photo-preview');
-        preview.src = URL.createObjectURL(blob);
-        document.getElementById('photo-preview-container').classList.remove('d-none');
-        document.getElementById('btn-save-photo').classList.remove('d-none');
-        document.getElementById('btn-retake-photo').classList.remove('d-none');
-        document.getElementById('btn-capture-photo').textContent = '📷 Abrir cámara';
-        document.getElementById('btn-capture-photo').onclick = startCapture;
-    }, 'image/jpeg', 0.9);
+        if (!blob) {
+            showToast('Error al capturar la imagen', 'danger');
+            return;
+        }
+        originalImageBlob = blob;
+        startCropper(blob);
+    }, 'image/jpeg', 0.92);
+}
+
+function handleFileSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    originalImageBlob = file;
+    e.target.value = ''; // Reset input
+    startCropper(file);
+}
+
+function startCropper(imageSource) {
+    document.getElementById('unknown-source-buttons').classList.add('d-none');
+    document.getElementById('camera-container').classList.add('d-none');
+    document.getElementById('photo-preview-container').classList.add('d-none');
+    document.getElementById('btn-save-photo').classList.add('d-none');
+
+    const cropperContainer = document.getElementById('unknown-cropper-container');
+    cropperContainer.classList.remove('d-none');
+
+    const canvas = document.getElementById('unknown-crop-canvas');
+    if (cropperInstance) cropperInstance.destroy();
+
+    cropperInstance = new ImageCropper({
+        canvas,
+        image: imageSource,
+        aspectRatio: currentAspect
+    });
+}
+
+function handleAspectClick(e) {
+    const btn = e.target.closest('button[data-aspect]');
+    if (!btn) return;
+    const aspect = btn.getAttribute('data-aspect');
+    currentAspect = aspect;
+
+    document.querySelectorAll('#crop-aspect-group button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (cropperInstance) {
+        cropperInstance.setAspectRatio(aspect);
+    }
+}
+
+async function handleApplyCrop() {
+    if (!cropperInstance) return;
+    try {
+        capturedImageBlob = await cropperInstance.getCroppedBlob('image/jpeg', 0.88);
+        currentCropConfig = cropperInstance.getCropData();
+        showCroppedPreview(capturedImageBlob, true);
+    } catch (err) {
+        console.error('Error aplicando recorte:', err);
+        showToast('Error al recortar la imagen', 'danger');
+    }
+}
+
+function handleSkipCrop() {
+    if (!originalImageBlob) return;
+    capturedImageBlob = originalImageBlob;
+    currentCropConfig = null;
+    showCroppedPreview(capturedImageBlob, false);
+}
+
+function handleReCrop() {
+    if (!originalImageBlob) return;
+    startCropper(originalImageBlob);
+}
+
+function showCroppedPreview(blob, isCropped) {
+    document.getElementById('unknown-cropper-container').classList.add('d-none');
+    const preview = document.getElementById('photo-preview');
+    preview.src = URL.createObjectURL(blob);
+    const badge = document.getElementById('photo-preview-badge');
+    if (badge) {
+        badge.textContent = isCropped ? 'Recortada' : 'Original';
+        badge.className = `badge ${isCropped ? 'bg-success' : 'bg-secondary'} position-absolute top-0 start-0 m-1`;
+    }
+    document.getElementById('photo-preview-container').classList.remove('d-none');
+    document.getElementById('btn-save-photo').classList.remove('d-none');
 }
 
 function stopCamera() {
@@ -916,35 +1151,89 @@ function stopCamera() {
         stream.getTracks().forEach(t => t.stop());
         stream = null;
     }
+    const cameraContainer = document.getElementById('camera-container');
+    if (cameraContainer) cameraContainer.classList.add('d-none');
+    const sourceButtons = document.getElementById('unknown-source-buttons');
+    if (sourceButtons && document.getElementById('unknown-cropper-container')?.classList.contains('d-none') && document.getElementById('photo-preview-container')?.classList.contains('d-none')) {
+        sourceButtons.classList.remove('d-none');
+    }
 }
 
 async function handleSaveUnknownProduct() {
-    if (!capturedImageBlob || !unknownBarcode) return;
+    if (!capturedImageBlob || !unknownBarcode) {
+        showToast('Debes tomar o recortar una foto antes de guardar', 'warning');
+        return;
+    }
 
     const nameInput = document.getElementById('unknown-product-name').value.trim();
     const imageType = document.getElementById('unknown-image-type').value;
 
     try {
-        await saveImageToPendingUploads(unknownBarcode, capturedImageBlob, imageType, nameInput);
+        if (currentEditingUploadId) {
+            await updateUpload(currentEditingUploadId, {
+                barcode: unknownBarcode,
+                productName: nameInput,
+                type: imageType,
+                imageBlob: capturedImageBlob,
+                originalBlob: originalImageBlob,
+                cropConfig: currentCropConfig,
+                status: 'pending' // Reestablecer a pendiente tras editar
+            });
+            showToast('✅ Foto actualizada en la cola OFF', 'success');
+        } else {
+            await saveImageToPendingUploads(
+                unknownBarcode,
+                capturedImageBlob,
+                imageType,
+                nameInput,
+                originalImageBlob,
+                currentCropConfig
+            );
+            showToast('✅ Foto guardada en la cola de subidas OFF', 'success');
+        }
+
         await updateSyncBadge();
-        alert(`¡Imagen guardada! El producto se ha creado localmente y la foto está en cola para subir a OpenFoodFacts.`);
-        hideUnknownPanel();
-        // El producto ya está en local, permitir que el usuario lo busque
+        await updateCartOffBanner();
+
+        // Actualizar la lista de fotos para este producto y resetear cropper
+        await refreshExistingPhotosForBarcode(unknownBarcode);
+        resetCropAndCaptureNew();
+
+        // El producto ya está en local, permitir que el usuario lo busque en el carrito
         document.getElementById('code-input').value = unknownBarcode;
-        handleSearch();
     } catch (err) {
-        alert('Error al guardar: ' + err.message);
+        showToast('Error al guardar: ' + err.message, 'danger');
     }
 }
+
 async function updateSyncBadge() {
     const count = await countPendingUploads();
     const badge = document.getElementById('sync-badge');
-    if (!badge) return;
-    if (count > 0) {
-        badge.textContent = count;
-        badge.classList.remove('d-none');
-    } else {
-        badge.classList.add('d-none');
+    if (badge) {
+        if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+        }
+    }
+}
+
+async function updateCartOffBanner() {
+    const banner = document.getElementById('cart-off-banner');
+    const text = document.getElementById('cart-off-banner-text');
+    if (!banner || !text) return;
+
+    try {
+        const stats = await getOffStats();
+        if (stats.pending > 0 || stats.failed > 0) {
+            banner.classList.remove('d-none');
+            text.innerHTML = `<strong>${stats.pending} foto(s) pendiente(s)</strong>${stats.failed > 0 ? ` y <strong class="text-danger">${stats.failed} con error</strong>` : ''}`;
+        } else {
+            banner.classList.add('d-none');
+        }
+    } catch (err) {
+        console.warn('Error actualizando banner OFF:', err);
     }
 }
 

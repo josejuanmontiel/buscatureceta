@@ -138,6 +138,91 @@
           <button type="button" class="btn btn-primary" id="btn-save-recipe">Guardar Receta</button>
         </div>
       </div>
+  <!-- Modal para Planificar / Añadir Receta a la Agenda -->
+  <div class="modal fade" id="planRecipeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="planRecipeModalTitle">📅 Añadir a la Agenda</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="plan-recipe-id">
+          
+          <div class="p-2 mb-3 rounded bg-dark border border-secondary d-flex justify-content-between align-items-center">
+            <div>
+              <strong id="plan-recipe-name" class="text-info">Receta</strong>
+              <div id="plan-recipe-nutrition" class="small text-muted">0 kcal</div>
+            </div>
+            <span class="badge bg-primary" id="plan-recipe-servings-badge">1 ración</span>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Fecha</label>
+            <input type="date" class="form-control mb-2" id="plan-date" required>
+            <div class="d-flex gap-1">
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btn-quick-date-today">Hoy</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btn-quick-date-tomorrow">Mañana</button>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="plan-meal-type" class="form-label small fw-bold">Momento</label>
+              <select class="form-select" id="plan-meal-type">
+                <option value="breakfast">Desayuno</option>
+                <option value="midmorning">Almuerzo</option>
+                <option value="lunch" selected>Comida</option>
+                <option value="snack">Merienda</option>
+                <option value="dinner">Cena</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label for="plan-course" class="form-label small fw-bold">Plato / Curso</label>
+              <select class="form-select" id="plan-course">
+                <option value="starter">🥗 Primero</option>
+                <option value="main" selected>🍲 Principal</option>
+                <option value="dessert">🍰 Postre</option>
+                <option value="snack">🥪 Extra</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="plan-servings" class="form-label small fw-bold">Raciones a añadir</label>
+            <input type="number" class="form-control" id="plan-servings" value="1" min="0.1" step="0.5">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Estado del registro</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="planStatusRadio" id="planStatusPlanned" value="planned" checked>
+                <label class="form-check-label small" for="planStatusPlanned">
+                  ⏳ Planificado
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="planStatusRadio" id="planStatusConsumed" value="consumed">
+                <label class="form-check-label small" for="planStatusConsumed">
+                  ✓ Ya consumido
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="plan-deduct-pantry" checked>
+            <label class="form-check-label small text-muted" for="plan-deduct-pantry">
+              Descontar de despensa si es consumido
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-do-plan-recipe">📅 Añadir a la Agenda</button>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -11,21 +11,30 @@ import * as PantryStore from '../pantry/PantryStore.js';
 /**
  * Añade o actualiza un producto en el carrito
  */
-export async function addToCart(productCode, amount, price, unit = 'unidad') {
+export async function addToCart(productCode, amount, price, unit = 'unidad', packageUnits = null) {
   if (!productCode || amount <= 0) return;
 
   const numericPrice = parseFloat(price) || 0;
+  const parsedUnits = packageUnits ? parseInt(packageUnits, 10) : null;
 
   let item = await db.cart.where({ productCode }).first();
   if (item) {
     // Sumamos cantidad, actualizamos precio unitario y unidad si se especifica
-    await db.cart.update(item.id, { 
+    const updates = { 
       amount: item.amount + amount,
       price: numericPrice,
       unit: unit || item.unit || 'unidad'
-    });
+    };
+    if (parsedUnits) updates.packageUnits = parsedUnits;
+    await db.cart.update(item.id, updates);
   } else {
-    await db.cart.add({ productCode, amount, price: numericPrice, unit: unit || 'unidad' });
+    await db.cart.add({
+      productCode,
+      amount,
+      price: numericPrice,
+      unit: unit || 'unidad',
+      packageUnits: parsedUnits
+    });
   }
 
   // Si hay precio, actualizamos historial
@@ -41,7 +50,7 @@ export async function addToCart(productCode, amount, price, unit = 'unidad') {
 /**
  * Actualiza cantidad, precio y unidad de un producto en el carrito
  */
-export async function updateCartItem(id, amount, price, unit) {
+export async function updateCartItem(id, amount, price, unit, packageUnits = undefined) {
   const numericPrice = parseFloat(price) || 0;
   const numericAmount = parseFloat(amount) || 1;
   const updates = {
@@ -50,6 +59,9 @@ export async function updateCartItem(id, amount, price, unit) {
   };
   if (unit) {
     updates.unit = unit;
+  }
+  if (packageUnits !== undefined) {
+    updates.packageUnits = packageUnits ? parseInt(packageUnits, 10) : null;
   }
   await db.cart.update(id, updates);
 }
@@ -285,7 +297,7 @@ export async function checkout(supermarket = '', notes = '', ticketBlob = null, 
 
     const zone = product?.pantryZone || (product && product._localOnly ? 'nonfood' : 'food');
 
-    await PantryStore.addStock(item.productCode, stockAmount, stockUnit, zone);
+    await PantryStore.addStock(item.productCode, stockAmount, stockUnit, zone, item.packageUnits);
   }
   
   await emptyCart();

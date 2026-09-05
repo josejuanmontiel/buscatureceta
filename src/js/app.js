@@ -1,10 +1,14 @@
 import { Router } from './modules/core/Router.js';
 import * as BackupStore from './modules/backup/BackupStore.js';
 import * as MealPhotoStore from './modules/mealPhotos/MealPhotoStore.js';
+import * as PantryStore from './modules/pantry/PantryStore.js';
+import * as ProductStore from './modules/products/ProductStore.js';
 import { seedDemoData } from './modules/demo/demoData.js';
 
 window.BackupStore = BackupStore;
 window.MealPhotoStore = MealPhotoStore;
+window.PantryStore = PantryStore;
+window.ProductStore = ProductStore;
 window.seedDemoData = seedDemoData;
 window.__seedDemoData = seedDemoData;
 
@@ -21,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'db-viewer': { init: () => import('./db-viewer.js') },
     'settings': { init: () => import('./settings.js') },
     'cart-history': { init: () => import('./cart-history.js') },
-    'additives': { init: () => import('./additives.js') }
+    'additives': { init: () => import('./additives.js') },
+    'off-contributions': { init: () => import('./off-contributions.js') }
   });
 
   checkSharedFiles();

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es" class="h-100" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contribuciones OpenFoodFacts - NutriAgenda</title>
+  <meta name="description" content="Cola de subidas y gestión de aportaciones fotográficas a OpenFoodFacts.">
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <style>
+    .off-stat-card {
+      border-radius: 14px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .off-stat-card:hover {
+      transform: translateY(-2px);
+    }
+    .off-item-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .off-item-card:hover {
+      border-color: rgba(13, 202, 240, 0.4);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .off-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #111;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    @media (max-width: 576px) {
+      .off-thumb {
+        width: 65px;
+        height: 65px;
+      }
+    }
+  </style>
+</head>
+<body class="d-flex flex-column h-100 text-center">
+  <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+    <header class="mb-4">
+      <div>
+        <h3 class="float-md-start mb-0">NutriAgenda</h3>
+        <app-menu current-page="off-contributions.html"></app-menu>
+      </div>
+    </header>
+
+    <main class="px-3 flex-grow-1">
+      <div class="container py-3 px-2 mx-auto text-start" style="max-width: 900px;">
+        
+        <!-- Cabecera de la sección -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 pb-2 border-bottom border-secondary">
+          <div>
+            <h2 class="h3 mb-1 text-info">
+              <i class="bi bi-globe-americas me-2"></i>Contribuciones OpenFoodFacts
+            </h2>
+            <p class="text-muted small mb-0">
+              Gestiona las fotos y productos que aportas a la base de datos abierta mundial de alimentos.
+            </p>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-light btn-sm" id="btn-open-credentials">
+              <i class="bi bi-key-fill me-1"></i> Credenciales OFF
+            </button>
+            <button type="button" class="btn btn-info btn-sm fw-bold" id="btn-sync-all">
+              <i class="bi bi-cloud-arrow-up-fill me-1"></i> <span id="btn-sync-all-text">Subir Pendientes</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de progreso de sincronización (oculta por defecto) -->
+        <div id="sync-progress-container" class="mb-4 p-3 bg-dark border border-info rounded d-none">
+          <div class="d-flex justify-content-between align-items-center mb-1 small">
+            <span id="sync-progress-label" class="fw-bold text-info">Subiendo imágenes a OpenFoodFacts...</span>
+            <span id="sync-progress-count" class="text-muted">0 / 0</span>
+          </div>
+          <div class="progress" style="height: 10px;">
+            <div id="sync-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Tarjetas de Estadísticas / KPIs -->
+        <div class="row g-2 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card bg-dark border-warning text-white p-3 off-stat-card cursor-pointer" id="kpi-card-pending" style="cursor: pointer;">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-warning small fw-bold">⏳ PENDIENTES</span>
+                <i class="bi bi-hourglass-split text-warning"></i>
+              </div>
+              <div class="h2 mb-0 mt-2 fw-bold text-warning" id="kpi-pending-count">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card bg-dark border-danger text-white p-3 off-stat-card cursor-pointer" id="kpi-card-failed" style="cursor: pointer;">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-danger small fw-bold">⚠️ CON ERROR</span>
+                <i class="bi bi-exclamation-triangle text-danger"></i>
+              </div>
+              <div class="h2 mb-0 mt-2 fw-bold text-danger" id="kpi-failed-count">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card bg-dark border-success text-white p-3 off-stat-card cursor-pointer" id="kpi-card-done" style="cursor: pointer;">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-success small fw-bold">✅ COMPLETADAS</span>
+                <i class="bi bi-check-circle text-success"></i>
+              </div>
+              <div class="h2 mb-0 mt-2 fw-bold text-success" id="kpi-done-count">0</div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card bg-dark border-secondary text-white p-3 off-stat-card cursor-pointer" id="kpi-card-total" style="cursor: pointer;">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="text-info small fw-bold">📦 TOTAL COLA</span>
+                <i class="bi bi-collection text-info"></i>
+              </div>
+              <div class="h2 mb-0 mt-2 fw-bold text-info" id="kpi-total-count">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros y Búsqueda -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div class="btn-group btn-group-sm" role="group" id="off-filter-group">
+            <button type="button" class="btn btn-outline-light active" data-filter="all">Todos</button>
+            <button type="button" class="btn btn-outline-warning" data-filter="pending">Pendientes</button>
+            <button type="button" class="btn btn-outline-danger" data-filter="failed">Errores</button>
+            <button type="button" class="btn btn-outline-success" data-filter="done">Completadas</button>
+          </div>
+
+          <div class="input-group input-group-sm" style="max-width: 260px;">
+            <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" id="off-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Buscar por nombre o código...">
+          </div>
+        </div>
+
+        <!-- Lista de Contribuciones -->
+        <div id="off-uploads-container" class="d-flex flex-column gap-3">
+          <!-- Renderizado dinámico -->
+        </div>
+
+        <!-- Empty state cuando no hay items -->
+        <div id="off-empty-state" class="text-center py-5 d-none">
+          <div class="display-4 text-muted mb-3"><i class="bi bi-cloud-check"></i></div>
+          <h5 class="text-white">No hay fotos en esta vista</h5>
+          <p class="text-muted small">
+            Cuando escanees o añadas productos en el carrito que no estén en el catálogo, podrás tomar fotos y recortarlas para subirlas a OpenFoodFacts.
+          </p>
+          <a href="#grid" class="btn btn-outline-info btn-sm mt-2">
+            <i class="bi bi-cart3 me-1"></i> Ir al Carrito / Escáner
+          </a>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Modal Editar / Re-recortar foto -->
+    <div class="modal fade" id="modal-off-edit" tabindex="-1" aria-labelledby="modalOffEditTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark text-white border-secondary">
+          <div class="modal-header border-secondary">
+            <h5 class="modal-title" id="modalOffEditTitle"><i class="bi bi-crop text-warning me-2"></i>Editar y Re-recortar Foto</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-2 mb-3">
+              <div class="col-12 col-md-7">
+                <label class="form-label form-label-sm">Nombre del producto</label>
+                <input type="text" id="edit-product-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Nombre descriptivo">
+              </div>
+              <div class="col-12 col-md-5">
+                <label class="form-label form-label-sm">Tipo de imagen OFF</label>
+                <select id="edit-image-type" class="form-select form-select-sm bg-dark text-white border-secondary">
+                  <option value="front">Etiqueta frontal (front)</option>
+                  <option value="ingredients">Ingredientes</option>
+                  <option value="nutrition">Información nutricional</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Toolbar del cropper -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 p-2 bg-black rounded border border-secondary">
+              <div class="btn-group btn-group-sm" role="group" id="edit-aspect-group">
+                <button type="button" class="btn btn-outline-light active" data-aspect="free">Libre</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="1:1">1:1</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="4:3">4:3</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="3:4">3:4</button>
+                <button type="button" class="btn btn-outline-light" data-aspect="16:9">16:9</button>
+              </div>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-warning" id="btn-edit-rotate" title="Rotar 90°">
+                  <i class="bi bi-arrow-clockwise"></i> 90°
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-edit-reset-crop" title="Reiniciar recorte">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Canvas del Cropper -->
+            <div class="position-relative text-center bg-black rounded p-1 border border-secondary mb-2">
+              <canvas id="edit-cropper-canvas" class="img-fluid rounded" style="max-height: 400px; width: 100%; object-fit: contain; cursor: crosshair; touch-action: none;"></canvas>
+              <div class="small text-muted mt-1"><i class="bi bi-arrows-move"></i> Arrastra el recuadro o sus esquinas para ajustar la zona visible</div>
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-success btn-sm" id="btn-save-edited-upload">
+              <i class="bi bi-check2-circle me-1"></i> Guardar Cambios
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Credenciales OFF -->
+    <div class="modal fade" id="modal-off-credentials" tabindex="-1" aria-labelledby="modalOffCredsTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary">
+          <div class="modal-header border-secondary">
+            <h5 class="modal-title" id="modalOffCredsTitle"><i class="bi bi-shield-lock-fill text-info me-2"></i>Credenciales OpenFoodFacts</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-3">
+              Por defecto se utiliza la cuenta comunitaria estándar (<code>off / off</code>). Si tienes una cuenta propia registrada en <a href="https://world.openfoodfacts.org" target="_blank" class="text-info">openfoodfacts.org</a>, puedes introducir tus credenciales para que las subidas queden asociadas a tu perfil de colaborador.
+            </p>
+            <div class="mb-3">
+              <label class="form-label form-label-sm">Usuario o Email OFF</label>
+              <input type="text" id="off-user-input" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="off">
+            </div>
+            <div class="mb-3">
+              <label class="form-label form-label-sm">Contraseña OFF</label>
+              <input type="password" id="off-password-input" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="off">
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-info btn-sm" id="btn-save-credentials">
+              Guardar Credenciales
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="mt-auto text-white-50 py-3">
+      <p class="mb-0 small">NutriAgenda &copy; 2026 - Datos abiertos con Open Food Facts</p>
+    </footer>
+  </div>
+
+  <script type="module" src="/js/off-contributions.js"></script>
+</body>
+</html>
