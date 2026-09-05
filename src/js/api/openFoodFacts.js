@@ -44,10 +44,15 @@ export async function uploadImage(barcode, imageBlob, type, userId, password) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Error en la subida: ${response.status} - ${errorText}`);
+    throw new Error(`Error HTTP en la subida (${response.status}): ${errorText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  if (data.status && data.status !== 'status ok') {
+    throw new Error(data.error || data.status || 'La API de OpenFoodFacts rechazó la imagen');
+  }
+
+  return data;
 }
 
 /**

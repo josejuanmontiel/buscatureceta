@@ -42,6 +42,28 @@ const base64ToBlob = (base64, type) => {
   return new Blob([new Uint8Array(byteNumbers)], {type: type});
 };
 
+const arrayBufferToBase64 = (buffer) => {
+  if (!buffer) return null;
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+const base64ToArrayBuffer = (base64) => {
+  if (!base64) return null;
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+};
+
 /**
  * Genera un objeto JSON con todos los datos de las tablas seleccionadas.
  */
@@ -93,6 +115,16 @@ export async function exportData() {
             record.ticketThumbBlobBase64 = await blobToBase64(record.ticketThumbBlob);
             record.ticketThumbBlobType = record.ticketThumbBlob.type;
             delete record.ticketThumbBlob;
+          }
+        }
+        if (tableName === 'pendingUploads') {
+          if (record.imageData instanceof ArrayBuffer) {
+            record.imageDataBase64 = arrayBufferToBase64(record.imageData);
+            delete record.imageData;
+          }
+          if (record.originalImageData instanceof ArrayBuffer) {
+            record.originalImageDataBase64 = arrayBufferToBase64(record.originalImageData);
+            delete record.originalImageData;
           }
         }
       }
@@ -175,6 +207,20 @@ export async function importData(jsonString) {
           } else if (record.ticketThumbBlob && typeof record.ticketThumbBlob === 'object' && Object.keys(record.ticketThumbBlob).length === 0) {
             delete record.ticketThumbBlob;
           }
+
+          if (record.imageDataBase64) {
+            record.imageData = base64ToArrayBuffer(record.imageDataBase64);
+            delete record.imageDataBase64;
+          } else if (record.imageData && typeof record.imageData === 'object' && Object.keys(record.imageData).length === 0) {
+            delete record.imageData;
+          }
+
+          if (record.originalImageDataBase64) {
+            record.originalImageData = base64ToArrayBuffer(record.originalImageDataBase64);
+            delete record.originalImageDataBase64;
+          } else if (record.originalImageData && typeof record.originalImageData === 'object' && Object.keys(record.originalImageData).length === 0) {
+            delete record.originalImageData;
+          }
         }
         
         if (records.length > 0) {
@@ -254,6 +300,18 @@ export async function mergeData(jsonString) {
             delete record.ticketThumbBlobType;
           } else if (record.ticketThumbBlob && typeof record.ticketThumbBlob === 'object' && Object.keys(record.ticketThumbBlob).length === 0) {
             delete record.ticketThumbBlob;
+          }
+          if (record.imageDataBase64) {
+            record.imageData = base64ToArrayBuffer(record.imageDataBase64);
+            delete record.imageDataBase64;
+          } else if (record.imageData && typeof record.imageData === 'object' && Object.keys(record.imageData).length === 0) {
+            delete record.imageData;
+          }
+          if (record.originalImageDataBase64) {
+            record.originalImageData = base64ToArrayBuffer(record.originalImageDataBase64);
+            delete record.originalImageDataBase64;
+          } else if (record.originalImageData && typeof record.originalImageData === 'object' && Object.keys(record.originalImageData).length === 0) {
+            delete record.originalImageData;
           }
         }
         await db[tableName].bulkPut(records);

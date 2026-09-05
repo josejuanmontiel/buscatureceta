@@ -170,9 +170,61 @@ test.describe('OpenFoodFacts Image Capture, Cropping, Re-editing and Queue Zone'
     // Comprobar que se actualizó el nombre en la lista
     await expect(offCard).toContainText('Yogur Proteína Fresa 500g');
 
-    // Probar eliminar de la cola
+    // 5. Probar añadir OTRA foto al mismo producto (+ Foto en la tarjeta)
+    await offCard.locator('button[title="Añadir otra foto a este producto"]').click();
+    await expect(page.locator('#modal-off-edit')).toBeVisible();
+    await expect(page.locator('#modal-off-edit-heading')).toContainText('Yogur Proteína Fresa 500g');
+    await expect(page.locator('#edit-barcode')).toHaveValue(testBarcode);
+
+    // Cambiar tipo o dejar el sugerido (e.g. ingredients)
+    await page.selectOption('#edit-image-type', 'ingredients');
+
+    // Cargar nueva imagen desde archivo
+    await page.setInputFiles('#modal-file-input', {
+      name: 'yogur_ingredientes.png',
+      mimeType: 'image/png',
+      buffer: sampleImageBuffer
+    });
+
+    // El canvas del cropper se inicializa en el modal
+    const modalCropperCanvas = page.locator('#modal-off-edit #edit-cropper-canvas');
+    await expect(modalCropperCanvas).toBeVisible();
+
+    // Guardar la foto adicional en la cola
+    await page.click('#btn-save-edited-upload');
+    await expect(page.locator('#modal-off-edit')).not.toBeVisible();
+
+    // Comprobar que ahora hay 2 fotos para este código en Dexie y en KPIs
+    await expect(page.locator('#kpi-total-count')).toHaveText('2');
+    const uploadsCount = await page.evaluate(async (barcode) => {
+      return await window.db.pendingUploads.where('barcode').equals(barcode).count();
+    }, testBarcode);
+    expect(uploadsCount).toBe(2);
+
+    // 6. Probar "Guardar como foto nueva (+)" desde el modal de edición
+    const secondCard = page.locator('.off-item-card').last();
+    await secondCard.locator('button[title="Editar recorte o datos"]').click();
+    await expect(page.locator('#modal-off-edit')).toBeVisible();
+    await expect(page.locator('#btn-save-as-new-upload')).toBeVisible();
+
+    // Cambiar tipo a "front" y pulsar "Guardar como foto nueva (+)"
+    await page.selectOption('#edit-image-type', 'front');
+    await page.click('#btn-save-as-new-upload');
+    await expect(page.locator('#modal-off-edit')).not.toBeVisible();
+
+    // Ahora deben existir 3 fotos en total
+    await expect(page.locator('#kpi-total-count')).toHaveText('3');
+    const uploadsCount3 = await page.evaluate(async (barcode) => {
+      return await window.db.pendingUploads.where('barcode').equals(barcode).count();
+    }, testBarcode);
+    expect(uploadsCount3).toBe(3);
+
+    // Limpiar: Eliminar los 3 elementos
     page.on('dialog', dialog => dialog.accept());
-    await offCard.locator('button[title="Eliminar de la cola"]').click();
+    while (await page.locator('.off-item-card button[title="Eliminar de la cola"]').count() > 0) {
+      await page.locator('.off-item-card button[title="Eliminar de la cola"]').first().click();
+      await page.waitForTimeout(100);
+    }
 
     // Verificar que la lista queda vacía y KPIs en 0
     await expect(page.locator('#kpi-total-count')).toHaveText('0');
