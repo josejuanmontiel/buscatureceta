@@ -234,13 +234,13 @@
                 </div>
               </div>
 
-              <!-- Tabs para Receta o Producto -->
-              <ul class="nav nav-tabs mb-2" id="mealTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="tab-recipe" data-bs-toggle="tab" data-bs-target="#pane-recipe" type="button">Receta guardada</button>
+              <!-- Tabs para Receta o Producto (nav-pills flex-nowrap para evitar que se apilen en responsive) -->
+              <ul class="nav nav-pills nav-fill flex-nowrap w-100 mb-3 gap-1 bg-black p-1 rounded border border-secondary" id="mealTabs" role="tablist">
+                <li class="nav-item flex-fill" role="presentation">
+                  <button class="nav-link active w-100 py-1" id="tab-recipe" data-bs-toggle="tab" data-bs-target="#pane-recipe" type="button">📖 Receta guardada</button>
                 </li>
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="tab-product" data-bs-toggle="tab" data-bs-target="#pane-product" type="button">Producto escaneado</button>
+                <li class="nav-item flex-fill" role="presentation">
+                  <button class="nav-link w-100 py-1" id="tab-product" data-bs-toggle="tab" data-bs-target="#pane-product" type="button">🥫 Producto escaneado</button>
                 </li>
               </ul>
 
@@ -286,11 +286,31 @@
                     <button class="btn btn-sm btn-outline-warning" type="button" onclick="window.addGenericProduct(document.getElementById('meal-product-search').value || 'Genérico')">+ Genérico rápido</button>
                   </div>
 
-                  <div id="meal-product-results" class="list-group mb-2" style="max-height: 100px; overflow-y: auto;"></div>
+                  <div id="meal-product-results" class="list-group mb-2" style="max-height: 160px; overflow-y: auto;"></div>
                   <input type="hidden" id="meal-product-selected">
                   
-                  <label class="form-label mt-1 small">Gramos consumidos</label>
-                  <input type="number" class="form-control" id="meal-product-grams" value="100" min="1">
+                  <!-- Tarjeta visual de producto seleccionado -->
+                  <div id="meal-product-selected-card" class="alert alert-dark border-info py-2 px-3 mb-2 d-none text-start">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div class="me-2 text-truncate">
+                        <div class="fw-bold text-info small text-truncate" id="meal-selected-name"></div>
+                        <div class="text-white-50 small" id="meal-selected-details" style="font-size: 0.8rem;"></div>
+                      </div>
+                      <span class="badge bg-info text-dark flex-shrink-0" id="meal-selected-kcal"></span>
+                    </div>
+                  </div>
+
+                  <div class="d-flex align-items-center justify-content-between gap-2 mt-1">
+                    <div class="flex-grow-1">
+                      <label class="form-label small mb-1">Gramos consumidos</label>
+                      <input type="number" class="form-control" id="meal-product-grams" value="100" min="1">
+                    </div>
+                    <div class="align-self-end">
+                      <button type="button" class="btn btn-outline-info text-nowrap" id="btn-quick-add-product-to-tray" onclick="window.addCurrentItemToTray()">
+                        ➕ Añadir al menú
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 

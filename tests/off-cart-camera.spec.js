@@ -97,6 +97,10 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
 
     // Ir a Settings y logearse (guardar credenciales)
     await page.goto('/#settings');
+    await page.waitForFunction(() => {
+      const el = document.getElementById('cred-status');
+      return el && !el.textContent.includes('Cargando');
+    }, { timeout: 10000 });
     await page.waitForSelector('#cred-username', { state: 'visible', timeout: 5000 });
     await page.fill('#cred-username', 'accreativos');
     await page.fill('#cred-password', 'Cr0nauer.');

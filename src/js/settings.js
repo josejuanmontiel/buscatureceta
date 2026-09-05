@@ -430,8 +430,8 @@ function populateCredentialsForm() {
 
     const userInput = document.getElementById('cred-username');
     const passInput = document.getElementById('cred-password');
-    if (userInput) userInput.value = user || '';
-    if (passInput) passInput.value = pass || '';
+    if (userInput && (user || !userInput.value)) userInput.value = user || '';
+    if (passInput && (pass || !passInput.value)) passInput.value = pass || '';
 
     if (user && user !== 'off') {
         showCredStatus('success', `✅ Cuenta configurada: <strong>${user}</strong>`);

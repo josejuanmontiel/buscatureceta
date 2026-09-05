@@ -82,6 +82,34 @@ export async function initView() {
   document.getElementById('btn-confirm-checkin')?.addEventListener('click', confirmCheckIn);
 
   document.getElementById('btn-search-meal-product').addEventListener('click', searchProduct);
+  document.getElementById('meal-product-search')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchProduct();
+    }
+  });
+
+  const productResultsContainer = document.getElementById('meal-product-results');
+  if (productResultsContainer) {
+    productResultsContainer.addEventListener('click', async (e) => {
+      const btnDirect = e.target.closest('.btn-add-product-direct');
+      if (btnDirect) {
+        const pCode = btnDirect.dataset.code;
+        const pName = btnDirect.dataset.name;
+        await window.selectProduct(pCode, pName);
+        await addCurrentItemToTray();
+        return;
+      }
+
+      const btnSelect = e.target.closest('.btn-select-product') || e.target.closest('.btn-product-row') || e.target.closest('button');
+      if (btnSelect && btnSelect.dataset.code) {
+        const pCode = btnSelect.dataset.code;
+        const pName = btnSelect.dataset.name;
+        await window.selectProduct(pCode, pName);
+      }
+    });
+  }
+
   document.getElementById('btn-scan-meal')?.addEventListener('click', () => {
     window.location.href = "/scan.html?return=%23diary&action=addMeal";
   });
@@ -229,6 +257,8 @@ window.openMealModal = async function(dayKey, defaultRecipeId = null, defaultMea
   if (courseSel) courseSel.value = 'main';
   document.getElementById('meal-product-results').innerHTML = '';
   document.getElementById('meal-product-selected').value = '';
+  const selCard = document.getElementById('meal-product-selected-card');
+  if (selCard) selCard.classList.add('d-none');
   
   mealTray = [];
   renderMealTray();
@@ -448,6 +478,8 @@ async function addCurrentItemToTray() {
     document.getElementById('meal-product-selected').value = '';
     document.getElementById('meal-product-search').value = '';
     document.getElementById('meal-product-results').innerHTML = '';
+    const selCardTray = document.getElementById('meal-product-selected-card');
+    if (selCardTray) selCardTray.classList.add('d-none');
     document.getElementById('meal-recipe-select').value = '';
     const searchInput = document.getElementById('meal-recipe-search');
     if (searchInput) searchInput.value = '';
@@ -457,6 +489,8 @@ async function addCurrentItemToTray() {
     showToast(err.message, 'warning');
   }
 }
+
+window.addCurrentItemToTray = addCurrentItemToTray;
 
 async function loadSelectedTemplate() {
   const tplId = parseInt(document.getElementById('meal-template-select').value);
@@ -737,6 +771,11 @@ async function searchProduct() {
   const spinner = document.getElementById('meal-search-spinner');
   if (spinner) spinner.classList.remove('d-none');
 
+  const container = document.getElementById('meal-product-results');
+  if (container) {
+    container.style.display = 'block';
+  }
+
   try {
     const qLower = query.toLowerCase();
     const searchPantryOnly = document.getElementById('meal-search-pantry-only')?.checked;
@@ -766,30 +805,36 @@ async function searchProduct() {
 
     let html = '';
     if (results.length === 0) {
-      html = '<div class="list-group-item text-muted small">Sin resultados.</div>';
+      html = '<div class="list-group-item text-muted small py-2">Sin resultados. Puedes crearlo con el botón "+ Genérico rápido" de arriba.</div>';
     } else {
-      html = results.map(p => `
-        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                onclick="window.selectProduct('${p.code}', '${p.product_name?.replace(/'/g, "\\'")}')">
-          <span class="small">${p.product_name || 'Sin nombre'}</span>
-          <span class="badge bg-secondary">${p.code}</span>
-        </button>
-      `).join('');
-    }
-    
-    // Add generic button at the end
-    if (query && !/^\d+$/.test(query)) {
-      html += `
-        <div class="mt-2 text-center">
-           <button type="button" class="btn btn-sm btn-outline-info w-100" onclick="window.addGenericProduct('${query.replace(/'/g, "\\'")}')">
-             + Genérico rápido
-           </button>
+      html = results.map(p => {
+        const safeName = (p.product_name || 'Sin nombre').replace(/"/g, '&quot;');
+        const safeBrand = p.brands ? p.brands.replace(/"/g, '&quot;') : '';
+        return `
+        <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2">
+          <button type="button" class="btn btn-link text-white text-decoration-none p-0 text-start flex-grow-1 text-truncate me-2 btn-product-row"
+                  data-code="${p.code}" data-name="${safeName}">
+            <div class="small fw-semibold text-truncate">${safeName}</div>
+            <small class="text-muted">${safeBrand ? safeBrand + ' • ' : ''}${p.code}</small>
+          </button>
+          <div class="d-flex align-items-center gap-1 flex-shrink-0">
+            <button type="button" class="btn btn-xs btn-outline-info text-nowrap btn-select-product"
+                    data-code="${p.code}" data-name="${safeName}">
+              Seleccionar
+            </button>
+            <button type="button" class="btn btn-xs btn-success text-nowrap btn-add-product-direct"
+                    data-code="${p.code}" data-name="${safeName}" title="Seleccionar y añadir al menú">
+              ➕ Añadir
+            </button>
+          </div>
         </div>
       `;
+      }).join('');
     }
 
-    const container = document.getElementById('meal-product-results');
-    container.innerHTML = html;
+    if (container) {
+      container.innerHTML = html;
+    }
   } finally {
     if (spinner) spinner.classList.add('d-none');
   }
@@ -805,15 +850,46 @@ window.addGenericProduct = async function(name) {
       ingredients_text: '',
       nutriscore_grade: 'unknown'
   });
-  window.selectProduct(genericCode, name);
+  await window.selectProduct(genericCode, name);
 };
 
-window.selectProduct = function(code, name) {
-  document.getElementById('meal-product-selected').value = code;
-  document.getElementById('meal-product-search').value = name;
-  document.getElementById('meal-product-results').innerHTML = '';
-  document.getElementById('meal-product-results').style.display = 'none';
+window.selectProduct = async function(code, name, product = null) {
+  const selectedInput = document.getElementById('meal-product-selected');
+  const searchInput = document.getElementById('meal-product-search');
+  if (selectedInput) selectedInput.value = code;
+  if (searchInput) searchInput.value = name || '';
+
+  const resultsContainer = document.getElementById('meal-product-results');
+  if (resultsContainer) {
+    resultsContainer.innerHTML = '';
+    resultsContainer.style.display = 'none';
+  }
   RecentStore.markAsUsed(code);
+
+  if (!product) {
+    product = await ProductStore.getProductByCode(code);
+  }
+
+  // Actualizar tarjeta visual de selección
+  const card = document.getElementById('meal-product-selected-card');
+  const nameEl = document.getElementById('meal-selected-name');
+  const detailsEl = document.getElementById('meal-selected-details');
+  const kcalEl = document.getElementById('meal-selected-kcal');
+
+  if (card && nameEl) {
+    nameEl.textContent = name || product?.product_name || `Producto ${code}`;
+    if (detailsEl) {
+      const details = [];
+      if (product?.brands) details.push(product.brands);
+      if (code) details.push(`Ref: ${code}`);
+      detailsEl.textContent = details.join(' • ');
+    }
+    if (kcalEl) {
+      const kcal = product?.nutriments?.['energy-kcal_100g'] ?? product?.nutriments?.energy_kcal_100g ?? product?.energy_kcal_100g;
+      kcalEl.textContent = (kcal !== undefined && kcal !== null) ? `${Math.round(kcal)} kcal / 100g` : '';
+    }
+    card.classList.remove('d-none');
+  }
 };
 
 async function saveMeal(targetStatus = 'consumed') {
