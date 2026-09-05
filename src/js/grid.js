@@ -434,6 +434,8 @@ function openManualBulkModal() {
     // Reset form
     document.getElementById('form-manual-bulk').reset();
     document.getElementById('bulk-selected-code').value = '';
+    document.getElementById('bulk-selected-source').value = '';
+    document.getElementById('bulk-selected-category').value = '';
     document.getElementById('bulk-amount').value = '1';
     document.getElementById('bulk-unit').value = 'kg';
     const unitLabel = document.getElementById('bulk-unit-label');
@@ -443,6 +445,9 @@ function openManualBulkModal() {
     document.getElementById('bulk-save-custom').checked = true;
     document.getElementById('bulk-zone').value = 'food';
     document.getElementById('bulk-nutriscore').value = 'a';
+    // Limpiar resultados de búsqueda previos
+    const resultsContainer = document.getElementById('bulk-product-results');
+    if (resultsContainer) { resultsContainer.innerHTML = ''; resultsContainer.classList.add('d-none'); }
     updateBulkPriceHint();
 
     const modal = Modal.getOrCreateInstance(modalEl);
@@ -455,6 +460,8 @@ function openManualBulkModal() {
 }
 
 function initManualBulkHandlers() {
+    // Los chips estáticos han sido reemplazados por el autocomplete BEDCA
+    // Mantener retrocompatibilidad por si hay chips en versiones antiguas del HTML
     const chipsContainer = document.getElementById('bulk-quick-chips');
     if (chipsContainer) {
         chipsContainer.querySelectorAll('.bulk-chip').forEach(chip => {
@@ -468,22 +475,31 @@ function initManualBulkHandlers() {
                 document.getElementById('bulk-selected-code').value = '';
                 const resultsContainer = document.getElementById('bulk-product-results');
                 if (resultsContainer) resultsContainer.classList.add('d-none');
-                
-                // Intenta buscar el último precio si ya existe
                 ProductStore.searchProducts(name, 1).then(async results => {
                     if (results.length > 0 && results[0].product_name.toLowerCase() === name.toLowerCase()) {
                         const lastPrice = await CartStore.getLastKnownPrice(results[0].code);
-                        if (lastPrice > 0) {
-                            document.getElementById('bulk-unit-price').value = lastPrice.toFixed(2);
-                        }
+                        if (lastPrice > 0) document.getElementById('bulk-unit-price').value = lastPrice.toFixed(2);
                     }
                     updateBulkPriceSync('unit');
                 });
-
                 document.getElementById('bulk-amount').focus();
             });
         });
     }
+
+    // Mapa de categoría BEDCA → unidad por defecto
+    const CATEGORY_UNIT = {
+        fruit: 'kg', vegetable: 'kg', legume: 'kg', meat: 'kg',
+        fish: 'kg', nut: 'g', cereal: 'g', dairy: 'unidad',
+        oil: 'l', spice: 'g', condiment: 'g', other: 'unidad'
+    };
+
+    // Iconos por categoría BEDCA
+    const CATEGORY_ICON = {
+        fruit: '🍎', vegetable: '🥪', legume: '🫘', meat: '🥩',
+        fish: '🐟', nut: '🥜', cereal: '🌾', dairy: '🧀',
+        oil: '🍯', spice: '🌿', condiment: '🧄', other: '📦'
+    };
 
     const nameInput = document.getElementById('bulk-product-name');
     const resultsContainer = document.getElementById('bulk-product-results');
@@ -493,7 +509,9 @@ function initManualBulkHandlers() {
         nameInput.addEventListener('input', () => {
             const query = nameInput.value.trim();
             document.getElementById('bulk-selected-code').value = '';
-            
+            document.getElementById('bulk-selected-source').value = '';
+            document.getElementById('bulk-selected-category').value = '';
+
             clearTimeout(searchTimeout);
             if (query.length < 2) {
                 resultsContainer.classList.add('d-none');
@@ -502,37 +520,93 @@ function initManualBulkHandlers() {
             }
 
             searchTimeout = setTimeout(async () => {
-                const products = await ProductStore.searchProducts(query, 5);
+                const products = await ProductStore.searchProducts(query, 8);
                 if (products.length === 0) {
                     resultsContainer.classList.add('d-none');
                     resultsContainer.innerHTML = '';
                     return;
                 }
 
-                resultsContainer.innerHTML = products.map(p => `
-                    <button type="button" class="list-group-item list-group-item-action bg-dark text-white border-secondary d-flex justify-content-between align-items-center py-2" data-code="${p.code}" data-name="${(p.product_name || '').replace(/"/g, '&quot;')}" data-zone="${p.pantryZone || 'food'}" data-nutriscore="${p.nutriscore_grade || 'unknown'}">
-                        <span>${p.product_name}</span>
-                        <small class="badge bg-secondary">${p.pantryZone === 'nonfood' ? '🧴' : '🥦'}</small>
-                    </button>
-                `).join('');
+                resultsContainer.innerHTML = products.map(p => {
+                    // Badge de origen
+                    let sourceBadge = '';
+                    if (p.isPrimaryFood) {
+                        sourceBadge = '<span class="badge bg-success ms-1" style="font-size:0.6rem;">BEDCA</span>';
+                    } else if (p.is_custom) {
+                        sourceBadge = '<span class="badge bg-info text-dark ms-1" style="font-size:0.6rem;">Mio</span>';
+                    } else {
+                        sourceBadge = '<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">OFF</span>';
+                    }
+
+                    // Calorías por 100g si disponibles
+                    const kcal = p['energy-kcal_100g'];
+                    const kcalText = kcal > 0 ? `<span class="text-muted" style="font-size:0.7rem;">${Math.round(kcal)} kcal/100g</span>` : '';
+
+                    // Icono de categoría
+                    const catIcon = p.categories_tags && p.categories_tags[0]
+                        ? (CATEGORY_ICON[p.categories_tags[0]] || '📦')
+                        : (p.pantryZone === 'nonfood' ? '🧴' : '📦');
+
+                    const safeCode = (p.code || '').replace(/"/g, '&quot;');
+                    const safeName = (p.product_name || '').replace(/"/g, '&quot;');
+                    const safeZone = p.pantryZone || 'food';
+                    const safeNutriscore = p.nutriscore_grade || 'a';
+                    const safeCat = p.categories_tags && p.categories_tags[0] ? p.categories_tags[0] : '';
+                    const safeSource = p.isPrimaryFood ? 'bedca' : (p.is_custom ? 'custom' : 'off');
+
+                    return `<button type="button"
+                        class="list-group-item list-group-item-action bg-dark text-white border-secondary py-2 px-3"
+                        data-code="${safeCode}"
+                        data-name="${safeName}"
+                        data-zone="${safeZone}"
+                        data-nutriscore="${safeNutriscore}"
+                        data-category="${safeCat}"
+                        data-source="${safeSource}">
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                <span style="font-size:1.1rem;">${catIcon}</span>
+                                <span class="text-truncate fw-semibold">${p.product_name}</span>
+                                ${sourceBadge}
+                            </div>
+                            <div class="flex-shrink-0">
+                                ${kcalText}
+                            </div>
+                        </div>
+                    </button>`;
+                }).join('');
                 resultsContainer.classList.remove('d-none');
 
                 resultsContainer.querySelectorAll('button').forEach(btn => {
                     btn.addEventListener('click', async () => {
                         nameInput.value = btn.dataset.name;
                         document.getElementById('bulk-selected-code').value = btn.dataset.code;
+                        document.getElementById('bulk-selected-source').value = btn.dataset.source || '';
+                        document.getElementById('bulk-selected-category').value = btn.dataset.category || '';
                         document.getElementById('bulk-zone').value = btn.dataset.zone || 'food';
-                        document.getElementById('bulk-nutriscore').value = btn.dataset.nutriscore || 'unknown';
+                        document.getElementById('bulk-nutriscore').value = btn.dataset.nutriscore || 'a';
                         resultsContainer.classList.add('d-none');
+
+                        // Auto-seleccionar unidad según categoría BEDCA
+                        const cat = btn.dataset.category;
+                        if (cat && CATEGORY_UNIT[cat]) {
+                            const unitSelect = document.getElementById('bulk-unit');
+                            if (unitSelect) {
+                                unitSelect.value = CATEGORY_UNIT[cat];
+                                const unitLabel = document.getElementById('bulk-unit-label');
+                                if (unitLabel) unitLabel.textContent = CATEGORY_UNIT[cat];
+                            }
+                        }
 
                         const lastPrice = await CartStore.getLastKnownPrice(btn.dataset.code);
                         if (lastPrice > 0) {
                             document.getElementById('bulk-unit-price').value = lastPrice.toFixed(2);
                             updateBulkPriceSync('unit');
                         }
+
+                        document.getElementById('bulk-amount').focus();
                     });
                 });
-            }, 250);
+            }, 200);
         });
 
         // Cerrar resultados si se hace click fuera

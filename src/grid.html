@@ -309,34 +309,24 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
         <div class="modal-body text-start">
-          <!-- Atajos rápidos de productos frescos / a granel -->
-          <div class="mb-3">
-            <label class="form-label small text-muted mb-1 fw-bold">Atajos rápidos:</label>
-            <div class="d-flex flex-wrap gap-1" id="bulk-quick-chips">
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Plátanos" data-unit="kg">🍌 Plátanos</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Manzanas" data-unit="kg">🍎 Manzanas</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Tomates" data-unit="kg">🍅 Tomates</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Patatas" data-unit="kg">🥔 Patatas</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Cebollas" data-unit="kg">🧅 Cebollas</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Naranjas" data-unit="kg">🍊 Naranjas</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Aguacates" data-unit="kg">🥑 Aguacates</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Zanahorias" data-unit="kg">🥕 Zanahorias</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Lechuga" data-unit="unidad">🥬 Lechuga</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Barra de Pan" data-unit="unidad">🥖 Pan</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Huevos" data-unit="unidad">🥚 Huevos</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Frutos Secos" data-unit="g">🥜 Frutos Secos</button>
-              <button type="button" class="btn btn-sm btn-outline-light bulk-chip" data-name="Legumbres a granel" data-unit="kg">🫘 Legumbres</button>
+          <!-- Búsqueda rápida en catálogo de 1000 alimentos básicos -->
+          <div class="mb-2">
+            <div class="alert alert-dark border-secondary py-2 px-3 small mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-search text-warning"></i>
+              <span class="text-muted">Escribe 2+ letras para buscar en el catálogo de <strong class="text-white">~1000 alimentos básicos</strong> (BEDCA) con datos nutricionales. Ej: <em>man</em> → Manzana, Mandarina, Mandarín...</span>
             </div>
           </div>
 
           <form id="form-manual-bulk">
             <input type="hidden" id="bulk-selected-code" value="">
+            <input type="hidden" id="bulk-selected-source" value="">
+            <input type="hidden" id="bulk-selected-category" value="">
 
             <div class="mb-3">
               <label for="bulk-product-name" class="form-label small fw-bold">Nombre del producto *</label>
               <div class="position-relative">
-                <input type="text" class="form-control bg-dark text-white border-secondary" id="bulk-product-name" placeholder="Ej: Manzanas Fuji, Tomate pera, etc." required autocomplete="off">
-                <div id="bulk-product-results" class="list-group position-absolute w-100 mt-1 d-none shadow-lg" style="z-index: 1055; max-height: 180px; overflow-y: auto;"></div>
+                <input type="text" class="form-control bg-dark text-white border-secondary" id="bulk-product-name" placeholder="Ej: Manzana, Tomate, Pechuga de pollo..." required autocomplete="off">
+                <div id="bulk-product-results" class="list-group position-absolute w-100 mt-1 d-none shadow-lg" style="z-index: 1055; max-height: 240px; overflow-y: auto;"></div>
               </div>
             </div>
 
