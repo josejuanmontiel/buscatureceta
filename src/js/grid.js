@@ -261,7 +261,7 @@ async function updateCartUI() {
                     <div class="d-flex align-items-center gap-1 text-truncate me-1 flex-grow-1 min-w-0" id="cart-name-wrapper-${item.id}">
                         <h6 class="mb-0 text-truncate ${isGeneric ? 'text-warning' : 'text-info'}" style="cursor:pointer;" onclick="window.showProductQuickDetail('${item.productCode}', '${safeProductName}')" id="cart-name-display-${item.id}">${item.productName}</h6>
                         <button class="btn btn-sm btn-outline-secondary border-0 py-0 px-1 flex-shrink-0 btn-rename-cart-item" onclick="window.startRenameCartItem(${item.id}, '${safeProductName}')" title="Renombrar producto" aria-label="Renombrar producto">✏️</button>
-                        <span class="badge bg-secondary text-white-50 flex-shrink-0" style="font-size:0.75rem;">${lineTotal} €</span>
+                        <span class="badge bg-secondary text-white-50 flex-shrink-0" id="cart-line-total-${item.id}" style="font-size:0.75rem;">${lineTotal} €</span>
                     </div>
                     <div class="d-flex gap-2 flex-shrink-0">
                         ${showOFFButton ? `<button class="btn btn-sm btn-outline-info" onclick="window.triggerOFFUpload('${item.productCode}')" title="Subir foto a OpenFoodFacts"><i class="bi bi-camera"></i> OFF</button>` : ''}
@@ -270,7 +270,7 @@ async function updateCartUI() {
                 </div>
                 <div class="d-flex align-items-center w-100 gap-2 flex-wrap" id="cart-item-${item.id}">
                     <div class="input-group input-group-sm" style="flex: 1 1 120px;">
-                        <input type="number" class="form-control bg-dark text-white border-secondary cart-amount-input" value="${item.amount}" min="0" step="any" onchange="window.updateCartItem(${item.id})">
+                        <input type="number" class="form-control bg-dark text-white border-secondary cart-amount-input" value="${item.amount}" min="0" step="any" onchange="window.updateCartItem(${item.id})" oninput="window.updateCartItem(${item.id})">
                         <select class="form-select bg-secondary text-white border-secondary cart-unit-select" style="max-width: 75px;" onchange="window.updateCartItem(${item.id})">
                             <option value="kg" ${item.unit === 'kg' ? 'selected' : ''}>kg</option>
                             <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g</option>
@@ -281,7 +281,7 @@ async function updateCartUI() {
                         </select>
                     </div>
                     <div class="input-group input-group-sm" style="flex: 1 1 90px;">
-                        <input type="number" class="form-control bg-dark text-white border-secondary cart-price-input" value="${item.price}" min="0" step="0.01" onchange="window.updateCartItem(${item.id})">
+                        <input type="number" class="form-control bg-dark text-white border-secondary cart-price-input" value="${item.price}" min="0" step="0.01" onchange="window.updateCartItem(${item.id})" oninput="window.updateCartItem(${item.id})">
                         <span class="input-group-text bg-secondary text-white border-secondary">€</span>
                     </div>
                     <div class="input-group input-group-sm" style="flex: 1 1 90px;" title="Unidades por paquete (opcional)">
@@ -362,14 +362,27 @@ window.triggerOFFUpload = async function(code) {
 window.updateCartItem = async function(id) {
     const container = document.getElementById(`cart-item-${id}`);
     if (!container) return;
-    const amount = container.querySelector('.cart-amount-input').value;
-    const price = container.querySelector('.cart-price-input').value;
+    const amountVal = container.querySelector('.cart-amount-input')?.value;
+    const priceVal = container.querySelector('.cart-price-input')?.value;
+    const amount = parseFloat(amountVal) || 0;
+    const price = parseFloat(priceVal) || 0;
     const unitSelect = container.querySelector('.cart-unit-select');
     const unit = unitSelect ? unitSelect.value : undefined;
     const packUnitsInput = container.querySelector('.cart-pack-units-input');
     const packageUnits = packUnitsInput ? (parseInt(packUnitsInput.value, 10) || null) : undefined;
+
+    // Actualizar badge de subtotal de línea sin re-renderizar todo el DOM
+    const lineBadge = document.getElementById(`cart-line-total-${id}`);
+    if (lineBadge) {
+        lineBadge.textContent = `${(amount * price).toFixed(2)} €`;
+    }
+
     await CartStore.updateCartItem(id, amount, price, unit, packageUnits);
-    await updateCartUI();
+
+    // Actualizar total general sin destruir los inputs ni perder foco
+    const { total } = await CartStore.getCart();
+    const totalEl = document.getElementById('cart-total');
+    if (totalEl) totalEl.innerText = `${total.toFixed(2)} €`;
 };
 
 window.removeFromCart = async function(id) {
