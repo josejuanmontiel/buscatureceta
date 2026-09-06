@@ -19,8 +19,10 @@ test.describe('Cart Line Edit / Rename Generic Product Flow', () => {
     const weighedFruitBarcode = '280123456789';
     await page.fill('#code-input', weighedFruitBarcode);
     await page.click('#query-btn');
+    await page.waitForSelector('#btn-unknown-add-generic', { state: 'visible' });
+    await page.click('#btn-unknown-add-generic');
 
-    // 3. El producto no existe en BD y se añade automáticamente como genérico "Producto 280123456789"
+    // 3. El producto no existe en BD y se añade como genérico "Producto 280123456789"
     const cartList = page.locator('#cart-list');
     await expect(cartList).toContainText(`Producto ${weighedFruitBarcode}`);
 

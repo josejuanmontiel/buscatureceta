@@ -563,6 +563,42 @@
     </div>
   </div>
 
+  <!-- Modal: Unknown Scanned Product Pause / Confirmation -->
+  <div class="modal fade" id="modal-unknown-barcode" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-warning">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title text-warning">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>Producto no encontrado
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-start">
+          <p class="mb-2">El código escaneado no se encuentra en la base de datos local ni en OpenFoodFacts:</p>
+          <div class="alert alert-secondary py-2 px-3 text-center fs-5 fw-bold font-monospace text-warning bg-black border-secondary" id="unknown-barcode-display">
+            ---
+          </div>
+          <p class="text-muted small mb-0">
+            ¿Puede tratarse de una mala lectura del código de barras? Puedes volver a enfocarlo para reintentar o añadirlo como producto provisional al carro.
+          </p>
+        </div>
+        <div class="modal-footer border-secondary d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" id="btn-unknown-cancel">
+            <i class="bi bi-x-circle me-1"></i>Descartar
+          </button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-warning btn-sm" id="btn-unknown-add-generic">
+              <i class="bi bi-cart-plus me-1"></i>Añadir como desconocido
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-unknown-rescan">
+              <i class="bi bi-camera me-1"></i>Volver a escanear
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
     </div>
   </template>
   
@@ -1193,8 +1229,14 @@
         </div>
       </template>
 
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Agenda de Comidas</h1>
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <h1 class="mb-0">Agenda de Comidas</h1>
+          <button class="btn btn-outline-warning btn-sm" id="btn-open-weekly-draft" title="Bocetar rápidamente qué planificar de menú esta semana">
+            <i class="bi bi-pencil-square me-1"></i>📝 Borrador Semanal
+            <span class="badge bg-warning text-dark ms-1 d-none" id="badge-weekly-draft-active">Borrador</span>
+          </button>
+        </div>
         <div>
           <button class="btn btn-outline-light me-2" id="btn-prev-week">&lt; Semana Anterior</button>
           <span id="current-week-label" class="fw-bold me-2"></span>
@@ -1520,6 +1562,73 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Borrador de Menú Semanal (Draft) -->
+  <div class="modal fade" id="modal-weekly-draft" tabindex="-1" aria-labelledby="modalWeeklyDraftTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modalWeeklyDraftTitle">
+            <i class="bi bi-pencil-square text-warning me-2"></i>
+            <span id="weekly-draft-header-text">📝 Borrador de Menú Semanal</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Espacio para bocetar rápidamente qué planificar de comidas y cenas esta semana antes de detallar recetas o ingredientes.
+          </p>
+
+          <ul class="nav nav-tabs border-secondary mb-3" id="draftTab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active text-light" id="tab-draft-days-btn" data-bs-toggle="tab" data-bs-target="#tab-draft-days" type="button" role="tab">
+                <i class="bi bi-calendar-week me-1"></i>Por Días (Comida / Cena)
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link text-light" id="tab-draft-free-btn" data-bs-toggle="tab" data-bs-target="#tab-draft-free" type="button" role="tab">
+                <i class="bi bi-card-text me-1"></i>Notas Libres
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- Pestaña 1: Por días -->
+            <div class="tab-pane fade show active" id="tab-draft-days" role="tabpanel">
+              <div class="d-flex flex-column gap-2" id="draft-days-container">
+                <!-- Rellenado dinámicamente con los 7 días de la semana -->
+              </div>
+            </div>
+
+            <!-- Pestaña 2: Notas libres -->
+            <div class="tab-pane fade" id="tab-draft-free" role="tabpanel">
+              <label class="form-label small text-muted">Anotaciones rápidas o menú borrador de la semana:</label>
+              <textarea class="form-control bg-secondary text-white border-secondary font-monospace" id="draft-free-text" rows="8" placeholder="Ej:&#10;Lunes: Lentejas | Tortilla&#10;Martes: Ensalada César | Pescado&#10;Miércoles: Pasta boloñesa | Verduras salteadas..."></textarea>
+            </div>
+          </div>
+
+          <div class="mt-3 p-2 bg-black bg-opacity-25 rounded border border-secondary small text-muted d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-lightning-charge text-warning me-1"></i>Puedes volcar estos platos a la agenda para que aparezcan como comidas planificadas (amarillo) listas para desarrollar.</span>
+            <span id="draft-last-saved" class="fst-italic text-info"></span>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary justify-content-between">
+          <button type="button" class="btn btn-outline-danger btn-sm" id="btn-clear-weekly-draft" title="Limpiar este borrador">
+            <i class="bi bi-trash me-1"></i>Limpiar
+          </button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-weekly-draft">
+              <i class="bi bi-save me-1"></i>Guardar Borrador
+            </button>
+            <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" id="btn-apply-weekly-draft">
+              <i class="bi bi-lightning-charge-fill me-1"></i>⚡ Volcar a la Agenda
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -275,6 +275,87 @@ function initInlineScannerForAddModal() {
     modalEl.addEventListener('hide.bs.modal', stopScanner);
 }
 
+// ── Clasificación Inteligente para OpenFoodFacts ───────────────────────────
+
+export function getProductOFFStatus(item, product, uploads) {
+    const rawCode = item.productCode || '';
+    let cleanCode = '';
+    if (product?.real_code) {
+        cleanCode = product.real_code;
+    } else if (rawCode.startsWith('GENERIC_')) {
+        cleanCode = rawCode.replace(/^GENERIC_/, '');
+    } else {
+        cleanCode = rawCode;
+    }
+
+    // 1. Descartar alimentos primarios o no numéricos
+    if (cleanCode.startsWith('primary:') || cleanCode.startsWith('bedca_')) {
+        return { isApplicable: false };
+    }
+    if (!/^\d{8,14}$/.test(cleanCode)) {
+        return { isApplicable: false };
+    }
+
+    // 2. Descartar códigos de balanza interna de tienda (20 a 29)
+    if (/^2[0-9]{7,13}$/.test(cleanCode)) {
+        return { isApplicable: false, isStoreScale: true };
+    }
+
+    // 3. Descartar genéricos de texto puro (Date.now() timestamp sin real_code)
+    if (product && product.is_custom && !product.real_code && rawCode.startsWith('GENERIC_')) {
+        return { isApplicable: false };
+    }
+
+    // 4. Si tiene uploads locales en cola (pendientes o hechos):
+    if (uploads && uploads.length > 0) {
+        const doneCount = uploads.filter(u => u.status === 'done').length;
+        const pendingCount = uploads.length - doneCount;
+        if (doneCount > 0 && pendingCount === 0) {
+            return {
+                isApplicable: true,
+                cleanCode,
+                status: 'uploaded',
+                doneCount,
+                pendingCount
+            };
+        }
+        return {
+            isApplicable: true,
+            cleanCode,
+            status: 'pending_upload',
+            doneCount,
+            pendingCount
+        };
+    }
+
+    // 5. Verificar en la base de datos oficial OFF (db.products)
+    if (product && !product.is_custom) {
+        const hasFrontImage = !!(product.image_url && product.image_url.trim());
+        const hasIngredientsImage = !!(product.image_ingredients_url && product.image_ingredients_url.trim());
+        const hasNutritionImage = !!(product.image_nutrition_url && product.image_nutrition_url.trim());
+        const missingPhoto = !hasFrontImage || !hasIngredientsImage;
+
+        return {
+            isApplicable: true,
+            cleanCode,
+            status: hasFrontImage ? 'in_off_with_photo' : 'in_off_missing_photo',
+            hasFrontImage,
+            hasIngredientsImage,
+            hasNutritionImage,
+            missingPhoto,
+            product
+        };
+    }
+
+    // 6. Producto comercial que NO está en la base de datos oficial (desconocido / nuevo en OFF)
+    return {
+        isApplicable: true,
+        cleanCode,
+        status: 'not_in_off',
+        product
+    };
+}
+
 async function renderHistory() {
     window.renderHistory = renderHistory;
     const carts = await db.cartHistory.orderBy('date').reverse().toArray();
@@ -294,6 +375,25 @@ async function renderHistory() {
         }
         uploadsByBarcode.get(u.barcode).push(u);
     });
+
+    // Cargar información de productos para clasificar OFF con precisión
+    const allCodes = new Set();
+    carts.forEach(c => (c.items || []).forEach(i => {
+        if (i.productCode) allCodes.add(i.productCode);
+        const clean = (i.productCode || '').replace(/^GENERIC_/, '');
+        if (/^\d{8,14}$/.test(clean)) allCodes.add(clean);
+    }));
+
+    const productsMap = new Map();
+    try {
+        const productsList = await ProductStore.getProductsByCodes(Array.from(allCodes));
+        productsList.forEach(p => {
+            if (p.code) productsMap.set(p.code, p);
+            if (p.real_code) productsMap.set(p.real_code, p);
+        });
+    } catch (e) {
+        console.warn('[cart-history] Error leyendo productos para historial:', e);
+    }
 
     // Mapa de zona de despensa por código de producto (para mostrar badge no-alimentario correcto)
     const pantryZoneByCode = new Map();
@@ -409,25 +509,28 @@ async function renderHistory() {
                                 const safeItemName = (item.productName || item.productCode).replace(/'/g, "\\'").replace(/"/g, '&quot;');
                                 const histItemKey = `hist-${cart.id}-${itemIdx}`;
 
-                                // Calcular código de barras real para OFF
-                                const rawCode = item.productCode || '';
-                                const cleanCode = rawCode.startsWith('GENERIC_') ? rawCode.replace(/^GENERIC_/, '') : rawCode;
-                                const isNumeric = /^\d{8,14}$/.test(cleanCode);
-                                const effectiveBarcode = isNumeric ? cleanCode : (rawCode.startsWith('GENERIC_') ? rawCode : '');
-                                const uploads = (effectiveBarcode && uploadsByBarcode.get(effectiveBarcode)) || [];
+                                // Clasificación inteligente OFF
+                                const cleanCode = (item.productCode || '').replace(/^GENERIC_/, '');
+                                const product = productsMap.get(item.productCode) || productsMap.get(cleanCode);
+                                const uploads = (cleanCode && uploadsByBarcode.get(cleanCode)) || [];
+                                const offStatus = getProductOFFStatus(item, product, uploads);
 
                                 let offBadge = '';
-                                if (uploads.length > 0) {
-                                    const doneCount = uploads.filter(u => u.status === 'done').length;
-                                    const pendingCount = uploads.length - doneCount;
-                                    const goOffLink = `<a href="javascript:void(0)" onclick="window.navigateToOFFZone('${effectiveBarcode}')" class="ms-1 text-decoration-none" title="Ver en zona OFF" style="font-size:0.65rem;">🌍↗</a>`;
-                                    if (doneCount > 0 && pendingCount === 0) {
-                                        offBadge = `<span class="badge bg-success" style="cursor:pointer; font-size: 0.7rem;" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', 'ingredients')" title="Subido a OpenFoodFacts (${doneCount} foto${doneCount > 1 ? 's' : ''}). Clic para añadir más">✅ OFF (${doneCount})</span>${goOffLink}`;
-                                    } else {
-                                        offBadge = `<span class="badge bg-warning text-dark" style="cursor:pointer; font-size: 0.7rem;" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', 'ingredients')" title="${uploads.length} foto(s) en cola OFF. Clic para añadir más">⏳ OFF (${uploads.length})</span>${goOffLink}`;
-                                    }
-                                } else if (effectiveBarcode) {
-                                    offBadge = `<button type="button" class="btn btn-outline-info btn-sm py-0 px-1" style="font-size: 0.7rem;" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', 'front')" title="Aportar fotos de este producto a OpenFoodFacts"><i class="bi bi-camera me-1"></i>📷 OFF</button>`;
+                                if (!offStatus.isApplicable) {
+                                    offBadge = '';
+                                } else if (offStatus.status === 'uploaded') {
+                                    const goOffLink = `<a href="javascript:void(0)" onclick="window.navigateToOFFZone('${offStatus.cleanCode}')" class="ms-1 text-decoration-none" title="Ver en zona OFF" style="font-size:0.65rem;">🌍↗</a>`;
+                                    offBadge = `<span class="badge bg-success" style="cursor:pointer; font-size: 0.7rem;" onclick="window.historyContributeToOFF('${offStatus.cleanCode}', '${safeItemName}', 'ingredients')" title="Subido a OpenFoodFacts (${offStatus.doneCount} foto${offStatus.doneCount > 1 ? 's' : ''}). Clic para añadir más">✅ OFF (${offStatus.doneCount})</span>${goOffLink}`;
+                                } else if (offStatus.status === 'pending_upload') {
+                                    const goOffLink = `<a href="javascript:void(0)" onclick="window.navigateToOFFZone('${offStatus.cleanCode}')" class="ms-1 text-decoration-none" title="Ver en zona OFF" style="font-size:0.65rem;">🌍↗</a>`;
+                                    offBadge = `<span class="badge bg-warning text-dark" style="cursor:pointer; font-size: 0.7rem;" onclick="window.historyContributeToOFF('${offStatus.cleanCode}', '${safeItemName}', 'ingredients')" title="${uploads.length} foto(s) en cola OFF. Clic para añadir más">⏳ OFF (${uploads.length})</span>${goOffLink}`;
+                                } else if (offStatus.status === 'in_off_with_photo') {
+                                    const offUrl = `https://world.openfoodfacts.org/product/${offStatus.cleanCode}`;
+                                    offBadge = `<a href="${offUrl}" target="_blank" class="badge bg-secondary bg-opacity-50 text-info text-decoration-none" style="font-size: 0.7rem;" title="Registrado en OpenFoodFacts con fotografía. Clic para ver ficha"><i class="bi bi-check2 me-1 text-success"></i>OFF</a>`;
+                                } else if (offStatus.status === 'in_off_missing_photo') {
+                                    offBadge = `<button type="button" class="btn btn-outline-warning btn-sm py-0 px-1" style="font-size: 0.7rem;" onclick="window.historyContributeToOFF('${offStatus.cleanCode}', '${safeItemName}', 'front')" title="En OpenFoodFacts pero sin foto frontal. Clic para aportar"><i class="bi bi-camera me-1"></i>📷 OFF (Falta foto)</button>`;
+                                } else if (offStatus.status === 'not_in_off') {
+                                    offBadge = `<button type="button" class="btn btn-outline-info btn-sm py-0 px-1" style="font-size: 0.7rem;" onclick="window.historyContributeToOFF('${offStatus.cleanCode}', '${safeItemName}', 'front')" title="Producto nuevo sin ficha en OpenFoodFacts. Clic para aportar fotos"><i class="bi bi-camera me-1"></i>📷 OFF (Nuevo)</button>`;
                                 }
 
                                 // Nombre: genéricos muestran botón de edición, otros van a quickDetail
@@ -1007,54 +1110,154 @@ window.openUnpackingAssistant = async function(cartId) {
 
     if (items.length === 0) {
         container.innerHTML = '<div class="alert alert-secondary small">Esta compra no tiene productos desglosados para desempacar.</div>';
-    } else {
-        container.innerHTML = items.map((item) => {
-            const rawCode = item.productCode || '';
-            const cleanCode = rawCode.startsWith('GENERIC_') ? rawCode.replace(/^GENERIC_/, '') : rawCode;
-            const isNumeric = /^\d{8,14}$/.test(cleanCode);
-            const effectiveBarcode = isNumeric ? cleanCode : (rawCode.startsWith('GENERIC_') ? rawCode : '');
-            const safeItemName = (item.productName || item.productCode).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-
-            const uploads = (effectiveBarcode && uploadsByBarcode.get(effectiveBarcode)) || [];
-            const doneCount = uploads.filter(u => u.status === 'done').length;
-            const pendingCount = uploads.length - doneCount;
-
-            let statusBadge = '';
-            let nextType = 'front';
-            if (uploads.length > 0) {
-                const types = uploads.map(u => u.type);
-                if (!types.includes('ingredients')) nextType = 'ingredients';
-                else if (!types.includes('nutrition')) nextType = 'nutrition';
-                else nextType = 'front';
-
-                if (doneCount > 0 && pendingCount === 0) {
-                    statusBadge = `<span class="badge bg-success">✅ En OFF (${doneCount} foto${doneCount > 1 ? 's' : ''})</span>`;
-                } else {
-                    statusBadge = `<span class="badge bg-warning text-dark">⏳ En cola OFF (${uploads.length} foto${uploads.length > 1 ? 's' : ''})</span>`;
-                }
-            } else {
-                statusBadge = `<span class="badge bg-secondary">Sin fotos</span>`;
-            }
-
-            return `
-                <div class="card bg-black border-secondary p-2 d-flex flex-row justify-content-between align-items-center gap-2">
-                    <div class="overflow-hidden">
-                        <div class="fw-bold text-white text-truncate" style="max-width: 340px;">${item.productName || item.productCode}</div>
-                        <div class="small text-muted">
-                            <code>${effectiveBarcode || 'Sin código'}</code> • ${item.amount} ${item.unit} (${item.price ? (item.amount * item.price).toFixed(2) + '€' : ''})
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                        ${statusBadge}
-                        <button type="button" class="btn btn-sm btn-outline-info" onclick="window.historyContributeToOFF('${effectiveBarcode}', '${safeItemName}', '${nextType}')" title="Aportar o añadir foto a OpenFoodFacts">
-                            <i class="bi bi-camera-plus me-1"></i>+ Foto
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        Modal.getOrCreateInstance(modalEl).show();
+        return;
     }
 
+    // Cargar productos desde ProductStore para conocer su estado OFF real
+    const allCodes = new Set();
+    items.forEach(i => {
+        if (i.productCode) allCodes.add(i.productCode);
+        const clean = (i.productCode || '').replace(/^GENERIC_/, '');
+        if (/^\d{8,14}$/.test(clean)) allCodes.add(clean);
+    });
+
+    const productsMap = new Map();
+    try {
+        const productsList = await ProductStore.getProductsByCodes(Array.from(allCodes));
+        productsList.forEach(p => {
+            if (p.code) productsMap.set(p.code, p);
+            if (p.real_code) productsMap.set(p.real_code, p);
+        });
+    } catch (e) {
+        console.warn('[cart-history] Error leyendo productos para desempacar:', e);
+    }
+
+    // Clasificar los productos de la compra
+    const needsAction = [];
+    const alreadyDocumented = [];
+    const notApplicable = [];
+
+    items.forEach((item) => {
+        const cleanCode = (item.productCode || '').replace(/^GENERIC_/, '');
+        const product = productsMap.get(item.productCode) || productsMap.get(cleanCode);
+        const uploads = (cleanCode && uploadsByBarcode.get(cleanCode)) || [];
+        const offStatus = getProductOFFStatus(item, product, uploads);
+        const safeItemName = (item.productName || item.productCode).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+        if (!offStatus.isApplicable) {
+            notApplicable.push({ item, offStatus, safeItemName });
+        } else if (offStatus.status === 'in_off_with_photo' || offStatus.status === 'uploaded') {
+            alreadyDocumented.push({ item, product, offStatus, safeItemName, uploads });
+        } else {
+            // not_in_off, in_off_missing_photo, pending_upload
+            needsAction.push({ item, product, offStatus, safeItemName, uploads });
+        }
+    });
+
+    let html = '';
+
+    // 1. Sección de productos que requieren fotos o datos
+    if (needsAction.length > 0) {
+        html += `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-warning mb-0 fw-bold"><i class="bi bi-camera me-1"></i>Requieren fotos o datos en OFF (${needsAction.length})</h6>
+                    <span class="small text-muted">Aportaciones recomendadas</span>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    ${needsAction.map(({ item, product, offStatus, safeItemName, uploads }) => {
+                        let statusBadge = '';
+                        let nextType = 'front';
+                        if (uploads.length > 0) {
+                            const types = uploads.map(u => u.type);
+                            if (!types.includes('ingredients')) nextType = 'ingredients';
+                            else if (!types.includes('nutrition')) nextType = 'nutrition';
+                            else nextType = 'front';
+                            statusBadge = `<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>En cola (${uploads.length})</span>`;
+                        } else if (offStatus.status === 'in_off_missing_photo') {
+                            statusBadge = `<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Falta foto frontal</span>`;
+                        } else {
+                            statusBadge = `<span class="badge bg-info text-dark"><i class="bi bi-stars me-1"></i>Nuevo en OFF</span>`;
+                        }
+
+                        return `
+                            <div class="card bg-black border-warning border-opacity-50 p-2 d-flex flex-row justify-content-between align-items-center gap-2">
+                                <div class="overflow-hidden">
+                                    <div class="fw-bold text-white text-truncate" style="max-width: 320px;">${item.productName || item.productCode}</div>
+                                    <div class="small text-muted">
+                                        <code>${offStatus.cleanCode}</code> • ${item.amount} ${item.unit} (${item.price ? (item.amount * item.price).toFixed(2) + '€' : ''})
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    ${statusBadge}
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="window.historyContributeToOFF('${offStatus.cleanCode}', '${safeItemName}', '${nextType}')" title="Aportar foto a OpenFoodFacts">
+                                        <i class="bi bi-camera-plus me-1"></i>+ Foto
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="alert alert-success py-2 small mb-3">
+                <i class="bi bi-check-circle-fill me-1"></i>¡Excelente! Todos los productos comerciales de esta compra ya están registrados en OpenFoodFacts con sus fotografías.
+            </div>
+        `;
+    }
+
+    // 2. Sección de productos ya documentados
+    if (alreadyDocumented.length > 0) {
+        html += `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-success mb-0"><i class="bi bi-check2-all me-1"></i>Ya documentados en OpenFoodFacts (${alreadyDocumented.length})</h6>
+                    <span class="small text-muted">Ficha completa</span>
+                </div>
+                <div class="d-flex flex-column gap-2">
+                    ${alreadyDocumented.map(({ item, product, offStatus, safeItemName, uploads }) => {
+                        const thumbUrl = product?.image_url || '';
+                        const offUrl = `https://world.openfoodfacts.org/product/${offStatus.cleanCode}`;
+                        return `
+                            <div class="card bg-black border-secondary p-2 d-flex flex-row justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                    ${thumbUrl ? `<img src="${thumbUrl}" class="rounded flex-shrink-0" style="width: 36px; height: 36px; object-fit: cover;" alt="Foto">` : '<span class="fs-4">🥫</span>'}
+                                    <div class="overflow-hidden">
+                                        <div class="fw-bold text-white text-truncate" style="max-width: 300px;">${item.productName || item.productCode}</div>
+                                        <div class="small text-muted">
+                                            <code>${offStatus.cleanCode}</code> • <a href="${offUrl}" target="_blank" class="text-info text-decoration-none">Ver en OFF ↗</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    <span class="badge bg-success"><i class="bi bi-check2 me-1"></i>En OFF</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="window.historyContributeToOFF('${offStatus.cleanCode}', '${safeItemName}', 'ingredients')" title="Añadir otra foto complementaria si lo deseas" style="font-size:0.75rem;">
+                                        + Foto
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // 3. Sección de productos no aplicables (granel, pesaje de tienda, etc.)
+    if (notApplicable.length > 0) {
+        html += `
+            <div class="small text-muted p-2 rounded bg-black border border-secondary">
+                <span class="badge bg-secondary me-2">📦 Granel / Local</span>
+                ${notApplicable.length} producto${notApplicable.length > 1 ? 's' : ''} a granel o sin código comercial (no aplican a OpenFoodFacts):
+                <span class="fst-italic text-secondary ms-1">${notApplicable.map(n => n.safeItemName).slice(0, 3).join(', ')}${notApplicable.length > 3 ? '...' : ''}</span>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
     Modal.getOrCreateInstance(modalEl).show();
 };
 

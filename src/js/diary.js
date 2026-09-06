@@ -24,6 +24,7 @@ let diaryPhotoCapturedBlob = null;
 let diaryCameraStream = null;
 let mealTray = [];
 let loadedRecipes = [];
+let currentWeekDays = [];
 
 const DAYS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -34,6 +35,11 @@ export async function initView() {
   checkInModal = new Modal(document.getElementById('mealCheckInModal'));
   saveTemplateModal = new Modal(document.getElementById('saveTemplateModal'));
   mealHistoryModal = new Modal(document.getElementById('mealHistoryModal'));
+
+  document.getElementById('btn-open-weekly-draft')?.addEventListener('click', openWeeklyDraftModal);
+  document.getElementById('btn-save-weekly-draft')?.addEventListener('click', () => saveCurrentWeeklyDraft(true));
+  document.getElementById('btn-clear-weekly-draft')?.addEventListener('click', clearCurrentWeeklyDraft);
+  document.getElementById('btn-apply-weekly-draft')?.addEventListener('click', applyCurrentWeeklyDraftToAgenda);
 
   document.getElementById('btn-view-meal-history')?.addEventListener('click', () => {
     if (activeDetailEntryId) {
@@ -148,6 +154,7 @@ export async function initView() {
 
 async function renderWeek(date) {
   const { weekDays } = await DiaryStore.getCurrentWeekEntries(date);
+  currentWeekDays = weekDays;
   
   const start = new Date(weekDays[0]);
   const end = new Date(weekDays[6]);
@@ -201,7 +208,160 @@ async function renderWeek(date) {
     `;
     container.appendChild(dayEl);
   }
+
+  updateWeeklyDraftBadge();
 }
+
+// ── Controladores del Borrador de Menú Semanal (Draft) ─────────────────────
+
+function updateWeeklyDraftBadge() {
+  const badge = document.getElementById('badge-weekly-draft-active');
+  if (!badge || !currentWeekDays || currentWeekDays.length === 0) return;
+  const draft = DiaryStore.getWeeklyDraft(currentWeekDays[0]);
+  const hasContent = (draft.freeText && draft.freeText.trim().length > 0) ||
+                     Object.values(draft.days || {}).some(d => (d.lunch && d.lunch.trim().length > 0) || (d.dinner && d.dinner.trim().length > 0));
+  if (hasContent) {
+    badge.classList.remove('d-none');
+  } else {
+    badge.classList.add('d-none');
+  }
+}
+
+export function openWeeklyDraftModal() {
+  if (!currentWeekDays || currentWeekDays.length === 0) return;
+  const start = new Date(currentWeekDays[0]);
+  const end = new Date(currentWeekDays[6]);
+  const titleEl = document.getElementById('weekly-draft-header-text');
+  if (titleEl) {
+    titleEl.textContent = `📝 Borrador: ${start.getDate()} ${start.toLocaleString('es', {month:'short'})} - ${end.getDate()} ${end.toLocaleString('es', {month:'short'})}`;
+  }
+
+  const draft = DiaryStore.getWeeklyDraft(currentWeekDays[0]);
+  const container = document.getElementById('draft-days-container');
+  if (container) {
+    container.innerHTML = currentWeekDays.map((day) => {
+      const dayDate = new Date(day);
+      const dayName = DAYS_ES[dayDate.getDay()];
+      const dayNum = dayDate.getDate();
+      const dayData = (draft.days && draft.days[day]) || {};
+
+      return `
+        <div class="card bg-black border-secondary p-2 draft-day-row" data-date="${day}">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-bold text-warning small">${dayName} ${dayNum}</span>
+            <span class="text-muted small">${day}</span>
+          </div>
+          <div class="row g-2">
+            <div class="col-sm-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-secondary border-secondary text-white small" style="width:70px;">Comida</span>
+                <input type="text" class="form-control bg-dark text-white border-secondary draft-lunch-input" placeholder="Ej: Lentejas estofadas" value="${(dayData.lunch || '').replace(/"/g, '&quot;')}">
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-secondary border-secondary text-white small" style="width:70px;">Cena</span>
+                <input type="text" class="form-control bg-dark text-white border-secondary draft-dinner-input" placeholder="Ej: Tortilla francesa" value="${(dayData.dinner || '').replace(/"/g, '&quot;')}">
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const freeTextEl = document.getElementById('draft-free-text');
+  if (freeTextEl) {
+    freeTextEl.value = draft.freeText || '';
+  }
+
+  const lastSavedEl = document.getElementById('draft-last-saved');
+  if (lastSavedEl) {
+    lastSavedEl.textContent = draft.updatedAt ? `Guardado: ${new Date(draft.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
+  }
+
+  const modalEl = document.getElementById('modal-weekly-draft');
+  if (modalEl) {
+    Modal.getOrCreateInstance(modalEl).show();
+  }
+}
+window.openWeeklyDraftModal = openWeeklyDraftModal;
+
+export function saveCurrentWeeklyDraft(showFeedback = true) {
+  if (!currentWeekDays || currentWeekDays.length === 0) return null;
+  const weekStartStr = currentWeekDays[0];
+
+  const days = {};
+  const rows = document.querySelectorAll('.draft-day-row');
+  rows.forEach(row => {
+    const day = row.dataset.date;
+    const lunch = row.querySelector('.draft-lunch-input')?.value || '';
+    const dinner = row.querySelector('.draft-dinner-input')?.value || '';
+    if (lunch.trim() || dinner.trim()) {
+      days[day] = { lunch: lunch.trim(), dinner: dinner.trim() };
+    }
+  });
+
+  const freeText = document.getElementById('draft-free-text')?.value || '';
+  const draftData = { days, freeText };
+
+  DiaryStore.saveWeeklyDraft(weekStartStr, draftData);
+  updateWeeklyDraftBadge();
+
+  const lastSavedEl = document.getElementById('draft-last-saved');
+  if (lastSavedEl) {
+    lastSavedEl.textContent = `Guardado: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  if (showFeedback) {
+    showToast('Borrador semanal guardado', 'success');
+  }
+
+  return draftData;
+}
+window.saveCurrentWeeklyDraft = saveCurrentWeeklyDraft;
+
+export function clearCurrentWeeklyDraft() {
+  if (!currentWeekDays || currentWeekDays.length === 0) return;
+  if (!confirm('¿Deseas vaciar el borrador de esta semana?')) return;
+
+  const weekStartStr = currentWeekDays[0];
+  DiaryStore.clearWeeklyDraft(weekStartStr);
+
+  document.querySelectorAll('.draft-lunch-input').forEach(i => i.value = '');
+  document.querySelectorAll('.draft-dinner-input').forEach(i => i.value = '');
+  const freeTextEl = document.getElementById('draft-free-text');
+  if (freeTextEl) freeTextEl.value = '';
+
+  const lastSavedEl = document.getElementById('draft-last-saved');
+  if (lastSavedEl) lastSavedEl.textContent = '';
+
+  updateWeeklyDraftBadge();
+  showToast('Borrador eliminado', 'info');
+}
+window.clearCurrentWeeklyDraft = clearCurrentWeeklyDraft;
+
+export async function applyCurrentWeeklyDraftToAgenda() {
+  const draftData = saveCurrentWeeklyDraft(false);
+  if (!draftData) return;
+
+  const result = await DiaryStore.applyDraftToWeek(currentWeekDays, draftData);
+  await renderWeek(currentDate);
+
+  const modalEl = document.getElementById('modal-weekly-draft');
+  if (modalEl) {
+    Modal.getInstance(modalEl)?.hide();
+  }
+
+  if (result.created > 0) {
+    showToast(`¡Borrador volcado a la agenda! Se han creado ${result.created} comidas planificadas${result.skipped > 0 ? ` (${result.skipped} ya existían)` : ''}.`, 'success');
+  } else if (result.skipped > 0) {
+    showToast(`Las comidas ya existían en la agenda (${result.skipped} omitidas).`, 'warning');
+  } else {
+    showToast('No había platos escritos en el borrador para añadir.', 'info');
+  }
+}
+window.applyCurrentWeeklyDraftToAgenda = applyCurrentWeeklyDraftToAgenda;
 
 function renderMealSlot(label, mealType, items, dayKey) {
   if (!items || items.length === 0) return '';

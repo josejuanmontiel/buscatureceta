@@ -36,6 +36,8 @@ test.describe('OpenFoodFacts Image Capture, Cropping, Re-editing and Queue Zone'
     const testBarcode = '8480000999888';
     await page.fill('#code-input', testBarcode);
     await page.click('#query-btn');
+    await page.waitForSelector('#btn-unknown-add-generic', { state: 'visible' });
+    await page.click('#btn-unknown-add-generic');
 
     // El item aparece en el carrito con el botón "OFF"
     const offBtn = page.locator('button[title="Subir foto a OpenFoodFacts"]').first();

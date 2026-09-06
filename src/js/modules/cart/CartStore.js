@@ -91,7 +91,9 @@ export async function getCart() {
   const codes = items.map(i => i.productCode);
   const products = await ProductStore.getProductsByCodes(codes);
   const productMap = {};
-  products.forEach(p => { productMap[p.code] = p.product_name; });
+  products.forEach(p => {
+    productMap[p.code] = p.product_name || (p.brands ? `${p.brands} (${p.code})` : `Producto ${p.code}`);
+  });
 
   const enrichedItems = items.map(item => {
     // Calculamos el coste total de este item si el precio es unitario

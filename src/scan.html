@@ -40,6 +40,7 @@
       <div id="qr-reader"></div>
     </div>
 
+    <div id="scan-status" class="small mb-2 fw-semibold text-info" style="min-height: 24px;"></div>
     <div id="error-msg" class="text-danger small mb-3"></div>
 
     <div class="d-grid gap-3 mx-auto" style="max-width: 300px;">
@@ -57,6 +58,9 @@
 
   <script>
     var html5QrCode;
+    var lastCandidateCode = null;
+    var candidateConsecutiveCount = 0;
+    var lastCandidateTimestamp = 0;
     
     function docReady(fn) {
       if (document.readyState === "complete" || document.readyState === "interactive") {
@@ -66,19 +70,54 @@
       }
     }
 
-    function onScanSuccess(decodedText, decodedResult) {
+    function finishScan(code) {
       if (html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().catch(console.error);
       }
       
-      console.log(`Scan result ${decodedText}`, decodedResult.result.text);
-      const code = decodedResult.result.text;
+      const scanStatus = document.getElementById('scan-status');
+      if (scanStatus) {
+        scanStatus.className = 'small mb-2 fw-bold text-success';
+        scanStatus.innerText = `✓ Código verificado: ${code}`;
+      }
+
+      console.log(`Scan confirmed ${code}`);
       const urlParams = new URLSearchParams(window.location.search);
       const returnPage = urlParams.get('return') || '#grid';
       urlParams.delete('return');
       urlParams.set('code', code);
       const separator = returnPage.includes('?') ? '&' : '?';
-      window.location.href = `/${returnPage}${separator}${urlParams.toString()}`;
+      setTimeout(() => {
+        window.location.href = `/${returnPage}${separator}${urlParams.toString()}`;
+      }, 200);
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      const code = (decodedResult?.result?.text || decodedText || '').trim();
+      if (!code) return;
+
+      const now = Date.now();
+      const scanStatus = document.getElementById('scan-status');
+
+      // Si coincide con el fotograma anterior dentro de 1500ms
+      if (code === lastCandidateCode && (now - lastCandidateTimestamp) < 1500) {
+        candidateConsecutiveCount++;
+      } else {
+        lastCandidateCode = code;
+        candidateConsecutiveCount = 1;
+      }
+      lastCandidateTimestamp = now;
+
+      if (candidateConsecutiveCount < 2) {
+        if (scanStatus) {
+          scanStatus.className = 'small mb-2 fw-semibold text-warning';
+          scanStatus.innerText = `Leyendo... mantén enfocado (${code})`;
+        }
+        return;
+      }
+
+      // Confirmado por 2 fotogramas consecutivos
+      finishScan(code);
     }
     
     function onScanFailure(error) {
@@ -103,6 +142,11 @@
 
       btnCamera.addEventListener('click', () => {
         errorMsg.innerText = '';
+        const scanStatus = document.getElementById('scan-status');
+        if (scanStatus) scanStatus.innerText = '';
+        lastCandidateCode = null;
+        candidateConsecutiveCount = 0;
+
         if (html5QrCode.isScanning) return;
         
         html5QrCode.start(
@@ -132,7 +176,7 @@
         const imageFile = e.target.files[0];
         html5QrCode.scanFile(imageFile, true)
           .then(decodedText => {
-            onScanSuccess(decodedText, { result: { text: decodedText } });
+            finishScan(decodedText);
           })
           .catch(err => {
             errorMsg.innerText = "No se ha encontrado un código de barras en esta imagen.";

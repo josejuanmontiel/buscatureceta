@@ -6,6 +6,7 @@ import * as ShoppingAssistant from './modules/insights/ShoppingAssistant.js';
 import * as ShoppingStore from './modules/shopping/ShoppingStore.js';
 import {
     saveImageToPendingUploads,
+    saveMetadataToPendingUploads,
     updateUpload,
     getUploadsByBarcode,
     deletePendingUpload,
@@ -118,9 +119,69 @@ export async function initView() {
     const urlParams = new URLSearchParams(window.location.hash.includes('?') ? window.location.hash.split('?')[1] : window.location.search);
     const codeFromUrl = urlParams.get('code');
     if (codeFromUrl) {
+        const cleanHash = window.location.hash.split('?')[0];
+        window.history.replaceState({}, '', window.location.pathname + cleanHash);
         document.getElementById("code-input").value = codeFromUrl;
         handleSearch();
     }
+}
+
+function showUnknownBarcodeModal(barcode) {
+    const modalEl = document.getElementById('modal-unknown-barcode');
+    if (!modalEl) {
+        addUnknownProductToCart(barcode);
+        return;
+    }
+    const displayEl = document.getElementById('unknown-barcode-display');
+    if (displayEl) displayEl.textContent = barcode;
+
+    const modal = Modal.getOrCreateInstance(modalEl);
+
+    const btnRescan = document.getElementById('btn-unknown-rescan');
+    if (btnRescan) {
+        btnRescan.onclick = () => {
+            modal.hide();
+            document.getElementById('code-input').value = '';
+            window.location.href = '/scan.html?return=%23grid';
+        };
+    }
+
+    const btnAdd = document.getElementById('btn-unknown-add-generic');
+    if (btnAdd) {
+        btnAdd.onclick = async () => {
+            modal.hide();
+            await addUnknownProductToCart(barcode);
+        };
+    }
+
+    const btnCancel = document.getElementById('btn-unknown-cancel');
+    if (btnCancel) {
+        btnCancel.onclick = () => {
+            modal.hide();
+            document.getElementById('code-input').value = '';
+        };
+    }
+
+    modal.show();
+}
+
+async function addUnknownProductToCart(query) {
+    const isNumeric = /^\d+$/.test(query);
+    const genericCode = isNumeric ? `GENERIC_${query}` : 'GENERIC_' + Date.now();
+    const realBarcode = isNumeric ? query : null;
+
+    await ProductStore.addCustomProduct({
+        code: genericCode,
+        real_code: realBarcode,
+        product_name: isNumeric ? 'Producto ' + query : query,
+        ingredients_text: '',
+        nutriscore_grade: 'unknown'
+    });
+    // Añadir al carro directamente
+    await CartStore.addToCart(genericCode, 1, 0, 'unidad');
+    triggerScanFeedback();
+    document.getElementById('code-input').value = '';
+    await updateCartUI();
 }
 
 async function handleSearch() {
@@ -155,23 +216,12 @@ async function handleSearch() {
         const result = await ShoppingAssistant.analyzeProductForCart(query);
         
         if (result.status === 'not_found') {
-            // Producto no encontrado por código, añadir como genérico conservando el código real si es numérico
             const isNumeric = /^\d+$/.test(query);
-            const genericCode = isNumeric ? `GENERIC_${query}` : 'GENERIC_' + Date.now();
-            const realBarcode = isNumeric ? query : null;
-
-            await ProductStore.addCustomProduct({
-                code: genericCode,
-                real_code: realBarcode,
-                product_name: isNumeric ? 'Producto ' + query : query,
-                ingredients_text: '',
-                nutriscore_grade: 'unknown'
-            });
-            // Añadir al carro directamente
-            await CartStore.addToCart(genericCode, 1, 0, 'unidad');
-            triggerScanFeedback();
-            document.getElementById('code-input').value = '';
-            await updateCartUI();
+            if (isNumeric) {
+                showUnknownBarcodeModal(query);
+                return;
+            }
+            await addUnknownProductToCart(query);
             return;
         }
 
@@ -432,6 +482,21 @@ window.confirmRenameCartItem = async function(id) {
 
     // Actualizar el nombre en customProducts
     await ProductStore.updateCustomProduct(cartItem.productCode, { product_name: newName });
+    const existingOfficial = await db.products.get(cartItem.productCode);
+    if (existingOfficial) {
+        await db.products.update(cartItem.productCode, { product_name: newName });
+    }
+
+    // Encolar contribución comunitaria a OFF si tiene código de barras numérico
+    const cleanBarcode = cartItem.productCode.replace(/^GENERIC_/, '');
+    if (/^\d{8,14}$/.test(cleanBarcode)) {
+        await saveMetadataToPendingUploads(cleanBarcode, {
+            product_name: newName,
+            lang: 'es'
+        }, newName);
+        await updateSyncBadge();
+    }
+
     showToast(`✅ Renombrado: ${newName}`, 'success');
     await updateCartUI();
 };
@@ -858,14 +923,16 @@ async function handleCheckout() {
                 return;
             }
 
-            // Guardar pesos en la BD
+            // Guardar pesos en la BD y encolar colaboración a OpenFoodFacts si procede
             for (const input of inputs) {
                 const code = input.dataset.code;
                 const weight = parseFloat(input.value);
                 const weightStr = weight.toString();
                 try {
                     const p = await ProductStore.getProductByCode(code);
+                    let prodName = '';
                     if (p) {
+                        prodName = p.product_name || (p.brands ? `${p.brands} (${code})` : '');
                         if (p.is_custom) {
                             await db.customProducts.update(code, { product_quantity: weightStr });
                         } else {
@@ -873,12 +940,23 @@ async function handleCheckout() {
                             await db.products.where('code').equals(code).modify({ product_quantity: weightStr });
                         }
                     } else {
-                        await ProductStore.addCustomProduct({ code, product_name: 'Producto ' + code, product_quantity: weightStr });
+                        prodName = 'Producto ' + code;
+                        await ProductStore.addCustomProduct({ code, product_name: prodName, product_quantity: weightStr });
+                    }
+
+                    // Encolar contribución comunitaria a OFF si es un código de barras numérico
+                    const cleanBarcode = (p?.real_code || code).replace(/^GENERIC_/, '');
+                    if (/^\d{8,14}$/.test(cleanBarcode)) {
+                        await saveMetadataToPendingUploads(cleanBarcode, {
+                            quantity: `${weightStr} g`,
+                            product_quantity: weightStr
+                        }, prodName);
                     }
                 } catch(err) {
                     console.error('Error guardando peso para', code, err);
                 }
             }
+            await updateSyncBadge();
 
             modal.hide();
             await performCheckout(items.length);

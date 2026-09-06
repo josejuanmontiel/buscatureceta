@@ -65,8 +65,31 @@ Actualmente la SPA utiliza **Carga Dinámica HTML (`fetch()` en `Router.js`)**, 
   - [ ] Añadir los ingredientes faltantes directamente a la lista de la compra / carrito (`db.cart`).
   - [ ] Añadir botón en NutriAgenda o Ajustes: *"📥 Importar Paquete de Menú / PrimaryFoods"*.
 
+## Colaboraciones de Metadatos OFF (Fotos y Datos) y Filtrado en Historial
+- [x] **Clasificación Unificada de Metadatos OFF (`cart-history.js`):**
+  - [x] Tratamiento de las fotos como un metadato visual más del producto junto al peso (`quantity`) y nombre (`product_name`).
+  - [x] Discriminación de productos que ya disponen de foto en OFF (`image_url`): se muestran con badge discreto informativo `🌐 OFF` sin alarmas innecesarias de foto pendiente.
+  - [x] Exclusión de códigos no comerciales: frutas a granel de balanza de tienda (`/^2[0-9]{7,13}$/`), genéricos creados por timestamp y alimentos primarios BEDCA.
+  - [x] Detección de productos comerciales nuevos o con fotos/metadatos faltantes con llamada a la acción contextualizada (`📷 OFF (Nuevo)` / `📷 OFF (Falta foto)`).
+- [x] **Asistente "Desempacar OFF" Categorizado (`openUnpackingAssistant`):**
+  - [x] Agrupación en: *Requieren fotos o datos en OFF*, *Ya documentados en OFF con fotografía* y *Granel / Local no aplicable*.
+  - [x] Si todos los productos de la compra están documentados, muestra aviso de felicitación verde.
+- [x] **Colaboración de Pesos y Nombres (`openFoodFacts.js` & `grid.js`):**
+  - [x] Encolado de metadatos `{ quantity, product_quantity }` en checkout cuando se rellena el peso.
+  - [x] Encolado de metadatos `{ product_name }` al renombrar productos en el carrito.
+  - [x] Filtrado por tipo `[ Todo | Fotos | Datos ]` en la Zona de Colaboraciones (`#off-contributions`).
+- [x] **Tests Automatizados:**
+  - [x] `tests/cart-history-off-filter.spec.js` (diferenciación de productos en historial y desempacar).
+  - [x] `tests/off-metadata-contributions.spec.js` (flujo de checkout y renombres a la cola OFF).
+  - [x] `tests/off-contributions-flow.spec.js` (gestión integral de la zona de colaboraciones).
 
-
-
-
-
+## Borrador de Menú Semanal en la Agenda (Weekly Draft)
+- [x] **Espacio de Escritura Rápida (`src/diary.html`, `src/index.html` & `src/js/diary.js`):**
+  - [x] Botón directo `📝 Borrador Semanal` en la barra superior de la Agenda con badge de estado si la semana tiene contenido.
+  - [x] Modal interactivo `#modal-weekly-draft` con parrilla de 7 días (Lunes a Domingo) para anotar **Comida** y **Cena** rápidamente.
+  - [x] Pestaña de texto libre / notas para apuntar ideas de la semana o menú de corrido.
+- [x] **Persistencia y Volcado a la Agenda (`DiaryStore.js`):**
+  - [x] Almacenamiento local persistente por semana (`getWeeklyDraft`, `saveWeeklyDraft`, `clearWeeklyDraft`).
+  - [x] Acción `⚡ Volcar a la Agenda`: crea automáticamente entradas planificadas (`status: 'planned'`) en los días correspondientes, listas para desarrollar con recetas e ingredientes o hacer check-in al consumirlas.
+- [x] **Tests Automatizados:**
+  - [x] `tests/weekly-menu-draft.spec.js` (redacción, guardado, recarga y volcado a agenda con verificación en el grid semanal).

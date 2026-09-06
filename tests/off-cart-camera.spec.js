@@ -22,7 +22,9 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
     const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('#btn-unknown-add-generic', { state: 'visible' });
+    await page.click('#btn-unknown-add-generic');
+    await page.waitForTimeout(500);
 
     // El item debe aparecer en el carro
     await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
@@ -64,7 +66,9 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
     const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('#btn-unknown-add-generic', { state: 'visible' });
+    await page.click('#btn-unknown-add-generic');
+    await page.waitForTimeout(500);
 
     // El item debe aparecer en el carro
     await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
@@ -89,7 +93,9 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
     const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('#btn-unknown-add-generic', { state: 'visible' });
+    await page.click('#btn-unknown-add-generic');
+    await page.waitForTimeout(500);
     await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // Sin login: sin botón OFF
@@ -134,7 +140,9 @@ test.describe('Flujo de producto desconocido en carro y botón OFF al loguearse'
     const unknownCode = '9990000000001';
     await page.fill('#code-input', unknownCode);
     await page.click('#query-btn');
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('#btn-unknown-add-generic', { state: 'visible' });
+    await page.click('#btn-unknown-add-generic');
+    await page.waitForTimeout(500);
     await expect(page.locator('#cart-list')).toContainText(`Producto ${unknownCode}`, { timeout: 10000 });
 
     // Click en el botón OFF de la cámara

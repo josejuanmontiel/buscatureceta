@@ -20,6 +20,7 @@ import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
 
 let currentFilter = 'all';
+let currentTypeFilter = 'all';
 let searchQuery = '';
 let activeEditUploadId = null;
 let editCropperInstance = null;
@@ -48,7 +49,7 @@ export async function initView() {
 }
 
 function initEventListeners() {
-  // Filtros
+  // Filtros por estado
   const filterGroup = document.getElementById('off-filter-group');
   if (filterGroup) {
     filterGroup.addEventListener('click', (e) => {
@@ -56,6 +57,19 @@ function initEventListeners() {
       if (!btn) return;
       currentFilter = btn.getAttribute('data-filter');
       filterGroup.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadUploads();
+    });
+  }
+
+  // Filtros por tipo (Todo / Fotos / Metadatos)
+  const typeFilterGroup = document.getElementById('off-type-filter-group');
+  if (typeFilterGroup) {
+    typeFilterGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-type-filter]');
+      if (!btn) return;
+      currentTypeFilter = btn.getAttribute('data-type-filter');
+      typeFilterGroup.querySelectorAll('button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       loadUploads();
     });
@@ -206,6 +220,10 @@ async function loadUploads() {
     if (currentFilter === 'failed' && item.status !== 'failed') return false;
     if (currentFilter === 'done' && item.status !== 'done') return false;
 
+    // Filtro por tipo (fotos / metadata)
+    if (currentTypeFilter === 'photos' && item.type === 'metadata') return false;
+    if (currentTypeFilter === 'metadata' && item.type !== 'metadata') return false;
+
     // Filtro por búsqueda
     if (searchQuery) {
       const name = (item.productName || '').toLowerCase();
@@ -225,10 +243,12 @@ async function loadUploads() {
   emptyState?.classList.add('d-none');
 
   container.innerHTML = filtered.map(item => {
+    const isMetadata = item.type === 'metadata';
     const typeNames = {
       front: 'Etiqueta frontal (front)',
       ingredients: 'Ingredientes',
-      nutrition: 'Información nutricional'
+      nutrition: 'Información nutricional',
+      metadata: 'Datos del producto'
     };
     const typeLabel = typeNames[item.type] || item.type;
 
@@ -244,8 +264,29 @@ async function loadUploads() {
       statusBadgeHtml = `<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pendiente</span>`;
     }
 
-    const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
-    const thumbUrl = URL.createObjectURL(blob);
+    let thumbHtml = '';
+    if (isMetadata) {
+      thumbHtml = `
+        <div class="off-thumb d-flex align-items-center justify-content-center bg-secondary bg-opacity-25 text-warning fs-3 rounded" title="Datos de producto (peso/nombre)">
+          <i class="bi bi-tag-fill"></i>
+        </div>
+      `;
+    } else {
+      const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
+      const thumbUrl = URL.createObjectURL(blob);
+      thumbHtml = `<img src="${thumbUrl}" alt="${typeLabel}" class="off-thumb" onclick="window.open('${thumbUrl}', '_blank')" title="Clic para ampliar imagen">`;
+    }
+
+    let metadataDetailsHtml = '';
+    if (isMetadata && item.fields) {
+      metadataDetailsHtml = `
+        <div class="d-flex flex-wrap gap-2 my-1">
+          ${item.fields.quantity ? `<span class="badge bg-secondary text-white font-monospace"><i class="bi bi-speedometer2 me-1 text-warning"></i>Peso: ${item.fields.quantity}</span>` : ''}
+          ${item.fields.product_name ? `<span class="badge bg-secondary text-white"><i class="bi bi-fonts me-1 text-info"></i>Nombre: ${item.fields.product_name}</span>` : ''}
+        </div>
+      `;
+    }
+
     const createdDate = item.createdAt ? new Date(item.createdAt).toLocaleString() : '';
 
     const isNumericCode = /^\d+$/.test(item.barcode);
@@ -255,9 +296,9 @@ async function loadUploads() {
 
     return `
       <div class="off-item-card p-3 d-flex flex-column flex-sm-row gap-3 align-items-sm-center" id="off-item-${item.id}">
-        <!-- Miniatura -->
+        <!-- Miniatura / Icono -->
         <div class="flex-shrink-0 text-center">
-          <img src="${thumbUrl}" alt="${typeLabel}" class="off-thumb" onclick="window.open('${thumbUrl}', '_blank')" title="Clic para ampliar imagen">
+          ${thumbHtml}
         </div>
 
         <!-- Información -->
@@ -266,9 +307,11 @@ async function loadUploads() {
             <h5 class="mb-0 text-white text-truncate fw-bold" style="max-width: 320px;">
               ${item.productName || 'Producto sin nombre'}
             </h5>
-            <span class="badge bg-secondary text-light">${typeLabel}</span>
+            <span class="badge ${isMetadata ? 'bg-info text-dark' : 'bg-secondary text-light'}">${typeLabel}</span>
             ${statusBadgeHtml}
           </div>
+
+          ${metadataDetailsHtml}
 
           <div class="small text-muted mb-2">
             <span>Código: ${codeLink}</span>
@@ -304,12 +347,14 @@ async function loadUploads() {
               <i class="bi bi-cloud-arrow-up"></i> Subir
             </button>
           ` : ''}
-          <button type="button" class="btn btn-sm btn-outline-success" onclick="window.offAddNewPhotoForBarcode('${item.barcode}', '${(item.productName || '').replace(/'/g, "\\'")}', '${item.type}')" title="Añadir otra foto a este producto">
+          <button type="button" class="btn btn-sm btn-outline-success" onclick="window.offAddNewPhotoForBarcode('${item.barcode}', '${(item.productName || '').replace(/'/g, "\\'")}', '${isMetadata ? 'front' : item.type}')" title="Añadir otra foto a este producto">
             <i class="bi bi-camera-plus"></i> + Foto
           </button>
-          <button type="button" class="btn btn-sm btn-outline-warning" onclick="window.offEditSingle(${item.id})" title="Editar recorte o datos">
-            <i class="bi bi-crop"></i> Editar
-          </button>
+          ${!isMetadata ? `
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="window.offEditSingle(${item.id})" title="Editar recorte o datos">
+              <i class="bi bi-crop"></i> Editar
+            </button>
+          ` : ''}
           <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.offDeleteSingle(${item.id})" title="Eliminar de la cola">
             <i class="bi bi-trash"></i>
           </button>

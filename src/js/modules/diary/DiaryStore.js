@@ -413,4 +413,113 @@ export async function getWeekSummary(referenceDate = new Date()) {
   );
 }
 
+// ── Gestión de Borradores de Menú Semanal (Drafts) ──────────────────────────
+
+/**
+ * Obtiene el borrador de menú de una semana concreta
+ * @param {string} weekStartStr — "YYYY-MM-DD" del lunes de la semana
+ * @returns {Object}
+ */
+export function getWeeklyDraft(weekStartStr) {
+  if (!weekStartStr) return { weekStart: '', days: {}, freeText: '' };
+  try {
+    const raw = localStorage.getItem(`weekly_draft_${weekStartStr}`);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('[DiaryStore] Error leyendo borrador semanal:', e);
+  }
+  return { weekStart: weekStartStr, days: {}, freeText: '' };
+}
+
+/**
+ * Guarda el borrador de menú de la semana
+ * @param {string} weekStartStr — "YYYY-MM-DD" del lunes
+ * @param {Object} draftData
+ */
+export function saveWeeklyDraft(weekStartStr, draftData) {
+  if (!weekStartStr) return;
+  const payload = {
+    weekStart: weekStartStr,
+    days: draftData.days || {},
+    freeText: draftData.freeText || '',
+    updatedAt: Date.now()
+  };
+  localStorage.setItem(`weekly_draft_${weekStartStr}`, JSON.stringify(payload));
+}
+
+/**
+ * Elimina el borrador de menú de la semana
+ * @param {string} weekStartStr
+ */
+export function clearWeeklyDraft(weekStartStr) {
+  if (!weekStartStr) return;
+  localStorage.removeItem(`weekly_draft_${weekStartStr}`);
+}
+
+/**
+ * Vuelca los platos del borrador a la agenda como comidas planificadas (status: 'planned')
+ * @param {string[]} weekDays — array de 7 días "YYYY-MM-DD"
+ * @param {Object} draftData — { days: { [day]: { lunch, dinner, notes } } }
+ * @returns {Promise<{ created: number, skipped: number }>}
+ */
+export async function applyDraftToWeek(weekDays, draftData) {
+  let created = 0;
+  let skipped = 0;
+
+  if (!draftData || !draftData.days) return { created, skipped };
+
+  for (const day of weekDays) {
+    const dayData = draftData.days[day];
+    if (!dayData) continue;
+
+    // 1. Comida (lunch)
+    if (dayData.lunch && dayData.lunch.trim()) {
+      const existing = await db.diary.where({ date: day, mealType: 'lunch' }).first();
+      if (!existing) {
+        await addDiaryEntry({
+          date: day,
+          mealType: 'lunch',
+          status: 'planned',
+          items: [{
+            type: 'free',
+            name: dayData.lunch.trim(),
+            course: 'main',
+            status: 'planned',
+            servings: 1,
+            nutrition: { kcal: 0, proteins: 0, carbs: 0, fat: 0 }
+          }]
+        });
+        created++;
+      } else {
+        skipped++;
+      }
+    }
+
+    // 2. Cena (dinner)
+    if (dayData.dinner && dayData.dinner.trim()) {
+      const existing = await db.diary.where({ date: day, mealType: 'dinner' }).first();
+      if (!existing) {
+        await addDiaryEntry({
+          date: day,
+          mealType: 'dinner',
+          status: 'planned',
+          items: [{
+            type: 'free',
+            name: dayData.dinner.trim(),
+            course: 'main',
+            status: 'planned',
+            servings: 1,
+            nutrition: { kcal: 0, proteins: 0, carbs: 0, fat: 0 }
+          }]
+        });
+        created++;
+      } else {
+        skipped++;
+      }
+    }
+  }
+
+  return { created, skipped };
+}
+
 export { MEAL_TYPES };

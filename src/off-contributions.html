@@ -129,11 +129,18 @@
 
         <!-- Filtros y Búsqueda -->
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <div class="btn-group btn-group-sm" role="group" id="off-filter-group">
-            <button type="button" class="btn btn-outline-light active" data-filter="all">Todos</button>
-            <button type="button" class="btn btn-outline-warning" data-filter="pending">Pendientes</button>
-            <button type="button" class="btn btn-outline-danger" data-filter="failed">Errores</button>
-            <button type="button" class="btn btn-outline-success" data-filter="done">Completadas</button>
+          <div class="d-flex flex-wrap gap-2">
+            <div class="btn-group btn-group-sm" role="group" id="off-filter-group">
+              <button type="button" class="btn btn-outline-light active" data-filter="all">Todos</button>
+              <button type="button" class="btn btn-outline-warning" data-filter="pending">Pendientes</button>
+              <button type="button" class="btn btn-outline-danger" data-filter="failed">Errores</button>
+              <button type="button" class="btn btn-outline-success" data-filter="done">Completadas</button>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" id="off-type-filter-group">
+              <button type="button" class="btn btn-outline-secondary active" data-type-filter="all">Todo</button>
+              <button type="button" class="btn btn-outline-secondary" data-type-filter="photos"><i class="bi bi-camera me-1"></i>Fotos</button>
+              <button type="button" class="btn btn-outline-secondary" data-type-filter="metadata"><i class="bi bi-tag me-1"></i>Datos</button>
+            </div>
           </div>
 
           <div class="input-group input-group-sm" style="max-width: 260px;">

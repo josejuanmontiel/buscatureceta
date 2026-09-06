@@ -231,7 +231,51 @@ export async function getOffStats() {
 }
 
 /**
- * Reintenta subir un único registro específico.
+ * Guarda una contribución de metadatos (peso, cantidad, nombre) en la cola local pendingUploads
+ * @param {string} barcode - Código de barras numérico o con prefijo GENERIC_
+ * @param {Object} fields - Campos para OFF: ej. { quantity: '500 g', product_quantity: '500', product_name: 'Couscous', lang: 'es' }
+ * @param {string} [productName] - Nombre descriptivo para la UI
+ */
+export async function saveMetadataToPendingUploads(barcode, fields, productName = '') {
+  if (!barcode) return null;
+  const cleanBarcode = barcode.replace(/^GENERIC_/, '').trim();
+  if (!/^\d{8,14}$/.test(cleanBarcode)) return null;
+
+  // Si ya existe un registro de metadata pendiente o fallido para este barcode, lo fusionamos
+  const existing = await db.pendingUploads
+    .where('barcode').equals(cleanBarcode)
+    .filter(u => u.type === 'metadata' && (u.status === 'pending' || u.status === 'failed'))
+    .first();
+
+  if (existing) {
+    const mergedFields = { ...(existing.fields || {}), ...fields };
+    await db.pendingUploads.update(existing.id, {
+      fields: mergedFields,
+      productName: productName || existing.productName,
+      status: 'pending',
+      updatedAt: new Date().toISOString()
+    });
+    console.log(`[OFF] Metadatos actualizados en cola local para ${cleanBarcode}:`, mergedFields);
+    return existing.id;
+  }
+
+  const finalName = productName || (fields.product_name || `Producto ${cleanBarcode}`);
+  const recordId = await db.pendingUploads.add({
+    barcode: cleanBarcode,
+    productName: finalName,
+    type: 'metadata',
+    fields: { lang: 'es', ...fields },
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  console.log(`[OFF] Metadatos guardados en cola local para ${cleanBarcode} id: ${recordId}`);
+  return recordId;
+}
+
+/**
+ * Reintenta la subida de un elemento fallido por su ID.
  * @param {number} id
  * @returns {Promise<{success: boolean, error?: string}>}
  */
@@ -244,15 +288,24 @@ export async function retryUpload(id) {
   const { userId, password } = getCredentials();
   try {
     await db.pendingUploads.update(item.id, { status: 'uploading' });
-    const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
-    await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
 
-    // Enviar nombre e idioma del producto a OpenFoodFacts si están definidos
-    if (item.productName && !item.productName.startsWith('Producto ')) {
-      await updateProductDetails(item.barcode, {
-        product_name: item.productName,
-        lang: 'es'
-      }, userId, password);
+    if (item.type === 'metadata') {
+      const fieldsToSend = { lang: 'es', ...(item.fields || {}) };
+      if (item.productName && !item.productName.startsWith('Producto ') && !fieldsToSend.product_name) {
+        fieldsToSend.product_name = item.productName;
+      }
+      await updateProductDetails(item.barcode, fieldsToSend, userId, password);
+    } else {
+      const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
+      await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
+
+      // Enviar nombre e idioma del producto a OpenFoodFacts si están definidos
+      if (item.productName && !item.productName.startsWith('Producto ')) {
+        await updateProductDetails(item.barcode, {
+          product_name: item.productName,
+          lang: 'es'
+        }, userId, password);
+      }
     }
 
     await db.pendingUploads.update(item.id, {
@@ -272,7 +325,7 @@ export async function retryUpload(id) {
 }
 
 /**
- * Procesa la cola de pendingUploads y sube cada imagen a la API OFF.
+ * Procesa la cola de pendingUploads y sube cada imagen o metadato a la API OFF.
  * Actualiza el campo `status` de cada registro según el resultado.
  *
  * @param {Function} [onProgress] - Callback (processed, total, ok, failed)
@@ -290,15 +343,23 @@ export async function syncPendingUploads(onProgress) {
     try {
       await db.pendingUploads.update(item.id, { status: 'uploading' });
 
-      const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
-      await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
+      if (item.type === 'metadata') {
+        const fieldsToSend = { lang: 'es', ...(item.fields || {}) };
+        if (item.productName && !item.productName.startsWith('Producto ') && !fieldsToSend.product_name) {
+          fieldsToSend.product_name = item.productName;
+        }
+        await updateProductDetails(item.barcode, fieldsToSend, userId, password);
+      } else {
+        const blob = new Blob([item.imageData], { type: item.mimeType || 'image/jpeg' });
+        await uploadImage(item.barcode, blob, item.type || 'front', userId, password);
 
-      // Enviar nombre e idioma del producto a OpenFoodFacts si están definidos
-      if (item.productName && !item.productName.startsWith('Producto ')) {
-        await updateProductDetails(item.barcode, {
-          product_name: item.productName,
-          lang: 'es'
-        }, userId, password);
+        // Enviar nombre e idioma del producto a OpenFoodFacts si están definidos
+        if (item.productName && !item.productName.startsWith('Producto ')) {
+          await updateProductDetails(item.barcode, {
+            product_name: item.productName,
+            lang: 'es'
+          }, userId, password);
+        }
       }
 
       await db.pendingUploads.update(item.id, {
