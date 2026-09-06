@@ -18,6 +18,7 @@ import { ImageCropper } from './modules/ui/ImageCropper.js';
 import { showToast } from './modules/ui/UI.js';
 import { Modal } from 'bootstrap';
 import { db } from './db/schema.js';
+import * as ProductStore from './modules/products/ProductStore.js';
 
 let currentFilter = 'all';
 let currentTypeFilter = 'all';
@@ -27,6 +28,7 @@ let editCropperInstance = null;
 let editOriginalBlob = null;
 let editAspect = 'free';
 let editModalInstance = null;
+let editMetaModalInstance = null;
 let credsModalInstance = null;
 let modalCameraStream = null;
 
@@ -131,6 +133,13 @@ function initEventListeners() {
   // Guardar cambios (editar) o Guardar nueva foto
   document.getElementById('btn-save-edited-upload')?.addEventListener('click', () => handleSaveUpload(false));
   document.getElementById('btn-save-as-new-upload')?.addEventListener('click', () => handleSaveUpload(true));
+
+  // Modal edición metadatos OFF (nombre y peso)
+  document.getElementById('btn-save-meta-changes')?.addEventListener('click', () => handleSaveMetadataModal(false));
+  document.getElementById('btn-save-and-upload-meta')?.addEventListener('click', () => handleSaveMetadataModal(true));
+  document.getElementById('btn-quick-qty-g')?.addEventListener('click', () => appendUnitToQuantity('g'));
+  document.getElementById('btn-quick-qty-kg')?.addEventListener('click', () => appendUnitToQuantity('kg'));
+  document.getElementById('btn-quick-qty-ml')?.addEventListener('click', () => appendUnitToQuantity('ml'));
 
   // Cleanup cropper y cámara al cerrar modal
   const editModalEl = document.getElementById('modal-off-edit');
@@ -279,10 +288,12 @@ async function loadUploads() {
 
     let metadataDetailsHtml = '';
     if (isMetadata && item.fields) {
+      const hasName = !!(item.fields.product_name || (item.productName && !item.productName.startsWith('Producto ')));
+      const hasQuantity = !!(item.fields.quantity || item.fields.product_quantity);
       metadataDetailsHtml = `
-        <div class="d-flex flex-wrap gap-2 my-1">
-          ${item.fields.quantity ? `<span class="badge bg-secondary text-white font-monospace"><i class="bi bi-speedometer2 me-1 text-warning"></i>Peso: ${item.fields.quantity}</span>` : ''}
-          ${item.fields.product_name ? `<span class="badge bg-secondary text-white"><i class="bi bi-fonts me-1 text-info"></i>Nombre: ${item.fields.product_name}</span>` : ''}
+        <div class="d-flex flex-wrap align-items-center gap-2 my-1">
+          ${hasQuantity ? `<span class="badge bg-secondary text-white font-monospace"><i class="bi bi-speedometer2 me-1 text-warning"></i>Peso: ${item.fields.quantity || (item.fields.product_quantity + ' g')}</span>` : '<span class="badge bg-danger text-white"><i class="bi bi-exclamation-triangle-fill me-1"></i>Falta peso</span>'}
+          ${item.fields.product_name ? `<span class="badge bg-secondary text-white"><i class="bi bi-fonts me-1 text-info"></i>Nombre: ${item.fields.product_name}</span>` : (!hasName ? '<span class="badge bg-danger text-white"><i class="bi bi-exclamation-triangle-fill me-1"></i>Falta nombre</span>' : '')}
         </div>
       `;
     }
@@ -354,7 +365,11 @@ async function loadUploads() {
             <button type="button" class="btn btn-sm btn-outline-warning" onclick="window.offEditSingle(${item.id})" title="Editar recorte o datos">
               <i class="bi bi-crop"></i> Editar
             </button>
-          ` : ''}
+          ` : `
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="window.offEditMetadata(${item.id})" id="btn-edit-meta-${item.id}" title="Editar datos a enviar a OpenFoodFacts (nombre, peso)">
+              <i class="bi bi-pencil-square"></i> Editar datos
+            </button>
+          `}
           <button type="button" class="btn btn-sm btn-outline-danger" onclick="window.offDeleteSingle(${item.id})" title="Eliminar de la cola">
             <i class="bi bi-trash"></i>
           </button>
@@ -488,6 +503,170 @@ window.offDeleteSingle = async function(id) {
   await updateStats();
   await loadUploads();
 };
+
+// ── Edición de metadatos (Nombre y Peso para OFF) ───────────────────────────
+
+function appendUnitToQuantity(unit) {
+  const input = document.getElementById('edit-meta-quantity');
+  if (!input) return;
+  const current = input.value.trim();
+  if (!current) {
+    input.value = `500 ${unit}`;
+  } else if (!current.endsWith(unit)) {
+    const numMatch = current.match(/^[\d.,]+/);
+    if (numMatch) {
+      input.value = `${numMatch[0]} ${unit}`;
+    } else {
+      input.value = `${current} ${unit}`;
+    }
+  }
+  input.dispatchEvent(new Event('input'));
+}
+
+window.offEditMetadata = async function(id) {
+  const item = await getUploadById(id);
+  if (!item) return;
+
+  const modalEl = document.getElementById('modal-off-edit-metadata');
+  if (!modalEl) return;
+
+  const idInput = document.getElementById('edit-meta-item-id');
+  const barcodeInput = document.getElementById('edit-meta-barcode');
+  const nameInput = document.getElementById('edit-meta-product-name');
+  const qtyInput = document.getElementById('edit-meta-quantity');
+
+  if (idInput) idInput.value = item.id;
+  if (barcodeInput) barcodeInput.value = item.barcode || '';
+
+  const currentName = (item.fields?.product_name || (item.productName && !item.productName.startsWith('Producto ') ? item.productName : '')).trim();
+  const currentQuantity = (item.fields?.quantity || (item.fields?.product_quantity ? `${item.fields.product_quantity} g` : '')).trim();
+
+  if (nameInput) nameInput.value = currentName;
+  if (qtyInput) qtyInput.value = currentQuantity;
+
+  const updatePreview = () => {
+    const nameVal = nameInput ? nameInput.value.trim() : '';
+    const qtyVal = qtyInput ? qtyInput.value.trim() : '';
+
+    const previewNameEl = document.getElementById('preview-meta-name');
+    const previewQtyEl = document.getElementById('preview-meta-quantity');
+    const previewProductQtyEl = document.getElementById('preview-meta-product-quantity');
+
+    if (previewNameEl) {
+      if (nameVal) {
+        previewNameEl.textContent = `"${nameVal}"`;
+        previewNameEl.className = 'text-warning fw-bold text-truncate text-end ms-2';
+      } else {
+        previewNameEl.textContent = '⚠️ [Sin nombre]';
+        previewNameEl.className = 'text-danger fw-bold text-end ms-2';
+      }
+    }
+
+    if (previewQtyEl) {
+      if (qtyVal) {
+        previewQtyEl.textContent = `"${qtyVal}"`;
+        previewQtyEl.className = 'text-warning fw-bold text-end ms-2';
+      } else {
+        previewQtyEl.textContent = '⚠️ [Sin peso]';
+        previewQtyEl.className = 'text-danger fw-bold text-end ms-2';
+      }
+    }
+
+    if (previewProductQtyEl) {
+      const numericMatch = qtyVal.match(/^([\d.,]+)/);
+      if (numericMatch) {
+        previewProductQtyEl.textContent = numericMatch[1].replace(',', '.');
+      } else {
+        previewProductQtyEl.textContent = '—';
+      }
+    }
+  };
+
+  if (nameInput) nameInput.oninput = updatePreview;
+  if (qtyInput) qtyInput.oninput = updatePreview;
+  updatePreview();
+
+  editMetaModalInstance = Modal.getOrCreateInstance(modalEl);
+  editMetaModalInstance.show();
+};
+
+async function handleSaveMetadataModal(shouldUpload = false) {
+  const idInput = document.getElementById('edit-meta-item-id');
+  const id = Number(idInput?.value);
+  if (!id) return;
+  const item = await getUploadById(id);
+  if (!item) return;
+
+  const nameVal = document.getElementById('edit-meta-product-name')?.value.trim() || '';
+  const qtyVal = document.getElementById('edit-meta-quantity')?.value.trim() || '';
+
+  const numericMatch = qtyVal.match(/^([\d.,]+)/);
+  const numericWeight = numericMatch ? numericMatch[1].replace(',', '.') : '';
+
+  const updatedFields = {
+    ...(item.fields || {}),
+    lang: 'es'
+  };
+
+  if (nameVal) {
+    updatedFields.product_name = nameVal;
+  } else {
+    delete updatedFields.product_name;
+  }
+
+  if (qtyVal) {
+    updatedFields.quantity = qtyVal;
+    if (numericWeight) {
+      updatedFields.product_quantity = numericWeight;
+    }
+  } else {
+    delete updatedFields.quantity;
+    delete updatedFields.product_quantity;
+  }
+
+  const finalProductName = nameVal || item.productName || `Producto ${item.barcode}`;
+
+  await db.pendingUploads.update(item.id, {
+    productName: finalProductName,
+    fields: updatedFields,
+    status: item.status === 'done' ? 'done' : 'pending',
+    updatedAt: new Date().toISOString()
+  });
+
+  // Sincronizar catálogo local
+  try {
+    const existing = await ProductStore.getProductByCode(item.barcode);
+    if (existing) {
+      const updates = {};
+      if (nameVal) updates.product_name = nameVal;
+      if (numericWeight) updates.product_quantity = numericWeight;
+      if (Object.keys(updates).length > 0) {
+        if (existing.is_custom) {
+          await db.customProducts.update(item.barcode, updates);
+        } else {
+          await db.products.where('code').equals(item.barcode).modify(updates);
+        }
+      }
+    } else if (nameVal) {
+      await ProductStore.addCustomProduct({
+        code: item.barcode,
+        product_name: nameVal,
+        product_quantity: numericWeight || ''
+      });
+    }
+  } catch (err) {
+    console.warn('[OFF] Error sincronizando producto localmente tras editar metadatos:', err);
+  }
+
+  editMetaModalInstance?.hide();
+  showToast('✅ Datos de producto guardados', 'success');
+  await updateStats();
+  await loadUploads();
+
+  if (shouldUpload) {
+    await window.offRetrySingle(item.id);
+  }
+}
 
 // ── Cámara y selección de archivos en modal ────────────────────────────────
 

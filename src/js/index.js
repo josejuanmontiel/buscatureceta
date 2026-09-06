@@ -25,7 +25,7 @@ migrateFromLegacyDB().catch(console.error);
 // E2E test helper: clear all user-generated data (keeps products intact)
 window.__resetUserData = async function() {
   const stores = ['cart', 'pantry', 'pantryLog', 'diary', 'recipes',
-    'recipeVersions', 'recentProducts', 'customProducts', 'priceHistory', 'mealPhotos', 'shoppingLists'];
+    'recipeVersions', 'recentProducts', 'customProducts', 'priceHistory', 'mealPhotos', 'shoppingLists', 'pendingUploads', 'cartHistory'];
   for (const store of stores) {
     if (db[store]) await db[store].clear();
   }

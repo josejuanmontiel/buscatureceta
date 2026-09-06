@@ -431,11 +431,11 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-dark text-white border-secondary">
         <div class="modal-header border-secondary">
-          <h5 class="modal-title">⚖️ Faltan Pesos</h5>
+          <h5 class="modal-title">⚖️ Datos Pendientes de Productos</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body text-start">
-          <p class="small text-muted mb-3">Los siguientes productos no tienen peso registrado en la base de datos. Por favor, indícalo (en gramos) para que el inventario funcione correctamente.</p>
+          <p class="small text-muted mb-3">Los siguientes productos no tienen peso o nombre registrado en el catálogo. Puedes completarlos a continuación para mantener el inventario exacto y colaborar con OpenFoodFacts.</p>
           <form id="missing-weights-form">
             <!-- Injected by JS -->
           </form>
@@ -2536,6 +2536,83 @@
             </button>
             <button type="button" class="btn btn-success btn-sm" id="btn-save-edited-upload">
               <i class="bi bi-check2-circle me-1"></i> <span id="btn-save-edited-text">Guardar Cambios</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Datos/Metadatos OFF (Nombre y Peso) -->
+  <div class="modal fade" id="modal-off-edit-metadata" tabindex="-1" aria-labelledby="modalOffEditMetaTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modalOffEditMetaTitle">
+            <i class="bi bi-tag-fill text-warning me-2"></i>
+            <span>Editar Datos para OpenFoodFacts</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-meta-item-id">
+          <div class="mb-3">
+            <label class="form-label form-label-sm text-muted mb-1">Código de barras (GTIN)</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-black border-secondary text-info"><i class="bi bi-upc-scan"></i></span>
+              <input type="text" id="edit-meta-barcode" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" readonly>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label form-label-sm text-white mb-1 fw-bold">Nombre del producto</label>
+            <input type="text" id="edit-meta-product-name" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Ej: Couscous Hacendado">
+            <div class="form-text text-muted small">Nombre comercial o denominación que se enviará a OpenFoodFacts.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label form-label-sm text-white mb-1 fw-bold">Peso / Cantidad</label>
+            <div class="input-group input-group-sm">
+              <input type="text" id="edit-meta-quantity" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="Ej: 500 g">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-quick-qty-g">+ g</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-quick-qty-kg">+ kg</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-quick-qty-ml">+ ml</button>
+            </div>
+            <div class="form-text text-muted small">Indicación de peso o volumen (ej: <code>500 g</code>, <code>1 kg</code>, <code>250 ml</code>).</div>
+          </div>
+
+          <!-- Panel de previsualización en vivo de los valores a enviar -->
+          <div class="card bg-black border-secondary p-3 mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="text-info small fw-bold mb-0">
+                <i class="bi bi-send-check me-1"></i> Valores que se enviarán a OpenFoodFacts:
+              </h6>
+              <span class="badge bg-info text-dark" style="font-size: 0.7rem;">lang: es</span>
+            </div>
+            <div class="font-monospace small d-flex flex-column gap-1 bg-dark bg-opacity-50 p-2 rounded border border-secondary">
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">product_name:</span>
+                <span id="preview-meta-name" class="text-warning fw-bold text-truncate text-end ms-2" style="max-width: 220px;">—</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">quantity:</span>
+                <span id="preview-meta-quantity" class="text-warning fw-bold text-end ms-2">—</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">product_quantity:</span>
+                <span id="preview-meta-product-quantity" class="text-light text-end ms-2">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-meta-changes">
+              <i class="bi bi-save me-1"></i> Guardar datos
+            </button>
+            <button type="button" class="btn btn-success btn-sm" id="btn-save-and-upload-meta">
+              <i class="bi bi-cloud-arrow-up me-1"></i> Guardar y Subir
             </button>
           </div>
         </div>

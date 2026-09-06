@@ -869,15 +869,35 @@ async function handleCheckout() {
 
     if (missingWeights.length > 0 && askWeightsPref) {
         const form = document.getElementById('missing-weights-form');
-        form.innerHTML = missingWeights.map(mw => `
-            <div class="mb-3">
-                <label class="form-label small">${mw.product?.product_name || mw.item.productName || mw.item.productCode}</label>
-                <div class="input-group input-group-sm">
-                    <input type="number" class="form-control missing-weight-input" data-code="${mw.item.productCode}" placeholder="Ej: 500" min="1">
-                    <span class="input-group-text">g/ml</span>
+        form.innerHTML = missingWeights.map(mw => {
+            const officialName = (mw.product?.product_name || '').trim();
+            const brandFallback = mw.product?.brands ? `${mw.product.brands} (${mw.item.productCode})` : '';
+            const isNameMissing = !officialName || officialName.startsWith('Producto ') || mw.item.productName === brandFallback || mw.item.productName === mw.item.productCode || (mw.item.productName && mw.item.productName.startsWith('Producto '));
+            const displayName = officialName || mw.item.productName || (mw.product?.brands ? `${mw.product.brands} (${mw.item.productCode})` : `Producto ${mw.item.productCode}`);
+            return `
+            <div class="mb-3 p-2 rounded bg-black border border-secondary">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small text-info fw-bold font-monospace">Código: ${mw.item.productCode}</span>
+                    ${isNameMissing ? '<span class="badge bg-warning text-dark small"><i class="bi bi-fonts me-1"></i>Falta nombre</span>' : ''}
+                </div>
+                ${isNameMissing ? `
+                <div class="mb-2">
+                    <label class="form-label small text-muted mb-1">Nombre del producto:</label>
+                    <input type="text" class="form-control form-control-sm missing-name-input bg-dark text-white border-secondary" data-code="${mw.item.productCode}" placeholder="Ej: Couscous Hacendado" value="${mw.product?.brands ? mw.product.brands + ' ' : ''}">
+                </div>
+                ` : `
+                <div class="small text-white mb-2 fw-bold">${displayName}</div>
+                `}
+                <div>
+                    <label class="form-label small text-muted mb-1">Peso / Cantidad (en gramos):</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" class="form-control missing-weight-input bg-dark text-white border-secondary" data-code="${mw.item.productCode}" placeholder="Ej: 500" min="1">
+                        <span class="input-group-text bg-secondary text-white border-secondary">g/ml</span>
+                    </div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         const modalEl = document.getElementById('modal-missing-weights');
         const modal = Modal.getOrCreateInstance(modalEl);
@@ -923,37 +943,56 @@ async function handleCheckout() {
                 return;
             }
 
-            // Guardar pesos en la BD y encolar colaboración a OpenFoodFacts si procede
+            // Guardar pesos y nombres en la BD y encolar colaboración a OpenFoodFacts si procede
             for (const input of inputs) {
                 const code = input.dataset.code;
                 const weight = parseFloat(input.value);
                 const weightStr = weight.toString();
+                const nameInput = form.querySelector(`.missing-name-input[data-code="${code}"]`);
+                const nameEntered = nameInput ? nameInput.value.trim() : '';
+
                 try {
                     const p = await ProductStore.getProductByCode(code);
-                    let prodName = '';
+                    let prodName = nameEntered || '';
                     if (p) {
-                        prodName = p.product_name || (p.brands ? `${p.brands} (${code})` : '');
+                        if (!prodName) {
+                            prodName = p.product_name || (p.brands ? `${p.brands} (${code})` : '');
+                        }
+                        const updates = { product_quantity: weightStr };
+                        if (nameEntered) {
+                            updates.product_name = nameEntered;
+                        }
                         if (p.is_custom) {
-                            await db.customProducts.update(code, { product_quantity: weightStr });
+                            await db.customProducts.update(code, updates);
                         } else {
-                            // Para productos OFF, actualizamos solo ese campo
-                            await db.products.where('code').equals(code).modify({ product_quantity: weightStr });
+                            await db.products.where('code').equals(code).modify(updates);
                         }
                     } else {
-                        prodName = 'Producto ' + code;
+                        prodName = nameEntered || ('Producto ' + code);
                         await ProductStore.addCustomProduct({ code, product_name: prodName, product_quantity: weightStr });
+                    }
+
+                    // Actualizar también el ítem en el carro en memoria si aplica
+                    const cartItem = items.find(i => i.productCode === code);
+                    if (cartItem && nameEntered) {
+                        cartItem.productName = nameEntered;
                     }
 
                     // Encolar contribución comunitaria a OFF si es un código de barras numérico
                     const cleanBarcode = (p?.real_code || code).replace(/^GENERIC_/, '');
                     if (/^\d{8,14}$/.test(cleanBarcode)) {
-                        await saveMetadataToPendingUploads(cleanBarcode, {
+                        const metadataFields = {
                             quantity: `${weightStr} g`,
                             product_quantity: weightStr
-                        }, prodName);
+                        };
+                        if (nameEntered) {
+                            metadataFields.product_name = nameEntered;
+                            metadataFields.lang = 'es';
+                        }
+                        await saveMetadataToPendingUploads(cleanBarcode, metadataFields, prodName);
                     }
                 } catch(err) {
-                    console.error('Error guardando peso para', code, err);
+                    console.error('Error guardando peso/nombre para', code, err);
                 }
             }
             await updateSyncBadge();
