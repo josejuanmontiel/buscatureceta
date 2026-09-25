@@ -254,6 +254,10 @@ export function convertMealieToBuscaReceta(m) {
   // 4. Raciones
   const servings = parseInt(m.recipeServings || m.recipeYieldQuantity || 2, 10) || 2;
 
+  // 5. Imagen
+  const image = m.image || null;
+  const photoBlob = dataUriToBlob(image);
+
   return {
     name: m.name || 'Receta sin título',
     servings,
@@ -261,6 +265,50 @@ export function convertMealieToBuscaReceta(m) {
     instructions,
     tags,
     ingredients,
-    mealieSlug: m.slug || null
+    mealieSlug: m.slug || null,
+    image,
+    photoBlob
   };
 }
+
+/**
+ * Convierte un Data URI (base64) a un objeto Blob
+ * @param {string} dataURI
+ * @returns {Blob|null}
+ */
+export function dataUriToBlob(dataURI) {
+  if (!dataURI || typeof dataURI !== 'string' || !dataURI.startsWith('data:')) return null;
+  try {
+    const parts = dataURI.split(',');
+    const byteString = atob(parts[1]);
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const ab = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+      ab[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeType });
+  } catch (err) {
+    console.warn('[MealieClient] Error parseando data URI a Blob:', err);
+    return null;
+  }
+}
+
+/**
+ * Descarga la imagen binaria de una receta desde Mealie
+ * @param {string} slugOrId
+ * @returns {Promise<Blob|null>}
+ */
+export async function getRecipeImageBlob(slugOrId) {
+  if (!slugOrId) return null;
+  try {
+    const res = await fetchMealieApi(`/api/media/recipes/${slugOrId}/images/original.webp`);
+    if (res && res.ok) {
+      return await res.blob();
+    }
+  } catch (err) {
+    console.warn(`[MealieClient] No se pudo descargar imagen para ${slugOrId}:`, err.message);
+  }
+  return null;
+}
+

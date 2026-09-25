@@ -107,9 +107,22 @@ async function loadRecipes(query = '') {
     return;
   }
 
-  container.innerHTML = recipes.map(recipe => `
+  container.innerHTML = recipes.map(recipe => {
+    let photoUrl = '';
+    if (recipe.photoBlob instanceof Blob) {
+      photoUrl = URL.createObjectURL(recipe.photoBlob);
+    } else if (typeof recipe.image === 'string' && recipe.image) {
+      photoUrl = recipe.image;
+    }
+
+    return `
     <div class="col-md-6 col-lg-4 mb-4">
-      <div class="card bg-secondary text-white recipe-card h-100">
+      <div class="card bg-secondary text-white recipe-card h-100 overflow-hidden">
+        ${photoUrl ? `
+          <div style="height: 150px; overflow: hidden; background: #1a1e21; position: relative;" onclick="window.location.hash = '#recipe-editor?id=${recipe.id}'" role="button">
+            <img src="${photoUrl}" alt="${recipe.name}" style="width: 100%; height: 100%; object-fit: cover;" />
+          </div>
+        ` : ''}
         <div class="card-body" onclick="window.location.hash = '#recipe-editor?id=${recipe.id}'" style="cursor:pointer;">
           <h5 class="card-title">
             ${recipe.name}
@@ -135,7 +148,8 @@ async function loadRecipes(query = '') {
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 window._generateShoppingList = async function(recipeId) {
@@ -572,6 +586,11 @@ window._importMealieDirect = async function(slug, btnIdx) {
       converted.servings || 2
     );
 
+    let photoBlob = converted.photoBlob || null;
+    if (!photoBlob && (rawDetail.id || slug)) {
+      photoBlob = await MealieClient.getRecipeImageBlob(rawDetail.id || slug);
+    }
+
     const recipeData = {
       name: converted.name,
       servings: converted.servings || 2,
@@ -580,7 +599,8 @@ window._importMealieDirect = async function(slug, btnIdx) {
       tags: converted.tags,
       ingredients: resolvedIngredients,
       nutritionPerServing,
-      mealieSlug: slug
+      mealieSlug: slug,
+      photoBlob: photoBlob || null
     };
 
     await RecipeStore.createRecipe(recipeData);

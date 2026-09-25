@@ -86,6 +86,9 @@ async function loadFromMealie(slug) {
     showToast('Cargando receta desde Mealie...', 'info');
     const raw = await MealieClient.getRecipeDetail(slug);
     const converted = MealieClient.convertMealieToBuscaReceta(raw);
+    if (!converted.photoBlob && (raw.id || slug)) {
+      converted.photoBlob = await MealieClient.getRecipeImageBlob(raw.id || slug);
+    }
     aiImportedRecipeData = converted;
     if (converted.ingredients && converted.ingredients.length > 0) {
       await runSmartMatch(converted.ingredients);
@@ -1218,6 +1221,17 @@ function applyImportedRecipeData() {
           unit: item.original.unit || 'g'
         });
       }
+    }
+  }
+
+  if (aiImportedRecipeData.photoBlob) {
+    currentPhotoBlob = aiImportedRecipeData.photoBlob;
+    showPhotoPreview(currentPhotoBlob);
+  } else if (aiImportedRecipeData.image) {
+    const b = MealieClient.dataUriToBlob(aiImportedRecipeData.image);
+    if (b) {
+      currentPhotoBlob = b;
+      showPhotoPreview(currentPhotoBlob);
     }
   }
   
