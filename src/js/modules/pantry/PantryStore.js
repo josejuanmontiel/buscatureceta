@@ -1,4 +1,5 @@
 import * as ProductStore from "../products/ProductStore.js";
+import { estimateShelfLife, getExpiryStatus } from "./ShelfLifeEstimator.js";
 /**
  * PantryStore — Control de Despensa (Stock e Historial de Movimientos)
  *
@@ -8,6 +9,8 @@ import * as ProductStore from "../products/ProductStore.js";
  */
 import { db } from '../../db/schema.js';
 
+export { estimateShelfLife, getExpiryStatus };
+
 /**
  * Añadir stock a la despensa (ej. compra)
  * @param {string} productCode
@@ -15,8 +18,10 @@ import { db } from '../../db/schema.js';
  * @param {string} unit
  * @param {string} zone - 'food' | 'nonfood' (default: 'food')
  * @param {number|null} [packageUnits] - Unidades contenidas en el paquete (opcional)
+ * @param {string|null} [expiryDate] - Fecha de caducidad 'YYYY-MM-DD' (opcional)
+ * @param {string|null} [openedAt] - Fecha de apertura 'YYYY-MM-DD' (opcional)
  */
-export async function addStock(productCode, amount, unit = 'g', zone = 'food', packageUnits = null) {
+export async function addStock(productCode, amount, unit = 'g', zone = 'food', packageUnits = null, expiryDate = null, openedAt = null) {
   if (!productCode || amount <= 0) return;
 
   const now = new Date().toISOString();
@@ -38,6 +43,23 @@ export async function addStock(productCode, amount, unit = 'g', zone = 'food', p
   // 1. Buscar si ya existe el producto en la despensa (por código)
   let item = await db.pantry.where({ productCode }).first();
 
+  // Inferencia de vida útil si no se especifica fecha de caducidad en zona de alimentos
+  let inferredExpiry = expiryDate;
+  let isEstimated = false;
+  let shelfClass = null;
+
+  if (!inferredExpiry && zone === 'food') {
+    const est = estimateShelfLife({
+      productCode,
+      productName: product?.product_name || '',
+      categoriesTags: product?.categories_tags || product?.categories || '',
+      primaryCategory: product?.primary_category || ''
+    });
+    inferredExpiry = est.suggestedExpiryDate;
+    isEstimated = true;
+    shelfClass = est.shelfClass;
+  }
+
   if (item) {
     const updateData = {
       amount: Math.round((item.amount + amount) * 100) / 100,
@@ -47,6 +69,18 @@ export async function addStock(productCode, amount, unit = 'g', zone = 'food', p
       updateData.packageUnits = numPackUnits;
       if (unitWeight > 0) updateData.unitWeight = unitWeight;
     }
+    // Si el usuario introduce explícitamente una fecha de caducidad, actualizarla
+    if (expiryDate) {
+      updateData.expiryDate = expiryDate;
+      updateData.isEstimated = false;
+    } else if (!item.expiryDate && inferredExpiry) {
+      updateData.expiryDate = inferredExpiry;
+      updateData.isEstimated = true;
+      if (shelfClass) updateData.shelfClass = shelfClass;
+    }
+    if (openedAt) {
+      updateData.openedAt = openedAt;
+    }
     await db.pantry.update(item.id, updateData);
   } else {
     const newItem = {
@@ -55,7 +89,11 @@ export async function addStock(productCode, amount, unit = 'g', zone = 'food', p
       unit,
       pantryZone: zone,
       packageUnits: (numPackUnits && numPackUnits > 0) ? numPackUnits : null,
-      unitWeight: unitWeight > 0 ? unitWeight : null
+      unitWeight: unitWeight > 0 ? unitWeight : null,
+      expiryDate: inferredExpiry || null,
+      isEstimated: expiryDate ? false : isEstimated,
+      shelfClass: shelfClass || null,
+      openedAt: openedAt || null
     };
     const newItemId = await db.pantry.add(newItem);
     item = { id: newItemId };
@@ -229,6 +267,27 @@ export async function moveToZone(productCode, newZone) {
 }
 
 /**
+ * Actualizar fecha de caducidad y/o apertura de un producto en la despensa
+ * @param {string} productCode
+ * @param {string|null} expiryDate - 'YYYY-MM-DD'
+ * @param {string|null} [openedAt] - 'YYYY-MM-DD'
+ */
+export async function updateExpiryDate(productCode, expiryDate, openedAt = null) {
+  if (!productCode) return;
+  const item = await db.pantry.where({ productCode }).first();
+  if (!item) return;
+
+  const updateData = {
+    expiryDate: expiryDate || null,
+    isEstimated: false
+  };
+  if (openedAt !== undefined) {
+    updateData.openedAt = openedAt || null;
+  }
+  await db.pantry.update(item.id, updateData);
+}
+
+/**
  * Obtener todo el inventario actual, opcionalmente filtrado por zona.
  * Los registros sin pantryZone (legacy) se tratan como 'food'.
  * @param {string|null} zone - 'food' | 'nonfood' | null (todos)
@@ -259,18 +318,38 @@ export async function getPantryInventory(zone = null) {
     if (p.unit_weight) unitWeightMap[p.code] = p.unit_weight;
   });
 
-  return filteredItems.map(item => ({
-    ...item,
-    pantryZone: item.pantryZone || 'food',
-    productName: productMap[item.productCode] || 'Producto Desconocido',
-    productQuantity: quantityMap[item.productCode] || '',
-    packageUnits: item.packageUnits || packageUnitsMap[item.productCode] || null,
-    unitWeight: item.unitWeight || unitWeightMap[item.productCode] || null
-  }));
+  return filteredItems.map(item => {
+    const expiryDate = item.expiryDate || null;
+    const expiryInfo = getExpiryStatus(expiryDate);
+
+    return {
+      ...item,
+      pantryZone: item.pantryZone || 'food',
+      productName: productMap[item.productCode] || 'Producto Desconocido',
+      productQuantity: quantityMap[item.productCode] || '',
+      packageUnits: item.packageUnits || packageUnitsMap[item.productCode] || null,
+      unitWeight: item.unitWeight || unitWeightMap[item.productCode] || null,
+      expiryDate,
+      openedAt: item.openedAt || null,
+      isEstimated: item.isEstimated ?? false,
+      expiryInfo,
+      shelfClass: item.shelfClass || (expiryInfo.status === 'none' ? 'unknown' : expiryInfo.status)
+    };
+  });
 }
 
 if (typeof window !== 'undefined') {
-  window.PantryStore = { addStock, consumeStock, consumeRecipeIngredients, updatePackageUnits, getPantryInventory, moveToZone };
+  window.PantryStore = { 
+    addStock, 
+    consumeStock, 
+    consumeRecipeIngredients, 
+    updatePackageUnits, 
+    updateExpiryDate, 
+    getPantryInventory, 
+    moveToZone,
+    estimateShelfLife,
+    getExpiryStatus
+  };
 }
 
 

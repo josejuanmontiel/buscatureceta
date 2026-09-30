@@ -321,6 +321,36 @@ db.version(13).stores({
   diaryVersions: '++id, diaryEntryId, date, mealType, action, timestamp'
 });
 
+// ── v14: Fecha de Caducidad y Vida Útil en Despensa ────────────────────────────
+db.version(14).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType, status',
+  goals: '++id, nutrient',
+  /**
+   * pantry — Inventario físico con zona y fecha de caducidad
+   * 
+   * Campos indexados:
+   *   ++id
+   *   productCode
+   *   pantryZone    'food' | 'nonfood'
+   *   expiryDate    'YYYY-MM-DD' (permite filtrar rápidamente productos próximos a caducar)
+   */
+  pantry: '++id, productCode, pantryZone, expiryDate',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date',
+  shoppingLists: '++id, status',
+  mealTemplates: '++id, name, mealType, *tags',
+  diaryVersions: '++id, diaryEntryId, date, mealType, action, timestamp'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

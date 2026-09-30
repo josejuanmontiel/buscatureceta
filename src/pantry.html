@@ -118,6 +118,10 @@
                 <label class="form-label small text-muted">Unidades por paquete (opcional, para conversión en recetas)</label>
                 <input type="number" class="form-control form-control-sm" id="stock-package-units" placeholder="Ej: 6 (huevos), 4 (yogures), 8 (salchichas)..." min="1" step="1">
               </div>
+              <div class="col-12 mt-2">
+                <label class="form-label small text-muted">Fecha de caducidad (opcional — si se omite se estimará automáticamente)</label>
+                <input type="date" class="form-control form-control-sm" id="stock-expiry-date">
+              </div>
             </div>
           </form>
         </div>
@@ -189,6 +193,18 @@
               <button class="btn btn-outline-info" type="button" id="btn-save-detail-package-units">Guardar</button>
             </div>
             <div class="small text-muted" id="detail-unit-weight-hint"></div>
+          </div>
+
+          <div id="detail-expiry-box" class="p-2 mb-3 rounded bg-dark border border-secondary">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="small fw-bold text-info">⏳ Fecha de caducidad / Vida útil:</span>
+              <span id="detail-expiry-badge" class="badge bg-secondary">Sin definir</span>
+            </div>
+            <div class="input-group input-group-sm mb-1">
+              <input type="date" class="form-control" id="detail-input-expiry-date">
+              <button class="btn btn-outline-info" type="button" id="btn-save-detail-expiry">Guardar</button>
+            </div>
+            <div class="small text-muted" id="detail-expiry-hint"></div>
           </div>
           
           <h6>Información Nutricional (por 100g/ml)</h6>

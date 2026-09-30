@@ -179,6 +179,7 @@ async function loadPantry(query) {
                 ${item.pantryZone === 'nonfood' ? '🧴 No alimento' : '🥦 Alimento'}
               </span>
               ${item.packageUnits ? `<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">📦 ${item.packageUnits} uds/pack${item.unitWeight ? ` (~${item.unitWeight}g/ud)` : ''}</span>` : ''}
+              ${item.expiryInfo && item.expiryInfo.status !== 'none' ? `<span class="badge ${item.expiryInfo.badgeClass}" title="${item.isEstimated ? 'Estimada automáticamente por categoría o nombre' : 'Fecha confirmada en envase'}">⏳ ${item.expiryInfo.label}${item.isEstimated ? ' ~' : ''}</span>` : ''}
             </div>
           </div>
           <!-- Stock actual visible -->
@@ -467,14 +468,18 @@ async function saveStock() {
   const packageUnitsInput = document.getElementById('stock-package-units');
   const packageUnits = packageUnitsInput && packageUnitsInput.value ? parseInt(packageUnitsInput.value, 10) : null;
 
-  // El stock añadido manualmente respeta la zona activa
-  await PantryStore.addStock(code, amount, unit, currentZone, packageUnits);
+  const expiryDateInput = document.getElementById('stock-expiry-date');
+  const expiryDate = expiryDateInput && expiryDateInput.value ? expiryDateInput.value.trim() : null;
+
+  // El stock añadido manualmente respeta la zona activa y opcionalmente su caducidad
+  await PantryStore.addStock(code, amount, unit, currentZone, packageUnits, expiryDate);
   showToast('Stock añadido correctamente a la despensa', 'success');
   
   addStockModal.hide();
   clearSelectedProduct();
   document.getElementById('add-stock-form').reset();
   if (packageUnitsInput) packageUnitsInput.value = '';
+  if (expiryDateInput) expiryDateInput.value = '';
   await loadPantry();
 }
 
@@ -588,6 +593,57 @@ window.openProductDetail = async function(event, code, amount, unit) {
       }
       if (unitWeightHint && updatedItem?.unitWeight) {
         unitWeightHint.textContent = `Cada unidad equivale aprox. a ${updatedItem.unitWeight}g/ml para conversiones en recetas.`;
+      }
+      await loadPantry(document.getElementById('pantry-search')?.value.trim() || '');
+    };
+  }
+
+  // Manejo de fecha de caducidad / vida útil
+  const expiryBadge = document.getElementById('detail-expiry-badge');
+  const expiryInput = document.getElementById('detail-input-expiry-date');
+  const expiryHint = document.getElementById('detail-expiry-hint');
+
+  const expiryInfo = PantryStore.getExpiryStatus(pantryItem?.expiryDate);
+  if (expiryBadge) {
+    if (pantryItem?.expiryDate) {
+      expiryBadge.className = `badge ${expiryInfo.badgeClass}`;
+      expiryBadge.textContent = `${expiryInfo.label}${pantryItem.isEstimated ? ' (estimada)' : ''}`;
+    } else {
+      expiryBadge.className = 'badge bg-secondary';
+      expiryBadge.textContent = 'Sin definir';
+    }
+  }
+  if (expiryInput) {
+    expiryInput.value = pantryItem?.expiryDate || '';
+  }
+  if (expiryHint) {
+    if (pantryItem?.expiryDate) {
+      expiryHint.textContent = `Fecha registrada: ${pantryItem.expiryDate} (${pantryItem.isEstimated ? 'estimada por categoría/nombre' : 'confirmada por el usuario'}).`;
+    } else {
+      expiryHint.textContent = 'Indica la fecha de caducidad o consumo preferente que figura en el envase.';
+    }
+  }
+
+  const btnSaveExpiry = document.getElementById('btn-save-detail-expiry');
+  if (btnSaveExpiry) {
+    btnSaveExpiry.onclick = async () => {
+      const val = expiryInput.value ? expiryInput.value.trim() : null;
+      await PantryStore.updateExpiryDate(code, val);
+      showToast('Fecha de caducidad actualizada', 'success');
+
+      const updatedItem = await db.pantry.where('productCode').equals(code).first();
+      const updatedInfo = PantryStore.getExpiryStatus(updatedItem?.expiryDate);
+      if (expiryBadge) {
+        if (updatedItem?.expiryDate) {
+          expiryBadge.className = `badge ${updatedInfo.badgeClass}`;
+          expiryBadge.textContent = updatedInfo.label;
+        } else {
+          expiryBadge.className = 'badge bg-secondary';
+          expiryBadge.textContent = 'Sin definir';
+        }
+      }
+      if (expiryHint) {
+        expiryHint.textContent = updatedItem?.expiryDate ? `Fecha registrada: ${updatedItem.expiryDate}.` : 'Indica la fecha de caducidad o consumo preferente que figura en el envase.';
       }
       await loadPantry(document.getElementById('pantry-search')?.value.trim() || '');
     };
