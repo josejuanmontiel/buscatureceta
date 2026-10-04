@@ -6,6 +6,7 @@ const srcDir = path.join(__dirname, 'src');
 
 const pages = [
   'index',
+  'pre-shopping',
   'grid',
   'pantry',
   'recipes',
@@ -16,7 +17,8 @@ const pages = [
   'db-viewer',
   'settings',
   'cart-history',
-  'additives'
+  'additives',
+  'off-contributions'
 ];
 
 // Always read from the clean base template to avoid accumulating nested templates

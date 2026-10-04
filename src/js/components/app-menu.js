@@ -5,6 +5,7 @@ class AppMenu extends HTMLElement {
     // Main menu items
     const items = [
       { id: 'index',        icon: '🏠', text: 'Inicio' },
+      { id: 'pre-shopping', icon: '📝', text: 'Pre-lista' },
       { id: 'grid',         icon: '🛒', text: 'Carrito' },
       { id: 'pantry',       icon: '🥫', text: 'Despensa' },
       { id: 'recipes',      icon: '📖', text: 'Recetas' },

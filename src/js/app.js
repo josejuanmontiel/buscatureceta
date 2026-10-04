@@ -15,6 +15,7 @@ window.__seedDemoData = seedDemoData;
 document.addEventListener('DOMContentLoaded', () => {
   const router = new Router({
     'index': { init: () => import('./index.js') },
+    'pre-shopping': { init: () => import('./pre-shopping.js') },
     'grid': { init: () => import('./grid.js') },
     'pantry': { init: () => import('./pantry.js') },
     'recipes': { init: () => import('./recipes.js') },

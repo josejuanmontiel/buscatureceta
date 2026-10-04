@@ -17,6 +17,7 @@ const TABLES_TO_BACKUP = [
   'cart',
   'cartHistory',
   'shoppingLists',
+  'preShoppingList',
   'priceHistory',
   'pendingUploads',
   'mealPhotos',

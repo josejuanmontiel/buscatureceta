@@ -93,3 +93,22 @@ Actualmente la SPA utiliza **Carga Dinámica HTML (`fetch()` en `Router.js`)**, 
   - [x] Acción `⚡ Volcar a la Agenda`: crea automáticamente entradas planificadas (`status: 'planned'`) en los días correspondientes, listas para desarrollar con recetas e ingredientes o hacer check-in al consumirlas.
 - [x] **Tests Automatizados:**
   - [x] `tests/weekly-menu-draft.spec.js` (redacción, guardado, recarga y volcado a agenda con verificación en el grid semanal).
+
+## Pre-lista de la Compra (Inbox Continuo y Reposición Inteligente)
+- [x] **Fase 1: Core de la Pre-lista, Captura Rápida y Conversión a Lista Activa:**
+  - [x] Esquema Dexie v15 con store `preShoppingList: '++id, status, dateAdded'`.
+  - [x] Módulo `PreShoppingStore.js` con soporte para CRUD, selección en lote, volcado a lista de compra (`promoteToShoppingList`) y al carro (`promoteToCart`).
+  - [x] Parser de texto inteligente `preListParser.js` con soporte para cantidades numéricas, fracciones, unidades en español y eliminación de prefijos de petición.
+  - [x] Módulo de voz nativo `speechRecognition.js` con Web Speech API (`es-ES`) para dictado en tiempo real.
+  - [x] Vista y controlador `pre-shopping.html` / `pre-shopping.js` con chips de inicio rápido, ajuste de cantidades, renombrado inline y modal de pegado masivo (WhatsApp / Notas / Alexa).
+  - [x] Barra fija de conversión para promover la selección a Lista Activa (`#grid`) o Carrito directo.
+  - [x] Integración en menú de navegación `app-menu.js`, `Router.js`, `app.js`, `BackupStore.js` y `vite.config.js`.
+  - [x] Cobertura E2E completa con Playwright en `tests/pre-shopping.spec.js`.
+- [ ] **Fase 2: Motor de Repetición Inteligente y Cruce con Despensa:**
+  - [ ] Analizador de frecuencia histórica en `cartHistory` (detección de cadencia de compra por producto en días).
+  - [ ] Panel desplegable de sugerencias de reposición ("Sueles comprar esto cada X días y ya toca").
+  - [ ] Marcado de productos favoritos como "Básicos fijos".
+  - [ ] Sugerencias automáticas de productos de despensa con stock en 0.
+- [ ] **Fase 3: Integración con la Agenda de Menús:**
+  - [ ] Volcado automático de ingredientes faltantes de recetas planificadas para los próximos días.
+

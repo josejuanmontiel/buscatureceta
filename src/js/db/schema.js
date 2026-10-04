@@ -351,6 +351,45 @@ db.version(14).stores({
   diaryVersions: '++id, diaryEntryId, date, mealType, action, timestamp'
 });
 
+// ── v15: Pre-lista de la Compra (Borrador e Inbox Continuo) ───────────────────
+db.version(15).stores({
+  products: 'code, product_name',
+  recipes: '++id, name, source, externalId, *tags',
+  diary: '++id, date, mealType, status',
+  goals: '++id, nutrient',
+  pantry: '++id, productCode, pantryZone, expiryDate',
+  pantryLog: '++id, productCode, date, reason',
+  cart: '++id, productCode',
+  priceHistory: '++id, productCode, date',
+  pendingUploads: '++id, barcode, status',
+  recipeVersions: '++id, recipeId, savedAt',
+  mealPhotos: '++id, date, mealType, status',
+  customProducts: 'code, product_name',
+  recentProducts: 'productCode, timestamp',
+  cartHistory: '++id, date',
+  shoppingLists: '++id, status',
+  mealTemplates: '++id, name, mealType, *tags',
+  diaryVersions: '++id, diaryEntryId, date, mealType, action, timestamp',
+  /**
+   * preShoppingList — Buzón continuo de necesidades previas a la lista de compra
+   *
+   * Campos indexados:
+   *   ++id
+   *   status       'pending' | 'promoted' | 'archived'
+   *   dateAdded    ISO string
+   *
+   * Otros campos:
+   *   name         Nombre del producto / ítem (ej. 'Leche entera')
+   *   code         Código de barras / identificador si se conoce (opcional)
+   *   amount       Cantidad (número)
+   *   unit         Unidad ('l', 'kg', 'uds', etc.)
+   *   notes        Notas opcionales
+   *   source       'manual' | 'voice' | 'paste' | 'recurring' | 'pantry' | 'recipe'
+   *   checked      Boolean (para selección en lote en la UI)
+   */
+  preShoppingList: '++id, status, dateAdded'
+});
+
 // ── Helpers de migración ──────────────────────────────────────────────────────
 
 /**

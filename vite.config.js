@@ -92,6 +92,7 @@ export default defineConfig({
       input: {
         index: path.resolve(__dirname, 'src/index.html'),
         home: path.resolve(__dirname, 'src/home.html'),
+        'pre-shopping': path.resolve(__dirname, 'src/pre-shopping.html'),
         grid: path.resolve(__dirname, 'src/grid.html'),
         scan: path.resolve(__dirname, 'src/scan.html'),
         recipes: path.resolve(__dirname, 'src/recipes.html'),
