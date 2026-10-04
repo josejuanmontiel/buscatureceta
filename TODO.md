@@ -104,11 +104,14 @@ Actualmente la SPA utiliza **Carga Dinámica HTML (`fetch()` en `Router.js`)**, 
   - [x] Barra fija de conversión para promover la selección a Lista Activa (`#grid`) o Carrito directo.
   - [x] Integración en menú de navegación `app-menu.js`, `Router.js`, `app.js`, `BackupStore.js` y `vite.config.js`.
   - [x] Cobertura E2E completa con Playwright en `tests/pre-shopping.spec.js`.
-- [ ] **Fase 2: Motor de Repetición Inteligente y Cruce con Despensa:**
-  - [ ] Analizador de frecuencia histórica en `cartHistory` (detección de cadencia de compra por producto en días).
-  - [ ] Panel desplegable de sugerencias de reposición ("Sueles comprar esto cada X días y ya toca").
-  - [ ] Marcado de productos favoritos como "Básicos fijos".
-  - [ ] Sugerencias automáticas de productos de despensa con stock en 0.
+- [x] **Fase 2: Motor de Repetición Inteligente y Cruce con Despensa:**
+  - [x] Analizador de frecuencia histórica en `cartHistory` ([ReplenishmentEngine.js](file:///home/jose/workspace/josejuanmontiel/buscatureceta/src/js/modules/shopping/ReplenishmentEngine.js)) con cálculo de cadencia media en días y detección de retraso/urgencia.
+  - [x] Panel desplegable de sugerencias de reposición en [pre-shopping.html](file:///home/jose/workspace/josejuanmontiel/buscatureceta/src/pre-shopping.html) estructurado en 3 pestañas: *⚡ Toca comprar*, *🥫 Despensa a 0* y *📊 Frecuentes*.
+  - [x] Marcado de productos favoritos como "Básicos fijos" (⭐) persistentes.
+  - [x] Detección de productos de despensa con stock en 0 (`db.pantry`) listos para añadir en 1 clic.
+  - [x] Botón de acción masiva: `➕ Añadir que tocan` para volcar todas las sugerencias debidas a la pre-lista.
+  - [x] Filtro reactivo: los productos ya añadidos a la pre-lista o a la lista activa no se duplican en las sugerencias.
+  - [x] Tests E2E en Playwright cubriendo cadencia, despensa a cero y adición reactiva ([tests/pre-shopping.spec.js](file:///home/jose/workspace/josejuanmontiel/buscatureceta/tests/pre-shopping.spec.js)).
 - [ ] **Fase 3: Integración con la Agenda de Menús:**
   - [ ] Volcado automático de ingredientes faltantes de recetas planificadas para los próximos días.
 

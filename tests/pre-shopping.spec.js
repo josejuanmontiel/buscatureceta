@@ -151,4 +151,73 @@ test.describe('Pre-Lista de la Compra - Flujo E2E', () => {
     await page.waitForSelector('#prelist-empty', { state: 'visible' });
     await expect(page.locator('#badge-pending-count')).toHaveText('0');
   });
+
+  test('Debería detectar productos por cadencia de cartHistory y despensa agotada, y añadirlos a la Pre-lista', async ({ page }) => {
+    // 1. Inyectar datos en cartHistory (2 compras separadas por 7 días, hace 8 días) y despensa a 0
+    await page.evaluate(async () => {
+      const now = Date.now();
+      const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+      const date15DaysAgo = now - 15 * MS_PER_DAY;
+      const date8DaysAgo = now - 8 * MS_PER_DAY;
+
+      // Compra 1: hace 15 días
+      await window.db.cartHistory.add({
+        date: date15DaysAgo,
+        supermarket: 'Mercadona',
+        total: 10.0,
+        items: [
+          { productCode: '8400000000001', productName: 'Leche Desnatada', amount: 2, unit: 'l', price: 1.0 }
+        ]
+      });
+
+      // Compra 2: hace 8 días (cadencia = 7 días, han pasado 8 días -> Overdue!)
+      await window.db.cartHistory.add({
+        date: date8DaysAgo,
+        supermarket: 'Mercadona',
+        total: 10.0,
+        items: [
+          { productCode: '8400000000001', productName: 'Leche Desnatada', amount: 2, unit: 'l', price: 1.0 }
+        ]
+      });
+
+      // Producto agotado en despensa
+      await window.db.pantry.add({
+        productCode: '8400000000002',
+        productName: 'Arroz Redondo',
+        amount: 0,
+        unit: 'kg',
+        pantryZone: 'food'
+      });
+    });
+
+    // 2. Navegar a la Pre-lista
+    await page.goto('/index.html#pre-shopping');
+    await page.waitForSelector('#panel-replenishment', { state: 'visible' });
+
+    // 3. Comprobar que en la pestaña "Toca comprar" aparece Leche Desnatada
+    const containerDue = page.locator('#container-suggestions-due');
+    await expect(containerDue).toContainText('Leche Desnatada');
+    await expect(containerDue).toContainText('Hace 8d');
+
+    // 4. Comprobar pestaña Despensa a 0
+    await page.locator('#tab-depleted-btn').click();
+    const containerDepleted = page.locator('#container-suggestions-depleted');
+    await expect(containerDepleted).toContainText('Arroz Redondo');
+    await expect(containerDepleted).toContainText('Agotado en despensa');
+
+    // 5. Añadir "Leche Desnatada" desde la sugerencia
+    await page.locator('#tab-due-btn').click();
+    const btnAddLeche = containerDue.locator('button:has-text("Añadir")').first();
+    await btnAddLeche.click();
+
+    // 6. Verificar que aparece en la Pre-lista activa con badge Repetición
+    await page.waitForSelector('.prelist-item', { state: 'visible' });
+    const prelistItem = page.locator('.prelist-item').first();
+    await expect(prelistItem).toContainText('Leche Desnatada');
+    await expect(prelistItem).toContainText('Repetición');
+
+    // 7. Verificar que "Leche Desnatada" ya NO aparece en sugerencias (porque ya está en la prelista)
+    await expect(containerDue).not.toContainText('Leche Desnatada');
+  });
 });

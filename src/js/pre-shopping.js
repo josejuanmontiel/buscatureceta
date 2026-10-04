@@ -2,18 +2,21 @@ import { db } from './db/schema.js';
 import * as PreShoppingStore from './modules/shopping/PreShoppingStore.js';
 import { parseShoppingText, parseSingleItem } from './modules/shopping/preListParser.js';
 import { isSpeechRecognitionSupported, createSpeechRecognizer } from './modules/shopping/speechRecognition.js';
+import { getReplenishmentSuggestions, toggleStaple, isStaple } from './modules/shopping/ReplenishmentEngine.js';
 import { showToast, confirmModal } from './modules/ui/UI.js';
 import { Modal } from 'bootstrap';
 
 let pasteModalInstance = null;
 let activeSpeechRecognizer = null;
 let isRecordingVoice = false;
+let currentSuggestions = null;
 
 export async function initView() {
   initDOM();
   initVoice();
   initPasteModal();
   initConversionActions();
+  initSuggestionsActions();
   await renderList();
 }
 
@@ -314,6 +317,7 @@ async function renderList() {
     if (emptyState) emptyState.classList.remove('d-none');
     if (conversionBar) conversionBar.classList.add('d-none');
     if (toolsBar) toolsBar.classList.add('d-none');
+    await renderSuggestions();
     return;
   }
 
@@ -374,6 +378,148 @@ async function renderList() {
       </div>
     `;
   }).join('');
+
+  await renderSuggestions();
+}
+
+function initSuggestionsActions() {
+  const btnAddAll = document.getElementById('btn-add-all-suggestions');
+  if (btnAddAll) {
+    btnAddAll.addEventListener('click', async () => {
+      if (!currentSuggestions) {
+        currentSuggestions = await getReplenishmentSuggestions();
+      }
+      const toAdd = [...currentSuggestions.dueSuggestions, ...currentSuggestions.depletedPantry];
+      if (toAdd.length === 0) {
+        showToast('No hay sugerencias que toquen para añadir', 'info');
+        return;
+      }
+      for (const item of toAdd) {
+        await PreShoppingStore.addItem({
+          name: item.name,
+          code: item.code,
+          amount: item.amount || 1,
+          unit: item.unit || '',
+          source: item.type === 'pantry' ? 'pantry' : 'recurring'
+        });
+      }
+      showToast(`➕ ${toAdd.length} sugerencias añadidas a la pre-lista`, 'success');
+      await renderList();
+    });
+  }
+}
+
+async function renderSuggestions() {
+  const badgeCount = document.getElementById('badge-suggestions-count');
+  const countDue = document.getElementById('count-tab-due');
+  const countDepleted = document.getElementById('count-tab-depleted');
+  const countFrequent = document.getElementById('count-tab-frequent');
+  const containerDue = document.getElementById('container-suggestions-due');
+  const containerDepleted = document.getElementById('container-suggestions-depleted');
+  const containerFrequent = document.getElementById('container-suggestions-frequent');
+
+  if (!containerDue) return;
+
+  currentSuggestions = await getReplenishmentSuggestions();
+  const { dueSuggestions, depletedPantry, frequentItems, totalSuggestionsCount } = currentSuggestions;
+
+  if (badgeCount) badgeCount.textContent = totalSuggestionsCount;
+  if (countDue) countDue.textContent = dueSuggestions.length;
+  if (countDepleted) countDepleted.textContent = depletedPantry.length;
+  if (countFrequent) countFrequent.textContent = frequentItems.length;
+
+  // 1. Pestaña: Toca Comprar por cadencia
+  if (dueSuggestions.length === 0) {
+    containerDue.innerHTML = `
+      <div class="alert alert-secondary py-2 px-3 small text-center mb-0">
+        ✨ ¡Al día! Ningún producto habitual ha alcanzado su ciclo de reposición todavía.
+      </div>
+    `;
+  } else {
+    containerDue.innerHTML = dueSuggestions.map(s => {
+      const isOver = s.isOverdue;
+      const badgeStatus = isOver
+        ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle small">⚠️ Hace ${s.daysSinceLast}d (ciclo ~${s.cadenceDays}d)</span>`
+        : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle small">⏳ Toca reponer (~${s.cadenceDays}d)</span>`;
+      const stapleIcon = s.isStaple ? '⭐' : '☆';
+
+      return `
+        <div class="list-group-item bg-dark text-white border-secondary p-2 d-flex justify-content-between align-items-center gap-2 rounded">
+          <div class="d-flex align-items-center gap-2 overflow-hidden">
+            <button class="btn btn-sm btn-link p-0 text-decoration-none fs-5" title="${s.isStaple ? 'Quitar de básicos' : 'Marcar como básico fijo'}"
+                    onclick="window.toggleSuggestionStaple('${escapeHtml(s.code || s.name).replace(/'/g, "\\'")}')">
+              ${stapleIcon}
+            </button>
+            <div class="text-truncate">
+              <span class="fw-semibold">${escapeHtml(s.name)}</span>
+              <div>${badgeStatus}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-warning py-1 px-2 flex-shrink-0"
+                  onclick="window.addSuggestionToPrelist('${escapeHtml(s.name).replace(/'/g, "\\'")}', '${s.code || ''}', ${s.amount || 1}, '${s.unit || ''}', 'recurring')">
+            <i class="bi bi-plus-lg me-1"></i>Añadir
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. Pestaña: Despensa a 0
+  if (depletedPantry.length === 0) {
+    containerDepleted.innerHTML = `
+      <div class="alert alert-secondary py-2 px-3 small text-center mb-0">
+        🥫 No hay productos con stock a cero en tu despensa.
+      </div>
+    `;
+  } else {
+    containerDepleted.innerHTML = depletedPantry.map(s => `
+      <div class="list-group-item bg-dark text-white border-secondary p-2 d-flex justify-content-between align-items-center gap-2 rounded">
+        <div class="d-flex align-items-center gap-2 overflow-hidden">
+          <span class="text-danger fs-6">🔴</span>
+          <div class="text-truncate">
+            <span class="fw-semibold">${escapeHtml(s.name)}</span>
+            <div><span class="badge bg-danger-subtle text-danger border border-danger-subtle small">Agotado en despensa</span></div>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-outline-info py-1 px-2 flex-shrink-0"
+                onclick="window.addSuggestionToPrelist('${escapeHtml(s.name).replace(/'/g, "\\'")}', '${s.code || ''}', 1, '${s.unit || ''}', 'pantry')">
+          <i class="bi bi-plus-lg me-1"></i>Añadir
+        </button>
+      </div>
+    `).join('');
+  }
+
+  // 3. Pestaña: Frecuentes
+  if (frequentItems.length === 0) {
+    containerFrequent.innerHTML = `
+      <div class="alert alert-secondary py-2 px-3 small text-center mb-0">
+        📊 Registra más compras en el Carrito para detectar tus artículos frecuentes.
+      </div>
+    `;
+  } else {
+    containerFrequent.innerHTML = frequentItems.map(s => {
+      const stapleIcon = s.isStaple ? '⭐' : '☆';
+      const cadenceText = s.cadenceDays ? ` &middot; Cadencia ~${s.cadenceDays}d` : '';
+      return `
+        <div class="list-group-item bg-dark text-white border-secondary p-2 d-flex justify-content-between align-items-center gap-2 rounded">
+          <div class="d-flex align-items-center gap-2 overflow-hidden">
+            <button class="btn btn-sm btn-link p-0 text-decoration-none fs-5" title="${s.isStaple ? 'Quitar de básicos' : 'Marcar como básico fijo'}"
+                    onclick="window.toggleSuggestionStaple('${escapeHtml(s.code || s.name).replace(/'/g, "\\'")}')">
+              ${stapleIcon}
+            </button>
+            <div class="text-truncate">
+              <span class="fw-semibold">${escapeHtml(s.name)}</span>
+              <div><small class="text-muted">Comprado ${s.count} veces${cadenceText}</small></div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline-light py-1 px-2 flex-shrink-0"
+                  onclick="window.addSuggestionToPrelist('${escapeHtml(s.name).replace(/'/g, "\\'")}', '${s.code || ''}', ${s.amount || 1}, '${s.unit || ''}', 'recurring')">
+            <i class="bi bi-plus-lg me-1"></i>Añadir
+          </button>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 function escapeHtml(str) {
@@ -399,6 +545,24 @@ window.changePrelistAmount = async function(id, delta) {
 window.removePrelistItem = async function(id) {
   await PreShoppingStore.deleteItem(id);
   await renderList();
+};
+
+window.addSuggestionToPrelist = async function(name, code, amount, unit, source) {
+  await PreShoppingStore.addItem({
+    name,
+    code: code || null,
+    amount: amount || 1,
+    unit: unit || '',
+    source: source || 'recurring'
+  });
+  showToast(`➕ Añadido a la pre-lista: ${name}`, 'success');
+  await renderList();
+};
+
+window.toggleSuggestionStaple = function(codeOrName) {
+  const isNow = toggleStaple(codeOrName);
+  showToast(isNow ? '⭐ Marcado como básico fijo' : '☆ Desmarcado de básicos fijos', 'info');
+  renderSuggestions();
 };
 
 window.startRenamePrelistItem = function(id, currentName) {

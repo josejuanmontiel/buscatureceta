@@ -221,6 +221,68 @@
           </div>
         </div>
 
+        <!-- Panel de Sugerencias Inteligentes de Reposición (Fase 2) -->
+        <div class="card bg-dark text-white mb-3 border-warning shadow-sm text-start" id="panel-replenishment">
+          <div class="card-header bg-dark border-warning-subtle d-flex justify-content-between align-items-center py-2">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fs-5">🔄</span>
+              <strong class="text-warning">Sugerencias de Reposición</strong>
+              <span class="badge bg-warning text-dark fs-6" id="badge-suggestions-count">0</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button class="btn btn-sm btn-outline-warning py-0 px-2" id="btn-add-all-suggestions" title="Añadir todas las sugerencias que tocan">
+                <i class="bi bi-plus-circle me-1"></i>Añadir que tocan
+              </button>
+              <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-suggestions" aria-expanded="true" title="Minimizar / Expandir">
+                <i class="bi bi-chevron-down" id="icon-toggle-suggestions"></i>
+              </button>
+            </div>
+          </div>
+          <div class="collapse show" id="collapse-suggestions">
+            <div class="card-body p-2">
+              <!-- Pestañas internas: Toca Reponer / Agotados Despensa / Frecuentes -->
+              <ul class="nav nav-pills nav-fill mb-2" id="pills-suggestions-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active py-1 px-2 small text-warning" id="tab-due-btn" data-bs-toggle="pill" data-bs-target="#pills-due" type="button" role="tab">
+                    ⚡ Toca comprar (<span id="count-tab-due">0</span>)
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link py-1 px-2 small text-info" id="tab-depleted-btn" data-bs-toggle="pill" data-bs-target="#pills-depleted" type="button" role="tab">
+                    🥫 Despensa a 0 (<span id="count-tab-depleted">0</span>)
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link py-1 px-2 small text-light" id="tab-frequent-btn" data-bs-toggle="pill" data-bs-target="#pills-frequent" type="button" role="tab">
+                    📊 Frecuentes (<span id="count-tab-frequent">0</span>)
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content" id="pills-suggestions-tabContent">
+                <!-- Tab 1: Toca comprar por cadencia -->
+                <div class="tab-pane fade show active" id="pills-due" role="tabpanel">
+                  <div id="container-suggestions-due" class="d-flex flex-column gap-2">
+                    <!-- Renderizado dinámico -->
+                  </div>
+                </div>
+                <!-- Tab 2: Despensa a 0 -->
+                <div class="tab-pane fade" id="pills-depleted" role="tabpanel">
+                  <div id="container-suggestions-depleted" class="d-flex flex-column gap-2">
+                    <!-- Renderizado dinámico -->
+                  </div>
+                </div>
+                <!-- Tab 3: Frecuentes -->
+                <div class="tab-pane fade" id="pills-frequent" role="tabpanel">
+                  <div id="container-suggestions-frequent" class="d-flex flex-column gap-2">
+                    <!-- Renderizado dinámico -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Barra de Gestión / Filtro de Selección -->
         <div class="d-flex justify-content-between align-items-center mb-2 px-1 text-start" id="prelist-tools-bar">
           <div class="form-check">
