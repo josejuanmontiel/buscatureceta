@@ -288,5 +288,75 @@ test.describe('Pre-Lista de la Compra - Flujo E2E', () => {
     await expect(prelistItem).toContainText('Calabacín fresco');
     await expect(prelistItem).toContainText('Receta');
   });
+
+  test('Debería permitir renombrar inline, eliminar un ítem y volcar directamente al Carrito activo', async ({ page }) => {
+    await page.goto('/index.html#pre-shopping');
+
+    // 1. Añadir 2 productos secuencialmente esperando la adición
+    await page.locator('#input-quick-name').fill('Manzanas rojas');
+    await page.locator('#btn-quick-add').click();
+    await expect(page.locator('.prelist-item')).toHaveCount(1);
+
+    await page.locator('#input-quick-name').fill('Plátanos maduros');
+    await page.locator('#btn-quick-add').click();
+    await expect(page.locator('.prelist-item')).toHaveCount(2);
+
+    // 2. Renombrar "Manzanas rojas" a "Manzanas Fuji" haciendo clic en el texto
+    const firstName = page.locator('.prelist-item').first().locator('[id^="name-"]');
+    await firstName.click();
+    const renameInput = page.locator('.prelist-item input[type="text"]');
+    await renameInput.fill('Manzanas Fuji');
+    await renameInput.press('Enter');
+
+    await expect(page.locator('.prelist-item').first()).toContainText('Manzanas Fuji');
+
+    // 3. Eliminar "Plátanos maduros"
+    const secondDeleteBtn = page.locator('.prelist-item').nth(1).locator('button[title*="Eliminar"]');
+    await secondDeleteBtn.click();
+    await expect(page.locator('.prelist-item')).toHaveCount(1);
+    await expect(page.locator('.prelist-item')).not.toContainText('Plátanos maduros');
+
+    // 4. Volcar directamente al Carrito con el botón secundario
+    const btnConvertCart = page.locator('#btn-convert-to-cart');
+    await btnConvertCart.click();
+
+    // Confirmar en el modal
+    await page.waitForSelector('#btn-global-confirm', { state: 'visible' });
+    await page.click('#btn-global-confirm');
+
+    // Redirección al carrito (#grid)
+    await page.waitForURL(/#grid/);
+
+    // Verificar que Manzanas Fuji fue añadido al carro de la compra (#cart-list)
+    await page.waitForSelector('#cart-list', { state: 'visible' });
+    await expect(page.locator('#cart-list')).toContainText('Manzanas Fuji');
+  });
+
+
+  test('Debería añadir en bloque todas las sugerencias debidas con "Añadir que tocan"', async ({ page }) => {
+    // Inyectar un producto agotado en despensa
+    await page.evaluate(async () => {
+      await window.db.pantry.add({
+        productCode: '8400000000099',
+        productName: 'Tomate Frito Casero',
+        amount: 0,
+        unit: 'bote',
+        pantryZone: 'food'
+      });
+    });
+
+    await page.goto('/index.html#pre-shopping');
+    await page.waitForSelector('#panel-replenishment', { state: 'visible' });
+
+    // Pulsar botón "Añadir que tocan" (#btn-add-all-suggestions)
+    const btnAddAll = page.locator('#btn-add-all-suggestions');
+    await expect(btnAddAll).toBeVisible();
+    await btnAddAll.click();
+
+    // Verificar que se incorporó a la pre-lista
+    await page.waitForSelector('.prelist-item', { state: 'visible' });
+    await expect(page.locator('.prelist-item')).toContainText('Tomate Frito Casero');
+  });
 });
+
 
