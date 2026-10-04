@@ -112,6 +112,10 @@ Actualmente la SPA utiliza **Carga Dinámica HTML (`fetch()` en `Router.js`)**, 
   - [x] Botón de acción masiva: `➕ Añadir que tocan` para volcar todas las sugerencias debidas a la pre-lista.
   - [x] Filtro reactivo: los productos ya añadidos a la pre-lista o a la lista activa no se duplican en las sugerencias.
   - [x] Tests E2E en Playwright cubriendo cadencia, despensa a cero y adición reactiva ([tests/pre-shopping.spec.js](file:///home/jose/workspace/josejuanmontiel/buscatureceta/tests/pre-shopping.spec.js)).
-- [ ] **Fase 3: Integración con la Agenda de Menús:**
-  - [ ] Volcado automático de ingredientes faltantes de recetas planificadas para los próximos días.
-
+- [x] **Fase 3: Integración con la Agenda de Menús:**
+  - [x] Cálculo automático de ingredientes requeridos a partir de comidas planificadas en la Agenda (`db.diary`) para los próximos días (`getPlannedMenuMissingIngredients`).
+  - [x] Soporte para recetas (`type: 'recipe'`), productos sueltos (`type: 'product'`) y platos de texto libre del borrador semanal emparejados con recetas (`type: 'free'`).
+  - [x] Cruce en tiempo real con el stock de la despensa (`db.pantry`) para calcular y sugerir únicamente las cantidades netas faltantes.
+  - [x] Nueva pestaña *📅 Menú* en el panel de sugerencias de reposición de la Pre-lista, detallando platos de destino y fechas.
+  - [x] Integración en el botón masivo `➕ Añadir que tocan` y en botones individuales con badge `📖 Receta`.
+  - [x] Test E2E en Playwright verificando la detección de ingredientes faltantes y su incorporación a la Pre-lista ([tests/pre-shopping.spec.js](file:///home/jose/workspace/josejuanmontiel/buscatureceta/tests/pre-shopping.spec.js)).

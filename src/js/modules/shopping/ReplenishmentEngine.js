@@ -2,6 +2,7 @@ import { db } from '../../db/schema.js';
 import * as ProductStore from '../products/ProductStore.js';
 import * as PreShoppingStore from './PreShoppingStore.js';
 import * as ShoppingStore from './ShoppingStore.js';
+import { toDateKey } from '../diary/DiaryStore.js';
 
 const STAPLES_STORAGE_KEY = 'nutriagenda_prelist_staples';
 
@@ -223,12 +224,171 @@ export async function getReplenishmentSuggestions() {
     console.warn('Error leyendo despensa agotada:', err);
   }
 
-  const totalSuggestionsCount = dueSuggestions.length + depletedPantry.length;
+  // 4. Analizar ingredientes faltantes del menú planificado en la Agenda (Fase 3)
+  const plannedMenuRaw = await getPlannedMenuMissingIngredients(7);
+  const plannedMenuSuggestions = plannedMenuRaw.filter(i => !isAlreadyAdded(i.code, i.name));
+
+  const totalSuggestionsCount = dueSuggestions.length + depletedPantry.length + plannedMenuSuggestions.length;
 
   return {
     dueSuggestions,
     depletedPantry,
     frequentItems,
+    plannedMenuSuggestions,
     totalSuggestionsCount
   };
 }
+
+/**
+ * Analiza las comidas planificadas en la Agenda para los próximos días y calcula
+ * los ingredientes faltantes contrastando con el stock de la despensa.
+ *
+ * @param {number} [daysAhead=7] Días hacia adelante para inspeccionar la agenda
+ * @returns {Promise<Array<any>>} Lista de ingredientes faltantes con cantidades y plato que los requiere
+ */
+export async function getPlannedMenuMissingIngredients(daysAhead = 7) {
+  if (!db.diary) return [];
+
+  const todayStr = toDateKey(new Date());
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + daysAhead);
+  const maxDateStr = toDateKey(maxDate);
+
+  // Obtener entradas de la agenda en el rango de fechas [hoy, hoy + daysAhead]
+  let entries = [];
+  try {
+    entries = await db.diary
+      .where('date')
+      .between(todayStr, maxDateStr, true, true)
+      .toArray();
+  } catch (_) {
+    return [];
+  }
+
+  if (entries.length === 0) return [];
+
+  // Filtrar comidas que no estén marcadas como consumidas o saltadas
+  const plannedEntries = entries.filter(e => e.status !== 'consumed' && e.status !== 'skipped');
+
+  // Mapa para acumular ingredientes necesarios: key -> { name, code, needed, unit, dishes: Set<string> }
+  const neededMap = new Map();
+
+  for (const entry of plannedEntries) {
+    if (!entry.items || !Array.isArray(entry.items)) continue;
+
+    for (const item of entry.items) {
+      if (item.status === 'consumed' || item.status === 'skipped') continue;
+
+      if (item.type === 'recipe' && item.recipeId) {
+        let recipe = null;
+        try {
+          recipe = await db.recipes.get(item.recipeId);
+        } catch (_) {}
+
+        if (recipe && recipe.ingredients && Array.isArray(recipe.ingredients)) {
+          const factor = (parseFloat(item.servings) || parseFloat(recipe.servings) || 1) / (parseFloat(recipe.servings) || 1);
+          for (const ing of recipe.ingredients) {
+            const ingName = ing.productName || ing.name || 'Ingrediente';
+            const ingCode = ing.productCode || ing.code || null;
+            const ingAmount = (parseFloat(ing.amount) || 1) * factor;
+            const ingUnit = ing.unit || '';
+            const key = ingCode ? String(ingCode) : ingName.trim().toLowerCase();
+
+            if (!neededMap.has(key)) {
+              neededMap.set(key, {
+                code: ingCode,
+                name: ingName,
+                needed: 0,
+                unit: ingUnit,
+                dishes: new Set()
+              });
+            }
+            const record = neededMap.get(key);
+            record.needed += ingAmount;
+            record.dishes.add(`${recipe.name} (${entry.date})`);
+          }
+        }
+      } else if (item.type === 'product' && item.productCode) {
+        const key = String(item.productCode);
+        const pName = item.name || `Producto ${item.productCode}`;
+        const pAmount = parseFloat(item.servings) || 1;
+        const pUnit = item.unit || '';
+
+        if (!neededMap.has(key)) {
+          neededMap.set(key, {
+            code: item.productCode,
+            name: pName,
+            needed: 0,
+            unit: pUnit,
+            dishes: new Set()
+          });
+        }
+        const record = neededMap.get(key);
+        record.needed += pAmount;
+        record.dishes.add(`${pName} (${entry.date})`);
+      } else if (item.type === 'free' && item.name) {
+        // Plato de texto libre (ej: desde el borrador semanal)
+        // Intentar casar con una receta existente por nombre
+        let matchedRecipe = null;
+        try {
+          matchedRecipe = await db.recipes.where('name').equalsIgnoreCase(item.name.trim()).first();
+        } catch (_) {}
+
+        if (matchedRecipe && matchedRecipe.ingredients) {
+          const factor = (parseFloat(item.servings) || parseFloat(matchedRecipe.servings) || 1) / (parseFloat(matchedRecipe.servings) || 1);
+          for (const ing of matchedRecipe.ingredients) {
+            const ingName = ing.productName || ing.name || 'Ingrediente';
+            const ingCode = ing.productCode || ing.code || null;
+            const ingAmount = (parseFloat(ing.amount) || 1) * factor;
+            const ingUnit = ing.unit || '';
+            const key = ingCode ? String(ingCode) : ingName.trim().toLowerCase();
+
+            if (!neededMap.has(key)) {
+              neededMap.set(key, {
+                code: ingCode,
+                name: ingName,
+                needed: 0,
+                unit: ingUnit,
+                dishes: new Set()
+              });
+            }
+            const record = neededMap.get(key);
+            record.needed += ingAmount;
+            record.dishes.add(`${matchedRecipe.name} (${entry.date})`);
+          }
+        }
+      }
+    }
+  }
+
+  // Ahora contrastar cada ingrediente necesario con el stock disponible en db.pantry
+  const missingSuggestions = [];
+
+  for (const [key, record] of neededMap.entries()) {
+    let currentStock = 0;
+    if (record.code && db.pantry) {
+      try {
+        const pItem = await db.pantry.where({ productCode: record.code }).first();
+        if (pItem) currentStock = parseFloat(pItem.amount) || 0;
+      } catch (_) {}
+    }
+
+    const missingAmount = Math.max(0, record.needed - currentStock);
+    if (missingAmount > 0) {
+      missingSuggestions.push({
+        key,
+        code: record.code,
+        name: record.name,
+        amount: Math.round(missingAmount * 10) / 10,
+        unit: record.unit,
+        type: 'recipe',
+        reason: `Para: ${Array.from(record.dishes).join(', ')}`,
+        neededTotal: Math.round(record.needed * 10) / 10,
+        currentStock
+      });
+    }
+  }
+
+  return missingSuggestions;
+}
+

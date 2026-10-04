@@ -389,7 +389,11 @@ function initSuggestionsActions() {
       if (!currentSuggestions) {
         currentSuggestions = await getReplenishmentSuggestions();
       }
-      const toAdd = [...currentSuggestions.dueSuggestions, ...currentSuggestions.depletedPantry];
+      const toAdd = [
+        ...currentSuggestions.dueSuggestions,
+        ...currentSuggestions.depletedPantry,
+        ...(currentSuggestions.plannedMenuSuggestions || [])
+      ];
       if (toAdd.length === 0) {
         showToast('No hay sugerencias que toquen para añadir', 'info');
         return;
@@ -400,7 +404,7 @@ function initSuggestionsActions() {
           code: item.code,
           amount: item.amount || 1,
           unit: item.unit || '',
-          source: item.type === 'pantry' ? 'pantry' : 'recurring'
+          source: item.type === 'pantry' ? 'pantry' : (item.type === 'recipe' ? 'recipe' : 'recurring')
         });
       }
       showToast(`➕ ${toAdd.length} sugerencias añadidas a la pre-lista`, 'success');
@@ -414,19 +418,22 @@ async function renderSuggestions() {
   const countDue = document.getElementById('count-tab-due');
   const countDepleted = document.getElementById('count-tab-depleted');
   const countFrequent = document.getElementById('count-tab-frequent');
+  const countMenu = document.getElementById('count-tab-menu');
   const containerDue = document.getElementById('container-suggestions-due');
   const containerDepleted = document.getElementById('container-suggestions-depleted');
   const containerFrequent = document.getElementById('container-suggestions-frequent');
+  const containerMenu = document.getElementById('container-suggestions-menu');
 
   if (!containerDue) return;
 
   currentSuggestions = await getReplenishmentSuggestions();
-  const { dueSuggestions, depletedPantry, frequentItems, totalSuggestionsCount } = currentSuggestions;
+  const { dueSuggestions, depletedPantry, frequentItems, plannedMenuSuggestions, totalSuggestionsCount } = currentSuggestions;
 
   if (badgeCount) badgeCount.textContent = totalSuggestionsCount;
   if (countDue) countDue.textContent = dueSuggestions.length;
   if (countDepleted) countDepleted.textContent = depletedPantry.length;
   if (countFrequent) countFrequent.textContent = frequentItems.length;
+  if (countMenu) countMenu.textContent = plannedMenuSuggestions ? plannedMenuSuggestions.length : 0;
 
   // 1. Pestaña: Toca Comprar por cadencia
   if (dueSuggestions.length === 0) {
@@ -519,6 +526,37 @@ async function renderSuggestions() {
         </div>
       `;
     }).join('');
+  }
+
+  // 4. Pestaña: Menú Semanal (Fase 3)
+  if (containerMenu) {
+    if (!plannedMenuSuggestions || plannedMenuSuggestions.length === 0) {
+      containerMenu.innerHTML = `
+        <div class="alert alert-secondary py-2 px-3 small text-center mb-0">
+          📅 No hay ingredientes faltantes para tus comidas planificadas esta semana (o tu despensa ya tiene stock suficiente).
+        </div>
+      `;
+    } else {
+      containerMenu.innerHTML = plannedMenuSuggestions.map(s => {
+        const unitText = s.unit ? ` ${escapeHtml(s.unit)}` : '';
+        return `
+          <div class="list-group-item bg-dark text-white border-secondary p-2 d-flex justify-content-between align-items-center gap-2 rounded">
+            <div class="d-flex align-items-center gap-2 overflow-hidden">
+              <span class="text-success fs-5">🍳</span>
+              <div class="text-truncate">
+                <span class="fw-semibold">${escapeHtml(s.name)}</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle ms-1">Faltan ${s.amount}${unitText}</span>
+                <div><small class="text-muted">${escapeHtml(s.reason)}</small></div>
+              </div>
+            </div>
+            <button class="btn btn-sm btn-outline-success py-1 px-2 flex-shrink-0"
+                    onclick="window.addSuggestionToPrelist('${escapeHtml(s.name).replace(/'/g, "\\'")}', '${s.code || ''}', ${s.amount || 1}, '${s.unit || ''}', 'recipe')">
+              <i class="bi bi-plus-lg me-1"></i>Añadir
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
   }
 }
 

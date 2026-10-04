@@ -220,4 +220,73 @@ test.describe('Pre-Lista de la Compra - Flujo E2E', () => {
     // 7. Verificar que "Leche Desnatada" ya NO aparece en sugerencias (porque ya está en la prelista)
     await expect(containerDue).not.toContainText('Leche Desnatada');
   });
+
+  test('Debería detectar ingredientes faltantes del menú semanal (Agenda) y permitir añadirlos a la Pre-lista', async ({ page }) => {
+    // 1. Inyectar una receta y una comida planificada en la agenda para los próximos días
+    await page.evaluate(async () => {
+      const recipeId = await window.db.recipes.add({
+        name: 'Curry de Pollo y Calabacín',
+        servings: 2,
+        ingredients: [
+          { productCode: '8400000000010', productName: 'Pechuga de Pollo', amount: 400, unit: 'g' },
+          { productCode: '8400000000011', productName: 'Calabacín fresco', amount: 1, unit: 'kg' }
+        ]
+      });
+
+      // Añadir 200g de pechuga a la despensa (insuficiente para los 400g necesarios)
+      await window.db.pantry.add({
+        productCode: '8400000000010',
+        productName: 'Pechuga de Pollo',
+        amount: 200,
+        unit: 'g'
+      });
+      // El calabacín no está en despensa (stock = 0)
+
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + 2);
+      const dateStr = targetDate.toISOString().slice(0, 10);
+
+      await window.db.diary.add({
+        date: dateStr,
+        mealType: 'lunch',
+        items: [
+          {
+            type: 'recipe',
+            recipeId: recipeId,
+            name: 'Curry de Pollo y Calabacín',
+            servings: 2
+          }
+        ]
+      });
+    });
+
+    // 2. Navegar a la Pre-lista
+    await page.goto('/index.html#pre-shopping');
+    await page.waitForSelector('#panel-replenishment', { state: 'visible' });
+
+    // 3. Abrir la pestaña "Menú"
+    const tabMenuBtn = page.locator('#tab-menu-btn');
+    await tabMenuBtn.click();
+
+    const containerMenu = page.locator('#container-suggestions-menu');
+    // Debe mostrar que faltan 200 g de Pechuga de Pollo
+    await expect(containerMenu).toContainText('Pechuga de Pollo');
+    await expect(containerMenu).toContainText('Faltan 200 g');
+    await expect(containerMenu).toContainText('Para: Curry de Pollo y Calabacín');
+
+    // Debe mostrar que falta 1 kg de Calabacín fresco
+    await expect(containerMenu).toContainText('Calabacín fresco');
+    await expect(containerMenu).toContainText('Faltan 1 kg');
+
+    // 4. Añadir el Calabacín a la Pre-lista desde el botón de la sugerencia
+    const btnAddCalabacin = containerMenu.locator('button:has-text("Añadir")').nth(1);
+    await btnAddCalabacin.click();
+
+    // 5. Verificar que aparece en la Pre-lista activa con origen receta
+    await page.waitForSelector('.prelist-item', { state: 'visible' });
+    const prelistItem = page.locator('.prelist-item').first();
+    await expect(prelistItem).toContainText('Calabacín fresco');
+    await expect(prelistItem).toContainText('Receta');
+  });
 });
+
