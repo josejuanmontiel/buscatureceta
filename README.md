@@ -47,7 +47,13 @@ Todo esto funcionando de forma **100% local (offline-first)** usando el almacena
 - **Creador de Recetas:** Agrupación de productos y cálculo automático de macros por ración.
 - **Agenda y Dashboard:** Registro de ingestas con descuento automático de stock y gráficos de progreso.
 
-### Release v0.4.1 (Editor Avanzado & Pool Fotográfico) *(Actual)*
+### Release v0.5 (Pre-lista Continua, Sincronización Selectiva & Integración PrimaryFoods) *(Actual)*
+- **Sincronización Selectiva & Privacidad de Agenda:** Fusión inteligente de backups (`mergeData`) con opción para sincronizar o proteger las comidas personales del diario (`diary`).
+- **Importador Aditivo de Menús PrimaryFoods:** Importación directa de menús planificados (`buscatureceta_menu_pack.json` y plan anual) que inyecta recetas enriquecidas, agenda y deriva los ingredientes faltantes a la compra sin sobrescribir datos previos.
+- **Pre-lista Continua & Reposición Inteligente:** Captura rápida por voz (Web Speech API) y texto, cálculo de cadencia de compra histórica, sugerencias de reposición por stock 0 y cruce de ingredientes requeridos por recetas planificadas.
+- **Trazabilidad & Versionado Inmutable:** Historial cronológico de cambios de planificación (`diaryVersions`) y exportación modular desacoplada.
+
+### Release v0.4.1 (Editor Avanzado & Pool Fotográfico)
 - **Editor de Recetas a Página Completa:** Nueva experiencia de usuario para componer recetas, con histórico de versiones guardado automáticamente.
 - **Pool Fotográfico (Diario):** Posibilidad de tomar fotos de las comidas, almacenarlas localmente y llevar un registro visual en la agenda, listo para análisis por IA externo.
 - **Entorno de Pruebas Extendido:** Pruebas E2E completas adaptadas a las nuevas funcionalidades, y soporte HTTPS local para características nativas (cámara/portapapeles).
