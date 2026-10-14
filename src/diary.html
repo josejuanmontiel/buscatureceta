@@ -163,9 +163,13 @@
             <span class="badge bg-warning text-dark ms-1 d-none" id="badge-weekly-draft-active">Borrador</span>
           </button>
         </div>
-        <div>
-          <button class="btn btn-outline-light me-2" id="btn-prev-week">&lt; Semana Anterior</button>
-          <span id="current-week-label" class="fw-bold me-2"></span>
+        <div class="d-flex align-items-center gap-2">
+          <input type="file" id="diary-menu-pack-input" accept=".json" style="display: none;">
+          <button class="btn btn-outline-success btn-sm" id="btn-diary-import-menu" title="Importar plan de comidas o paquete de menú de PrimaryFoods">
+            📥 Importar Menú
+          </button>
+          <button class="btn btn-outline-light" id="btn-prev-week">&lt; Semana Anterior</button>
+          <span id="current-week-label" class="fw-bold"></span>
           <button class="btn btn-outline-light" id="btn-next-week">Semana Siguiente &gt;</button>
         </div>
       </div>

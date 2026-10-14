@@ -1,7 +1,10 @@
 # Tareas Pendientes (TODO)
 
 ## Sincronización y Compartición
-- [ ] **Sincronización Selectiva de Agenda (Diary):** Actualmente la función `mergeData` ignora por completo la tabla `diary` al importar/fusionar un backup para proteger la privacidad de los eventos y métricas personales de cada usuario de la familia. En el futuro, se debe implementar una interfaz que pregunte qué registros del diario se quieren sincronizar, o utilizar un sistema de "Propietarios" para que cada usuario pueda compartir y fusionar sus propios registros en una base de datos común sin pisar los demás.
+- [x] **Sincronización Selectiva de Agenda (Diary):**
+  - [x] Soporte para sincronización selectiva (`mergeData(data, { mergeDiary })`) protegiendo por defecto las entradas personales de cada usuario.
+  - [x] Selector contextual en la pantalla de Ajustes (`#check-merge-diary` y `#btn-merge`).
+  - [x] Cobertura E2E con test automatizado (`tests/menu-import-selective-sync.spec.js`).
 
 ## Arquitectura SPA y Gestión de Vistas
 Actualmente la SPA utiliza **Carga Dinámica HTML (`fetch()` en `Router.js`)**, lo cual permite mantener los archivos HTML independientes para desarrollo pero cargarlos de forma reactiva sin recargar la página. Para el futuro, se identificaron las siguientes alternativas de mejora arquitectónica:
@@ -58,12 +61,13 @@ Actualmente la SPA utiliza **Carga Dinámica HTML (`fetch()` en `Router.js`)**, 
   - [x] Test E2E de ciclo de vida (Plan -> Ajuste -> Consumo -> Historial -> Exportación) en `tests/diary-history-export.spec.js`.
 
 ## Integración con PrimaryFoods (Recepción de Recetas, Agenda y Compra)
-- [ ] **Importador Aditivo de Paquetes de Menú (`importMenuPlanPackage`):**
-  - [ ] Recibir el paquete `buscatureceta_menu_pack.json` generado por PrimaryFoods (o mediante push HTTP directo).
-  - [ ] Inyectar recetas en `db.recipes` sin sobrescribir las existentes (aprovechando `importRecipeFromExternal`).
-  - [ ] Inyectar la planificación de comidas en `db.diary` para las fechas indicadas (`status: 'planned'`).
-  - [ ] Añadir los ingredientes faltantes directamente a la lista de la compra / carrito (`db.cart`).
-  - [ ] Añadir botón en NutriAgenda o Ajustes: *"📥 Importar Paquete de Menú / PrimaryFoods"*.
+- [x] **Importador Aditivo de Paquetes de Menú (`importMenuPlanPackage`):**
+  - [x] Recibir paquete `buscatureceta_menu_pack.json` o plan anual generado por PrimaryFoods.
+  - [x] Inyectar recetas en `db.recipes` sin sobrescribir las existentes preservando alternativas e ingredientes primarios.
+  - [x] Inyectar la planificación de comidas en `db.diary` para las fechas indicadas (`status: 'planned'`).
+  - [x] Añadir los ingredientes faltantes directamente al carrito (`db.cart`) o a la pre-lista (`db.preShoppingList`).
+  - [x] Botones en Ajustes (*"📥 Importar Menú"*) y acceso directo en Agenda (*"📥 Importar Menú"*).
+  - [x] Cobertura E2E automatizada en `tests/menu-import-selective-sync.spec.js`.
 
 ## Colaboraciones de Metadatos OFF (Fotos y Datos) y Filtrado en Historial
 - [x] **Clasificación Unificada de Metadatos OFF (`cart-history.js`):**

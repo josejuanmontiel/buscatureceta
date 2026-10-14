@@ -69,6 +69,28 @@ export async function initView() {
     window.openMealModal(targetDate, parseInt(recipeIdParam), targetMeal);
   }
 
+  const btnDiaryImportMenu = document.getElementById('btn-diary-import-menu');
+  const diaryMenuInput = document.getElementById('diary-menu-pack-input');
+  if (btnDiaryImportMenu && diaryMenuInput) {
+    btnDiaryImportMenu.addEventListener('click', () => diaryMenuInput.click());
+    diaryMenuInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const BackupStore = await import('./modules/backup/BackupStore.js');
+        const res = await BackupStore.importMenuPlanPackage(text, { targetShoppingList: 'cart' });
+        showToast(`🎉 Menú importado: ${res.diaryEntriesImported} comidas planificadas, ${res.recipesImported} recetas`, 'success');
+        await renderWeek(currentDate);
+      } catch (err) {
+        console.error('Error importando menú:', err);
+        showToast('Error al importar menú: ' + err.message, 'danger');
+      } finally {
+        diaryMenuInput.value = '';
+      }
+    });
+  }
+
   document.getElementById('btn-prev-week').addEventListener('click', () => {
     currentDate.setDate(currentDate.getDate() - 7);
     renderWeek(currentDate);

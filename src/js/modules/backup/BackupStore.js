@@ -234,28 +234,45 @@ export async function importData(jsonString) {
 
 /**
  * Fusiona los registros entrantes con la base de datos actual.
- * Se excluye 'diary' por ser datos personales.
+ * Por defecto o según opciones, permite sincronización selectiva de 'diary'.
  * Se utiliza bulkPut para realizar un Upsert (inserta o actualiza según ID).
- * @param {string} jsonString 
+ * @param {string|Object} jsonInput
+ * @param {Object} [options]
+ * @param {boolean} [options.mergeDiary=false] Si es true, fusiona las entradas del diario
+ * @param {'keep_existing'|'overwrite'} [options.diaryConflictStrategy='keep_existing']
  */
-export async function mergeData(jsonString) {
-  const parsed = JSON.parse(jsonString);
+export async function mergeData(jsonInput, options = {}) {
+  const parsed = typeof jsonInput === 'string' ? JSON.parse(jsonInput) : jsonInput;
   if (!parsed.data) {
     throw new Error('Formato de backup inválido para fusión');
   }
 
+  const { mergeDiary = false, diaryConflictStrategy = 'keep_existing' } = options;
   const tablesToMerge = Object.keys(parsed.data).filter(t => TABLES_TO_BACKUP.includes(t) && db[t]);
 
   await db.transaction('rw', tablesToMerge.map(t => db[t]), async () => {
     for (const tableName of tablesToMerge) {
-      if (tableName === 'diary') {
-        // TODO: Implementar sincronización selectiva para la Agenda (Diary)
+      if (tableName === 'diary' && !mergeDiary) {
         console.log("Omitiendo 'diary' en la fusión para no sobrescribir datos personales.");
         continue;
       }
 
       const records = parsed.data[tableName];
       if (Array.isArray(records) && records.length > 0) {
+        if (tableName === 'diary' && mergeDiary) {
+          for (const diaryRec of records) {
+            const existing = await db.diary.where({ date: diaryRec.date, mealType: diaryRec.mealType }).first();
+            if (!existing) {
+              const recCopy = { ...diaryRec };
+              delete recCopy.id; // Dejar que autoincremente o respete integridad
+              await db.diary.add(recCopy);
+            } else if (diaryConflictStrategy === 'overwrite') {
+              await db.diary.put({ ...diaryRec, id: existing.id });
+            }
+          }
+          continue;
+        }
+
         // Restore blobs
         for (const record of records) {
           if (record.photoBlobBase64) {
@@ -397,6 +414,149 @@ export async function exportDiaryHistory() {
     diary: diaryEntries,
     diaryVersions: diaryVersions
   };
+}
+
+/**
+ * Importa de manera aditiva un paquete de menús / plan generado por PrimaryFoods o un export modular.
+ * - Inyecta recetas en db.recipes sin sobrescribir existentes si no es necesario (usando externalId / slug).
+ * - Inyecta comidas planificadas en db.diary con status='planned'.
+ * - Añade los ingredientes faltantes al carrito (db.cart) o a la pre-lista (db.preShoppingList).
+ *
+ * @param {string|Object} packageInput
+ * @param {Object} [options]
+ * @param {'cart'|'preShoppingList'} [options.targetShoppingList='cart']
+ * @returns {Promise<{ recipesImported: number, diaryEntriesImported: number, shoppingItemsAdded: number }>}
+ */
+export async function importMenuPlanPackage(packageInput, options = {}) {
+  const pkg = typeof packageInput === 'string' ? JSON.parse(packageInput) : packageInput;
+  if (!pkg || typeof pkg !== 'object') {
+    throw new Error('Formato de paquete de menú inválido');
+  }
+
+  const { targetShoppingList = 'cart' } = options;
+  let recipesImported = 0;
+  let diaryEntriesImported = 0;
+  let shoppingItemsAdded = 0;
+
+  // 1. Importar recetas
+  const recipesList = Array.isArray(pkg.recipes) ? pkg.recipes : (Array.isArray(pkg.Recipes) ? pkg.Recipes : []);
+  for (const rec of recipesList) {
+    const slug = rec.slug || rec.name.toLowerCase().trim().replace(/\s+/g, '-');
+    const existing = await db.recipes.where({ source: 'primaryfoods', externalId: slug }).first()
+      || await db.recipes.where('name').equalsIgnoreCase(rec.name).first();
+
+    const recipeData = {
+      name: rec.name,
+      description: rec.description || '',
+      servings: rec.servings || 2,
+      category: rec.category || 'principal',
+      instructions: rec.instructions || '',
+      tags: rec.tags || [],
+      source: 'primaryfoods',
+      externalId: slug,
+      ingredients: (rec.ingredients || []).map(ing => ({
+        productCode: ing.commercialCode || (ing.primaryFoodId ? `primary:${ing.primaryFoodId}` : `generic_${slug}`),
+        productName: ing.commercialName || ing.primaryName || ing.name,
+        amount: ing.amount || 1,
+        unit: ing.unit || 'g',
+        alternatives: ing.alternatives || []
+      })),
+      updated_at: Date.now()
+    };
+
+    if (existing) {
+      await db.recipes.update(existing.id, recipeData);
+    } else {
+      recipeData.created_at = Date.now();
+      await db.recipes.add(recipeData);
+      recipesImported++;
+    }
+  }
+
+  // 2. Importar planificación de diario (diary)
+  const diaryList = Array.isArray(pkg.diary) ? pkg.diary : (Array.isArray(pkg.diaryPlan) ? pkg.diaryPlan : []);
+  for (const entry of diaryList) {
+    if (!entry.date || !entry.mealType) continue;
+    const existing = await db.diary.where({ date: entry.date, mealType: entry.mealType }).first();
+    const entryData = {
+      date: entry.date,
+      mealType: entry.mealType,
+      status: entry.status || 'planned',
+      ate_at_home: entry.ate_at_home ?? true,
+      version: 1,
+      items: (entry.items || []).map(item => ({
+        course: item.course || 'main',
+        type: item.type || 'recipe',
+        name: item.name,
+        servings: item.servings || 1,
+        status: item.status || 'planned',
+        nutrition: item.nutrition || null
+      }))
+    };
+
+    if (!existing) {
+      await db.diary.add(entryData);
+      diaryEntriesImported++;
+    } else {
+      // Si ya existe, combinar items si no están ya
+      const currentNames = new Set((existing.items || []).map(i => i.name));
+      const newItems = (entryData.items || []).filter(i => !currentNames.has(i.name));
+      if (newItems.length > 0) {
+        await db.diary.update(existing.id, {
+          items: [...(existing.items || []), ...newItems]
+        });
+        diaryEntriesImported++;
+      }
+    }
+  }
+
+  // 3. Añadir faltantes a la lista de compra o carrito
+  const shoppingList = Array.isArray(pkg.shoppingList) ? pkg.shoppingList : [];
+  for (const item of shoppingList) {
+    const itemName = item.name || item.productName;
+    if (!itemName) continue;
+    const itemAmount = item.amount || item.neededAmount || 1;
+    const itemUnit = item.unit || '';
+    const itemCode = item.code || item.commercialCode || null;
+
+    if (targetShoppingList === 'preShoppingList' && db.preShoppingList) {
+      await db.preShoppingList.add({
+        name: itemName,
+        code: itemCode,
+        amount: itemAmount,
+        unit: itemUnit,
+        notes: item.recipeName ? `Para: ${item.recipeName}` : 'Importado de menú PrimaryFoods',
+        source: 'menu_pack',
+        checked: true,
+        status: 'pending',
+        dateAdded: new Date().toISOString()
+      });
+      shoppingItemsAdded++;
+    } else if (db.cart) {
+      const code = itemCode || `GENERIC_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      if (db.customProducts) {
+        try {
+          await db.customProducts.put({
+            code,
+            product_name: itemName,
+            ingredients_text: '',
+            nutriscore_grade: 'unknown'
+          });
+        } catch (_) {}
+      }
+      await db.cart.add({
+        productCode: code,
+        name: itemName,
+        amount: itemAmount,
+        unit: itemUnit,
+        source: 'primaryfoods_menu',
+        timestamp: Date.now()
+      });
+      shoppingItemsAdded++;
+    }
+  }
+
+  return { recipesImported, diaryEntriesImported, shoppingItemsAdded };
 }
 
 /**

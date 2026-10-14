@@ -20,6 +20,12 @@ export async function initView() {
   
   const btnImport = document.getElementById('btn-import');
   if (btnImport) btnImport.addEventListener('click', handleImport);
+
+  const btnMerge = document.getElementById('btn-merge');
+  if (btnMerge) btnMerge.addEventListener('click', handleMergeBackup);
+
+  const btnImportMenu = document.getElementById('btn-import-menu-pack');
+  if (btnImportMenu) btnImportMenu.addEventListener('click', handleImportMenuPackage);
   
   const btnClearData = document.getElementById('btn-clear-data');
   if (btnClearData) btnClearData.addEventListener('click', handleClearData);
@@ -285,6 +291,92 @@ async function handleImport() {
   } catch (err) {
     console.error('Error al restaurar:', err);
     showToast('Error al restaurar la copia de seguridad.\nDetalles: ' + err.message, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+    fileInput.value = '';
+  }
+}
+
+async function handleMergeBackup() {
+  const fileInput = document.getElementById('import-file');
+  if (!fileInput) return;
+  const file = fileInput.files[0];
+
+  if (!file) {
+    showToast('Por favor, selecciona un archivo de backup para fusionar.', 'warning');
+    return;
+  }
+
+  const checkMergeDiary = document.getElementById('check-merge-diary');
+  const mergeDiary = checkMergeDiary ? checkMergeDiary.checked : false;
+
+  const msg = mergeDiary
+    ? '¿Deseas fusionar estos datos con tu base de datos actual? (Se actualizarán recetas, despensa y también se incorporarán las entradas de tu Agenda).'
+    : '¿Deseas fusionar estos datos con tu base de datos actual? (Se actualizarán recetas y despensa; tu Agenda personal se mantendrá intacta).';
+
+  if (!(await confirmModal(msg, 'Fusionar Copia de Seguridad'))) {
+    return;
+  }
+
+  const btn = document.getElementById('btn-merge');
+  const originalText = btn ? btn.textContent : '';
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Fusionando...';
+    }
+
+    const text = await file.text();
+    await BackupStore.mergeData(text, { mergeDiary });
+
+    showToast('Datos fusionados correctamente. La página se recargará.');
+    setTimeout(() => window.location.reload(), 1500);
+  } catch (err) {
+    console.error('Error al fusionar:', err);
+    showToast('Error al fusionar: ' + err.message, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+    fileInput.value = '';
+  }
+}
+
+async function handleImportMenuPackage() {
+  const fileInput = document.getElementById('import-menu-file');
+  if (!fileInput) return;
+  const file = fileInput.files[0];
+
+  if (!file) {
+    showToast('Por favor, selecciona un paquete de menú JSON generado por PrimaryFoods.', 'warning');
+    return;
+  }
+
+  const selectTarget = document.getElementById('select-menu-shopping-target');
+  const targetShoppingList = selectTarget ? selectTarget.value : 'cart';
+
+  const btn = document.getElementById('btn-import-menu-pack');
+  const originalText = btn ? btn.textContent : '';
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Importando plan...';
+    }
+
+    const text = await file.text();
+    const result = await BackupStore.importMenuPlanPackage(text, { targetShoppingList });
+
+    const msg = `🎉 Menú importado con éxito: ${result.recipesImported} recetas, ${result.diaryEntriesImported} comidas planificadas, ${result.shoppingItemsAdded} artículos a la lista.`;
+    showToast(msg, 'success');
+  } catch (err) {
+    console.error('Error al importar paquete de menú:', err);
+    showToast('Error al importar paquete de menú: ' + err.message, 'danger');
   } finally {
     if (btn) {
       btn.disabled = false;
